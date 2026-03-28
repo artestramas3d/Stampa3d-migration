@@ -91,6 +91,7 @@ class FilamentCreate(BaseModel):
     spool_price: float
     color_hex: str = "#FFFFFF"
     notes: str = ""
+    remaining_grams: Optional[float] = None  # If not provided, defaults to spool_weight_g
 
 class FilamentUpdate(BaseModel):
     material_type: Optional[str] = None
@@ -100,6 +101,7 @@ class FilamentUpdate(BaseModel):
     spool_price: Optional[float] = None
     color_hex: Optional[str] = None
     notes: Optional[str] = None
+    remaining_grams: Optional[float] = None
 
 class FixedCostsCreate(BaseModel):
     printer_name: str
@@ -213,10 +215,11 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 # Filaments CRUD
 @api_router.get("/filaments")
 async def get_filaments(current_user: dict = Depends(get_current_user)):
-    filaments = await db.filaments.find({"user_id": current_user["id"]}, {"_id": 0, "id": {"$toString": "$_id"}, "material_type": 1, "color": 1, "brand": 1, "spool_weight_g": 1, "spool_price": 1, "cost_per_gram": 1, "color_hex": 1, "notes": 1}).to_list(1000)
-    # Manual projection for id
     result = []
     async for doc in db.filaments.find({"user_id": current_user["id"]}):
+        remaining = doc.get("remaining_grams")
+        if remaining is None:
+            remaining = doc.get("spool_weight_g", 0)
         result.append({
             "id": str(doc["_id"]),
             "material_type": doc.get("material_type", ""),
@@ -226,13 +229,16 @@ async def get_filaments(current_user: dict = Depends(get_current_user)):
             "spool_price": doc.get("spool_price", 0),
             "cost_per_gram": doc.get("cost_per_gram", 0),
             "color_hex": doc.get("color_hex", "#FFFFFF"),
-            "notes": doc.get("notes", "")
+            "notes": doc.get("notes", ""),
+            "remaining_grams": remaining,
+            "low_stock": remaining < 200
         })
     return result
 
 @api_router.post("/filaments")
 async def create_filament(filament: FilamentCreate, current_user: dict = Depends(get_current_user)):
     cost_per_gram = filament.spool_price / filament.spool_weight_g if filament.spool_weight_g > 0 else 0
+    remaining = filament.remaining_grams if filament.remaining_grams is not None else filament.spool_weight_g
     doc = {
         "user_id": current_user["id"],
         "material_type": filament.material_type,
@@ -243,10 +249,12 @@ async def create_filament(filament: FilamentCreate, current_user: dict = Depends
         "cost_per_gram": cost_per_gram,
         "color_hex": filament.color_hex,
         "notes": filament.notes,
+        "remaining_grams": remaining,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     result = await db.filaments.insert_one(doc)
     doc["id"] = str(result.inserted_id)
+    doc["low_stock"] = remaining < 200
     doc.pop("_id", None)
     return doc
 
@@ -507,6 +515,12 @@ async def create_sale(sale: SaleCreate, current_user: dict = Depends(get_current
                 {"$inc": {"stock_quantity": -acc_usage.quantity}}
             )
     
+    # Decrement filament remaining grams
+    await db.filaments.update_one(
+        {"_id": ObjectId(sale.filament_id)},
+        {"$inc": {"remaining_grams": -sale.grams_used}}
+    )
+    
     total_cost = material_cost + electricity_cost + depreciation_cost + labor_cost + design_cost + accessories_cost
     net_profit = sale.sale_price - total_cost
     
@@ -574,6 +588,27 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     # Top products
     top_products = sorted(product_profits.items(), key=lambda x: x[1], reverse=True)[:5]
     
+    # Low stock alerts
+    filaments = await db.filaments.find({"user_id": current_user["id"]}).to_list(1000)
+    low_stock_filaments = []
+    for f in filaments:
+        remaining = f.get("remaining_grams", f.get("spool_weight_g", 0))
+        if remaining < 200:
+            low_stock_filaments.append({
+                "id": str(f["_id"]),
+                "material_type": f.get("material_type", ""),
+                "color": f.get("color", ""),
+                "brand": f.get("brand", ""),
+                "remaining_grams": remaining
+            })
+    
+    # Low stock accessories
+    accessories = await db.accessories.find({"user_id": current_user["id"]}).to_list(1000)
+    low_stock_accessories = [
+        {"id": str(a["_id"]), "name": a.get("name", ""), "stock_quantity": a.get("stock_quantity", 0)}
+        for a in accessories if a.get("stock_quantity", 0) < 10
+    ]
+    
     return {
         "total_sales": round(total_sales, 2),
         "total_profit": round(total_profit, 2),
@@ -584,7 +619,9 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
         "most_profitable": most_profitable,
         "sales_count": len(sales),
         "chart_data": chart_data,
-        "top_products": [{"name": p[0], "profit": round(p[1], 2)} for p in top_products]
+        "top_products": [{"name": p[0], "profit": round(p[1], 2)} for p in top_products],
+        "low_stock_filaments": low_stock_filaments,
+        "low_stock_accessories": low_stock_accessories
     }
 
 # Export CSV

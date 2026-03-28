@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { getDashboardStats } from '../lib/api';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Skeleton } from '../components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
+import { Button } from '../components/ui/button';
 import { 
   TrendingUp, 
   Euro, 
@@ -9,7 +12,10 @@ import {
   Clock, 
   ShoppingBag,
   Percent,
-  Trophy
+  Trophy,
+  AlertTriangle,
+  Cylinder,
+  Package
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -81,6 +87,58 @@ export default function DashboardPage() {
         <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground mt-1">Panoramica delle tue attività di stampa 3D</p>
       </div>
+
+      {/* Low Stock Alerts */}
+      {(stats?.low_stock_filaments?.length > 0 || stats?.low_stock_accessories?.length > 0) && (
+        <Alert variant="destructive" className="border-red-500/50 bg-red-500/10" data-testid="dashboard-alerts">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle className="font-heading">Scorte in Esaurimento!</AlertTitle>
+          <AlertDescription>
+            <div className="space-y-3 mt-2">
+              {stats?.low_stock_filaments?.length > 0 && (
+                <div className="flex items-start gap-2">
+                  <Cylinder className="w-4 h-4 mt-0.5 text-red-400" />
+                  <div>
+                    <span className="font-semibold">Filamenti sotto 200g:</span>
+                    <ul className="mt-1 space-y-0.5">
+                      {stats.low_stock_filaments.map(f => (
+                        <li key={f.id} className="font-mono text-sm">
+                          • {f.material_type} {f.color} ({f.brand}): <strong>{Math.round(f.remaining_grams)}g</strong>
+                        </li>
+                      ))}
+                    </ul>
+                    <Link to="/filaments">
+                      <Button variant="link" size="sm" className="p-0 h-auto text-red-400 hover:text-red-300">
+                        Vai ai Filamenti →
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              )}
+              {stats?.low_stock_accessories?.length > 0 && (
+                <div className="flex items-start gap-2">
+                  <Package className="w-4 h-4 mt-0.5 text-red-400" />
+                  <div>
+                    <span className="font-semibold">Accessori sotto 10 pezzi:</span>
+                    <ul className="mt-1 space-y-0.5">
+                      {stats.low_stock_accessories.map(a => (
+                        <li key={a.id} className="font-mono text-sm">
+                          • {a.name}: <strong>{a.stock_quantity} pz</strong>
+                        </li>
+                      ))}
+                    </ul>
+                    <Link to="/accessories">
+                      <Button variant="link" size="sm" className="p-0 h-auto text-red-400 hover:text-red-300">
+                        Vai agli Accessori →
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
