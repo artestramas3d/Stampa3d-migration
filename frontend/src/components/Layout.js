@@ -15,12 +15,14 @@ import {
   Sun,
   Moon,
   LogOut,
-  Printer
+  Printer,
+  Package
 } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/filaments', label: 'Filamenti', icon: Cylinder },
+  { path: '/accessories', label: 'Accessori', icon: Package },
   { path: '/calculator', label: 'Calcolatore', icon: Calculator },
   { path: '/sales', label: 'Vendite', icon: Receipt },
   { path: '/purchases', label: 'Acquisti', icon: ShoppingCart },

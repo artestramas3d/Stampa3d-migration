@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getFilaments, getPrinters, calculatePrint, createSale } from '../lib/api';
+import { getFilaments, getPrinters, getAccessories, calculatePrint, createSale } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -7,12 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Slider } from '../components/ui/slider';
 import { Separator } from '../components/ui/separator';
-import { Calculator, Receipt, Save, AlertCircle } from 'lucide-react';
+import { Checkbox } from '../components/ui/checkbox';
+import { Calculator, Receipt, Save, AlertCircle, Package, Plus, Minus } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function CalculatorPage() {
   const [filaments, setFilaments] = useState([]);
   const [printers, setPrinters] = useState([]);
+  const [accessories, setAccessories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -25,7 +27,8 @@ export default function CalculatorPage() {
     labor_hours: 0,
     design_hours: 0,
     margin_percent: 30,
-    product_name: ''
+    product_name: '',
+    accessories: [] // [{accessory_id, quantity}]
   });
 
   const [result, setResult] = useState(null);
@@ -36,12 +39,14 @@ export default function CalculatorPage() {
 
   const loadData = async () => {
     try {
-      const [filamentsData, printersData] = await Promise.all([
+      const [filamentsData, printersData, accessoriesData] = await Promise.all([
         getFilaments(),
-        getPrinters()
+        getPrinters(),
+        getAccessories()
       ]);
       setFilaments(filamentsData);
       setPrinters(printersData);
+      setAccessories(accessoriesData);
       
       if (filamentsData.length > 0) {
         setFormData(prev => ({ ...prev, filament_id: filamentsData[0].id }));
@@ -77,6 +82,37 @@ export default function CalculatorPage() {
     }
   }, [formData, handleCalculate]);
 
+  const handleAccessoryToggle = (accessoryId, checked) => {
+    if (checked) {
+      setFormData(prev => ({
+        ...prev,
+        accessories: [...prev.accessories, { accessory_id: accessoryId, quantity: 1 }]
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        accessories: prev.accessories.filter(a => a.accessory_id !== accessoryId)
+      }));
+    }
+  };
+
+  const handleAccessoryQuantity = (accessoryId, delta) => {
+    setFormData(prev => ({
+      ...prev,
+      accessories: prev.accessories.map(a => {
+        if (a.accessory_id === accessoryId) {
+          const newQty = Math.max(1, a.quantity + delta);
+          return { ...a, quantity: newQty };
+        }
+        return a;
+      })
+    }));
+  };
+
+  const getAccessoryUsage = (accessoryId) => {
+    return formData.accessories.find(a => a.accessory_id === accessoryId);
+  };
+
   const handleSaveSale = async () => {
     if (!formData.product_name) {
       toast.error('Inserisci il nome del prodotto');
@@ -98,10 +134,12 @@ export default function CalculatorPage() {
         print_time_hours: formData.print_time_hours,
         labor_hours: formData.labor_hours,
         design_hours: formData.design_hours,
-        sale_price: result.sale_price
+        sale_price: result.sale_price,
+        accessories: formData.accessories
       });
       toast.success('Vendita registrata!');
-      setFormData(prev => ({ ...prev, product_name: '' }));
+      setFormData(prev => ({ ...prev, product_name: '', accessories: [] }));
+      loadData(); // Refresh accessories stock
     } catch (err) {
       toast.error('Errore nel salvataggio');
     } finally {
@@ -247,6 +285,59 @@ export default function CalculatorPage() {
               </div>
             </div>
 
+            {/* Accessories Section */}
+            {accessories.length > 0 && (
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <Package className="w-4 h-4" />
+                  Accessori
+                </Label>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {accessories.map(acc => {
+                    const usage = getAccessoryUsage(acc.id);
+                    const isSelected = !!usage;
+                    
+                    return (
+                      <div key={acc.id} className="flex items-center justify-between p-2 rounded-sm bg-muted/30 border border-border/40">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(checked) => handleAccessoryToggle(acc.id, checked)}
+                            data-testid={`acc-checkbox-${acc.id}`}
+                          />
+                          <span className="text-sm">{acc.name}</span>
+                          <span className="text-xs text-muted-foreground font-mono">€{acc.unit_cost.toFixed(2)}</span>
+                        </div>
+                        {isSelected && (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              onClick={() => handleAccessoryQuantity(acc.id, -1)}
+                            >
+                              <Minus className="w-3 h-3" />
+                            </Button>
+                            <span className="font-mono text-sm w-6 text-center">{usage.quantity}</span>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              onClick={() => handleAccessoryQuantity(acc.id, 1)}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
               <div className="flex justify-between">
                 <Label>Margine di Profitto</Label>
@@ -321,6 +412,20 @@ export default function CalculatorPage() {
                     <span>Ammortamento</span>
                     <span className="font-mono">€{result.depreciation_cost.toFixed(2)}</span>
                   </div>
+                  {result.accessories_cost > 0 && (
+                    <>
+                      <div className="line-item">
+                        <span>Accessori</span>
+                        <span className="font-mono">€{result.accessories_cost.toFixed(2)}</span>
+                      </div>
+                      {result.accessories_details?.map((acc, i) => (
+                        <div key={i} className="line-item text-xs text-muted-foreground pl-4">
+                          <span>{acc.name} x{acc.quantity}</span>
+                          <span className="font-mono">€{acc.total.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </>
+                  )}
                   <div className="line-item font-medium">
                     <span>Costo Produzione</span>
                     <span className="font-mono">€{result.production_cost.toFixed(2)}</span>

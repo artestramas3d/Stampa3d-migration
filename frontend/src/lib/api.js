@@ -30,6 +30,12 @@ export const createPrinter = (data) => api.post('/printers', data).then(r => r.d
 export const updatePrinter = (id, data) => api.put(`/printers/${id}`, data).then(r => r.data);
 export const deletePrinter = (id) => api.delete(`/printers/${id}`).then(r => r.data);
 
+// Accessories
+export const getAccessories = () => api.get('/accessories').then(r => r.data);
+export const createAccessory = (data) => api.post('/accessories', data).then(r => r.data);
+export const updateAccessory = (id, data) => api.put(`/accessories/${id}`, data).then(r => r.data);
+export const deleteAccessory = (id) => api.delete(`/accessories/${id}`).then(r => r.data);
+
 // Purchases
 export const getPurchases = () => api.get('/purchases').then(r => r.data);
 export const createPurchase = (data) => api.post('/purchases', data).then(r => r.data);

@@ -125,6 +125,24 @@ class PurchaseCreate(BaseModel):
     grams_total: float
     notes: str = ""
 
+class AccessoryCreate(BaseModel):
+    name: str
+    category: str  # gancetto, magnete, packaging, altro
+    unit_cost: float
+    stock_quantity: int = 0
+    notes: str = ""
+
+class AccessoryUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    unit_cost: Optional[float] = None
+    stock_quantity: Optional[int] = None
+    notes: Optional[str] = None
+
+class AccessoryUsage(BaseModel):
+    accessory_id: str
+    quantity: int
+
 class PrintCalculationCreate(BaseModel):
     filament_id: str
     grams_used: float
@@ -134,6 +152,7 @@ class PrintCalculationCreate(BaseModel):
     design_hours: float = 0
     margin_percent: float = 30
     product_name: str = ""
+    accessories: List[AccessoryUsage] = []
 
 class SaleCreate(BaseModel):
     date: str
@@ -145,6 +164,7 @@ class SaleCreate(BaseModel):
     sale_price: float
     labor_hours: float = 0
     design_hours: float = 0
+    accessories: List[AccessoryUsage] = []
 
 # Auth Endpoints
 @api_router.post("/auth/register")
@@ -350,6 +370,48 @@ async def delete_purchase(purchase_id: str, current_user: dict = Depends(get_cur
     await db.purchases.delete_one({"_id": ObjectId(purchase_id), "user_id": current_user["id"]})
     return {"message": "Acquisto eliminato"}
 
+# Accessories CRUD
+@api_router.get("/accessories")
+async def get_accessories(current_user: dict = Depends(get_current_user)):
+    result = []
+    async for doc in db.accessories.find({"user_id": current_user["id"]}):
+        result.append({
+            "id": str(doc["_id"]),
+            "name": doc.get("name", ""),
+            "category": doc.get("category", ""),
+            "unit_cost": doc.get("unit_cost", 0),
+            "stock_quantity": doc.get("stock_quantity", 0),
+            "notes": doc.get("notes", "")
+        })
+    return result
+
+@api_router.post("/accessories")
+async def create_accessory(accessory: AccessoryCreate, current_user: dict = Depends(get_current_user)):
+    doc = {
+        "user_id": current_user["id"],
+        "name": accessory.name,
+        "category": accessory.category,
+        "unit_cost": accessory.unit_cost,
+        "stock_quantity": accessory.stock_quantity,
+        "notes": accessory.notes,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    result = await db.accessories.insert_one(doc)
+    doc["id"] = str(result.inserted_id)
+    doc.pop("_id", None)
+    return doc
+
+@api_router.put("/accessories/{accessory_id}")
+async def update_accessory(accessory_id: str, accessory: AccessoryUpdate, current_user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in accessory.model_dump().items() if v is not None}
+    await db.accessories.update_one({"_id": ObjectId(accessory_id), "user_id": current_user["id"]}, {"$set": update_data})
+    return {"message": "Accessorio aggiornato"}
+
+@api_router.delete("/accessories/{accessory_id}")
+async def delete_accessory(accessory_id: str, current_user: dict = Depends(get_current_user)):
+    await db.accessories.delete_one({"_id": ObjectId(accessory_id), "user_id": current_user["id"]})
+    return {"message": "Accessorio eliminato"}
+
 # Print Calculator
 @api_router.post("/calculate")
 async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Depends(get_current_user)):
@@ -361,7 +423,23 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
     material_cost = calc.grams_used * filament.get("cost_per_gram", 0)
     electricity_cost = calc.print_time_hours * printer.get("electricity_cost_per_hour", 0)
     depreciation_cost = calc.print_time_hours * printer.get("depreciation_per_hour", 0)
-    production_cost = material_cost + electricity_cost + depreciation_cost
+    
+    # Calculate accessories cost
+    accessories_cost = 0
+    accessories_details = []
+    for acc_usage in calc.accessories:
+        acc = await db.accessories.find_one({"_id": ObjectId(acc_usage.accessory_id), "user_id": current_user["id"]})
+        if acc:
+            cost = acc.get("unit_cost", 0) * acc_usage.quantity
+            accessories_cost += cost
+            accessories_details.append({
+                "name": acc.get("name", ""),
+                "quantity": acc_usage.quantity,
+                "unit_cost": acc.get("unit_cost", 0),
+                "total": cost
+            })
+    
+    production_cost = material_cost + electricity_cost + depreciation_cost + accessories_cost
     labor_cost = calc.labor_hours * 15  # 15€/hour labor
     design_cost = calc.design_hours * 20  # 20€/hour design
     total_cost = production_cost + labor_cost + design_cost
@@ -372,6 +450,8 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
         "material_cost": round(material_cost, 2),
         "electricity_cost": round(electricity_cost, 2),
         "depreciation_cost": round(depreciation_cost, 2),
+        "accessories_cost": round(accessories_cost, 2),
+        "accessories_details": accessories_details,
         "production_cost": round(production_cost, 2),
         "labor_cost": round(labor_cost, 2),
         "design_cost": round(design_cost, 2),
@@ -414,7 +494,20 @@ async def create_sale(sale: SaleCreate, current_user: dict = Depends(get_current
     depreciation_cost = sale.print_time_hours * printer.get("depreciation_per_hour", 0)
     labor_cost = sale.labor_hours * 15
     design_cost = sale.design_hours * 20
-    total_cost = material_cost + electricity_cost + depreciation_cost + labor_cost + design_cost
+    
+    # Calculate accessories cost
+    accessories_cost = 0
+    for acc_usage in sale.accessories:
+        acc = await db.accessories.find_one({"_id": ObjectId(acc_usage.accessory_id), "user_id": current_user["id"]})
+        if acc:
+            accessories_cost += acc.get("unit_cost", 0) * acc_usage.quantity
+            # Decrement stock
+            await db.accessories.update_one(
+                {"_id": ObjectId(acc_usage.accessory_id)},
+                {"$inc": {"stock_quantity": -acc_usage.quantity}}
+            )
+    
+    total_cost = material_cost + electricity_cost + depreciation_cost + labor_cost + design_cost + accessories_cost
     net_profit = sale.sale_price - total_cost
     
     doc = {
@@ -427,6 +520,7 @@ async def create_sale(sale: SaleCreate, current_user: dict = Depends(get_current
         "filament_cost": round(material_cost, 2),
         "electricity_cost": round(electricity_cost, 2),
         "depreciation_cost": round(depreciation_cost, 2),
+        "accessories_cost": round(accessories_cost, 2),
         "total_cost": round(total_cost, 2),
         "sale_price": sale.sale_price,
         "net_profit": round(net_profit, 2),
