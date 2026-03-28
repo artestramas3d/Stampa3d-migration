@@ -1,34 +1,70 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* App-specific styles */
+.sidebar-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium transition-colors;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+.sidebar-link:hover {
+    @apply bg-accent text-accent-foreground;
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+.sidebar-link.active {
+    @apply bg-primary/10 text-primary border-l-2 border-primary;
 }
 
-.App-link {
-    color: #61dafb;
+.stat-card {
+    @apply bg-card border border-border/40 rounded-sm p-4 hover:-translate-y-0.5 transition-transform duration-200;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
+.data-table {
+    @apply w-full text-sm;
+}
+
+.data-table th {
+    @apply text-left font-semibold text-muted-foreground uppercase text-xs tracking-wider py-3 px-4 border-b border-border;
+}
+
+.data-table td {
+    @apply py-3 px-4 border-b border-border/40 font-mono;
+}
+
+.data-table tr:hover td {
+    @apply bg-accent/50;
+}
+
+.color-preview {
+    @apply w-4 h-4 rounded-full border border-border inline-block;
+}
+
+/* Calculator receipt */
+.calculator-receipt {
+    @apply bg-card border border-border/40 rounded-sm p-4;
+}
+
+.calculator-receipt .line-item {
+    @apply flex justify-between py-1.5 text-sm;
+}
+
+.calculator-receipt .line-item.total {
+    @apply border-t-2 border-primary pt-2 mt-2 font-bold text-lg;
+}
+
+/* Badge variants */
+.badge-profit {
+    @apply text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-sm text-xs font-bold;
+}
+
+.badge-loss {
+    @apply text-red-500 bg-red-500/10 px-2 py-0.5 rounded-sm text-xs font-bold;
+}
+
+/* Form inputs */
+.form-input {
+    @apply rounded-sm border-border/40 bg-transparent focus:ring-1 focus:ring-primary focus:border-primary transition-all font-mono text-sm;
+}
+
+/* Mobile sidebar */
+@media (max-width: 768px) {
+    .sidebar-mobile-overlay {
+        @apply fixed inset-0 bg-black/50 z-40;
     }
 }
