@@ -1,0 +1,97 @@
+{
+  "theme": "dark",
+  "archetype": "4 (Swiss & High-Contrast)",
+  "language": "it",
+  "currency": "€",
+  "typography": {
+    "fonts": {
+      "heading": "Manrope",
+      "body": "IBM Plex Sans",
+      "mono": "JetBrains Mono"
+    },
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl font-extrabold tracking-tighter",
+      "h2": "text-2xl sm:text-3xl font-bold tracking-tight",
+      "h3": "text-xl sm:text-2xl font-semibold tracking-tight",
+      "h4": "text-lg sm:text-xl font-medium",
+      "body": "text-sm sm:text-base leading-relaxed",
+      "data": "text-sm font-mono tracking-tight",
+      "label": "text-xs font-bold uppercase tracking-[0.2em]"
+    }
+  },
+  "colors": {
+    "primary": {
+      "DEFAULT": "#F97316",
+      "hover": "#EA580C",
+      "foreground": "#FAFAFA"
+    },
+    "background": {
+      "light": "#FAFAFA",
+      "dark": "#0A0A0A"
+    },
+    "surface": {
+      "light": "#FFFFFF",
+      "dark": "#121212"
+    },
+    "border": {
+      "light": "#E5E7EB",
+      "dark": "#27272A"
+    },
+    "chart": [
+      "#F97316", 
+      "#3B82F6", 
+      "#10B981", 
+      "#8B5CF6", 
+      "#F43F5E"
+    ]
+  },
+  "layout": {
+    "type": "control-room",
+    "sidebar": "w-64 border-r border-border/40 bg-background hidden md:flex flex-col",
+    "main_grid": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6",
+    "card": "bg-surface border border-border/40 rounded-sm p-4 hover:-translate-y-0.5 transition-transform duration-200"
+  },
+  "components": {
+    "button": "rounded-sm font-semibold tracking-wide uppercase text-xs px-4 py-2 transition-colors",
+    "input": "rounded-sm border-border/40 bg-transparent focus:ring-1 focus:ring-primary focus:border-primary transition-all font-mono text-sm",
+    "table": "w-full text-sm font-mono",
+    "badge": "rounded-sm px-2 py-0.5 text-xs font-bold uppercase tracking-widest",
+    "color_preview": "w-4 h-4 rounded-full border border-border"
+  },
+  "media": {
+    "images": {
+      "auth_background": "https://images.unsplash.com/photo-1642969164999-979483e21601?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2ODl8MHwxfHNlYXJjaHwxfHwzZCUyMHByaW50ZXIlMjBwcmludGluZ3xlbnwwfHx8fDE3NzQ3MTUyNjV8MA&ixlib=rb-4.1.0&q=85",
+      "empty_state_texture": "https://images.pexels.com/photos/3612932/pexels-photo-3612932.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "printer_action": "https://images.pexels.com/photos/4485456/pexels-photo-4485456.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    }
+  },
+  "features_mapping": {
+    "filament_manager": {
+      "description": "Grid or List of filaments. Each row shows brand, material (PLA/PETG), hex color preview, weight, price, and auto-calculates cost per gram (€/g).",
+      "ux_rules": "Use the 'color_preview' component for the hex color. Highlight €/g in mono font to emphasize the financial aspect."
+    },
+    "print_cost_calculator": {
+      "description": "Form to input print details (grams, print hours, minutes, failures). Auto-calculates material cost, fixed costs (depreciation + electricity), labor, and suggests a retail price based on profit margin.",
+      "ux_rules": "Layout as a 2-column bento box. Left: inputs. Right: real-time receipt/summary showing cost breakdown."
+    },
+    "sales_log": {
+      "description": "Table tracking print jobs sold, date, revenue, calculated profit.",
+      "ux_rules": "Dense table, right-align numeric columns. Use green text for profit."
+    },
+    "dashboard": {
+      "description": "KPI widgets (Total Profit, Revenue, Filaments used) and charts.",
+      "ux_rules": "Follow 'Control Room' mode. 1-span for KPI cards, 2-span for revenue chart, 1-span for top products list."
+    }
+  },
+  "instructions_to_main_agent": [
+    "Install lucide-react and @phosphor-icons/react for high-end technical icons.",
+    "Ensure all user-facing text is in ITALIAN (e.g., 'Gestione Filamenti', 'Calcolatore Costi', 'Dashboard', 'Registro Vendite', 'Acquisti').",
+    "Use standard Shadcn UI components but heavily modify the borders (use rounded-sm instead of rounded-lg) and shadows (remove them, use flat design with 1px border).",
+    "Use JetBrains Mono or IBM Plex Sans for all numeric data (costs, grams, hours) to ensure tabular alignment.",
+    "Add 'dark' mode configuration with the provided palette to establish the tech-heavy 3D printing feel, and implement a theme toggle.",
+    "For the cost calculator, use a receipt-style right pane that updates instantly as inputs change.",
+    "Add a CSV Export button on the Sales Log table. Implement simple browser-based CSV generation.",
+    "Add 'data-testid' to all buttons, inputs, and major sections as per E1 rules.",
+    "Ensure the sidebar is collapsible on desktop and becomes a drawer/sheet on mobile."
+  ]
+}
