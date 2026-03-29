@@ -122,10 +122,14 @@ class PurchaseCreate(BaseModel):
     material_type: str
     brand: str
     color: str
+    color_hex: str = "#FFFFFF"
     quantity_spools: int
     price_total: float
     grams_total: float
     notes: str = ""
+    # Filament integration
+    filament_id: Optional[str] = None  # Link to existing filament
+    create_filament: bool = True  # Auto-create or update filament
 
 class AccessoryCreate(BaseModel):
     name: str
@@ -361,6 +365,55 @@ async def get_purchases(current_user: dict = Depends(get_current_user)):
 @api_router.post("/purchases")
 async def create_purchase(purchase: PurchaseCreate, current_user: dict = Depends(get_current_user)):
     cost_per_gram = purchase.price_total / purchase.grams_total if purchase.grams_total > 0 else 0
+    
+    filament_id = None
+    
+    # Handle filament creation/update
+    if purchase.create_filament:
+        if purchase.filament_id:
+            # Update existing filament - add grams
+            await db.filaments.update_one(
+                {"_id": ObjectId(purchase.filament_id), "user_id": current_user["id"]},
+                {"$inc": {"remaining_grams": purchase.grams_total}}
+            )
+            filament_id = purchase.filament_id
+        else:
+            # Check if filament with same material/brand/color exists
+            existing = await db.filaments.find_one({
+                "user_id": current_user["id"],
+                "material_type": purchase.material_type,
+                "brand": purchase.brand,
+                "color": purchase.color
+            })
+            
+            if existing:
+                # Update existing filament - add grams
+                await db.filaments.update_one(
+                    {"_id": existing["_id"]},
+                    {"$inc": {"remaining_grams": purchase.grams_total}}
+                )
+                filament_id = str(existing["_id"])
+            else:
+                # Create new filament
+                spool_weight = purchase.grams_total / purchase.quantity_spools if purchase.quantity_spools > 0 else purchase.grams_total
+                spool_price = purchase.price_total / purchase.quantity_spools if purchase.quantity_spools > 0 else purchase.price_total
+                
+                filament_doc = {
+                    "user_id": current_user["id"],
+                    "material_type": purchase.material_type,
+                    "color": purchase.color,
+                    "brand": purchase.brand,
+                    "spool_weight_g": spool_weight,
+                    "spool_price": spool_price,
+                    "cost_per_gram": cost_per_gram,
+                    "color_hex": purchase.color_hex,
+                    "notes": f"Creato da acquisto del {purchase.date}",
+                    "remaining_grams": purchase.grams_total,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
+                filament_result = await db.filaments.insert_one(filament_doc)
+                filament_id = str(filament_result.inserted_id)
+    
     doc = {
         "user_id": current_user["id"],
         "date": purchase.date,
@@ -372,6 +425,7 @@ async def create_purchase(purchase: PurchaseCreate, current_user: dict = Depends
         "grams_total": purchase.grams_total,
         "cost_per_gram": cost_per_gram,
         "notes": purchase.notes,
+        "filament_id": filament_id,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     result = await db.purchases.insert_one(doc)
