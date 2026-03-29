@@ -145,9 +145,14 @@ class AccessoryUsage(BaseModel):
     accessory_id: str
     quantity: int
 
-class PrintCalculationCreate(BaseModel):
+class FilamentUsage(BaseModel):
     filament_id: str
     grams_used: float
+
+class PrintCalculationCreate(BaseModel):
+    filaments: List[FilamentUsage] = []  # For multicolor
+    filament_id: Optional[str] = None  # Legacy single filament
+    grams_used: Optional[float] = None  # Legacy
     print_time_hours: float
     printer_id: str
     labor_hours: float = 0
@@ -159,8 +164,9 @@ class PrintCalculationCreate(BaseModel):
 class SaleCreate(BaseModel):
     date: str
     product_name: str
-    filament_id: str
-    grams_used: float
+    filaments: List[FilamentUsage] = []  # For multicolor
+    filament_id: Optional[str] = None  # Legacy
+    grams_used: Optional[float] = None  # Legacy
     print_time_hours: float
     printer_id: str
     sale_price: float
@@ -423,12 +429,39 @@ async def delete_accessory(accessory_id: str, current_user: dict = Depends(get_c
 # Print Calculator
 @api_router.post("/calculate")
 async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Depends(get_current_user)):
-    filament = await db.filaments.find_one({"_id": ObjectId(calc.filament_id), "user_id": current_user["id"]})
     printer = await db.printers.find_one({"_id": ObjectId(calc.printer_id), "user_id": current_user["id"]})
-    if not filament or not printer:
-        raise HTTPException(status_code=404, detail="Filamento o stampante non trovati")
+    if not printer:
+        raise HTTPException(status_code=404, detail="Stampante non trovata")
     
-    material_cost = calc.grams_used * filament.get("cost_per_gram", 0)
+    # Handle multicolor filaments or legacy single filament
+    filament_list = calc.filaments if calc.filaments else []
+    if not filament_list and calc.filament_id and calc.grams_used:
+        filament_list = [FilamentUsage(filament_id=calc.filament_id, grams_used=calc.grams_used)]
+    
+    if not filament_list:
+        raise HTTPException(status_code=400, detail="Nessun filamento selezionato")
+    
+    # Calculate material cost for all filaments
+    material_cost = 0
+    filaments_details = []
+    total_grams = 0
+    
+    for f_usage in filament_list:
+        filament = await db.filaments.find_one({"_id": ObjectId(f_usage.filament_id), "user_id": current_user["id"]})
+        if filament:
+            cost = f_usage.grams_used * filament.get("cost_per_gram", 0)
+            material_cost += cost
+            total_grams += f_usage.grams_used
+            filaments_details.append({
+                "filament_id": f_usage.filament_id,
+                "material_type": filament.get("material_type", ""),
+                "color": filament.get("color", ""),
+                "color_hex": filament.get("color_hex", "#FFFFFF"),
+                "grams_used": f_usage.grams_used,
+                "cost_per_gram": filament.get("cost_per_gram", 0),
+                "total": round(cost, 2)
+            })
+    
     electricity_cost = calc.print_time_hours * printer.get("electricity_cost_per_hour", 0)
     depreciation_cost = calc.print_time_hours * printer.get("depreciation_per_hour", 0)
     
@@ -456,6 +489,8 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
     
     return {
         "material_cost": round(material_cost, 2),
+        "filaments_details": filaments_details,
+        "total_grams": total_grams,
         "electricity_cost": round(electricity_cost, 2),
         "depreciation_cost": round(depreciation_cost, 2),
         "accessories_cost": round(accessories_cost, 2),
@@ -492,12 +527,35 @@ async def get_sales(current_user: dict = Depends(get_current_user)):
 
 @api_router.post("/sales")
 async def create_sale(sale: SaleCreate, current_user: dict = Depends(get_current_user)):
-    filament = await db.filaments.find_one({"_id": ObjectId(sale.filament_id), "user_id": current_user["id"]})
     printer = await db.printers.find_one({"_id": ObjectId(sale.printer_id), "user_id": current_user["id"]})
-    if not filament or not printer:
-        raise HTTPException(status_code=404, detail="Filamento o stampante non trovati")
+    if not printer:
+        raise HTTPException(status_code=404, detail="Stampante non trovata")
     
-    material_cost = sale.grams_used * filament.get("cost_per_gram", 0)
+    # Handle multicolor filaments or legacy single filament
+    filament_list = sale.filaments if sale.filaments else []
+    if not filament_list and sale.filament_id and sale.grams_used:
+        filament_list = [FilamentUsage(filament_id=sale.filament_id, grams_used=sale.grams_used)]
+    
+    if not filament_list:
+        raise HTTPException(status_code=400, detail="Nessun filamento selezionato")
+    
+    # Calculate material cost and decrement stock for all filaments
+    material_cost = 0
+    total_grams = 0
+    material_types = []
+    
+    for f_usage in filament_list:
+        filament = await db.filaments.find_one({"_id": ObjectId(f_usage.filament_id), "user_id": current_user["id"]})
+        if filament:
+            material_cost += f_usage.grams_used * filament.get("cost_per_gram", 0)
+            total_grams += f_usage.grams_used
+            material_types.append(f"{filament.get('material_type', '')} {filament.get('color', '')}")
+            # Decrement filament remaining grams
+            await db.filaments.update_one(
+                {"_id": ObjectId(f_usage.filament_id)},
+                {"$inc": {"remaining_grams": -f_usage.grams_used}}
+            )
+    
     electricity_cost = sale.print_time_hours * printer.get("electricity_cost_per_hour", 0)
     depreciation_cost = sale.print_time_hours * printer.get("depreciation_per_hour", 0)
     labor_cost = sale.labor_hours * 15
@@ -515,12 +573,6 @@ async def create_sale(sale: SaleCreate, current_user: dict = Depends(get_current
                 {"$inc": {"stock_quantity": -acc_usage.quantity}}
             )
     
-    # Decrement filament remaining grams
-    await db.filaments.update_one(
-        {"_id": ObjectId(sale.filament_id)},
-        {"$inc": {"remaining_grams": -sale.grams_used}}
-    )
-    
     total_cost = material_cost + electricity_cost + depreciation_cost + labor_cost + design_cost + accessories_cost
     net_profit = sale.sale_price - total_cost
     
@@ -528,8 +580,8 @@ async def create_sale(sale: SaleCreate, current_user: dict = Depends(get_current
         "user_id": current_user["id"],
         "date": sale.date,
         "product_name": sale.product_name,
-        "material_type": filament.get("material_type", ""),
-        "grams_used": sale.grams_used,
+        "material_type": " + ".join(material_types) if material_types else "",
+        "grams_used": total_grams,
         "print_time_hours": sale.print_time_hours,
         "filament_cost": round(material_cost, 2),
         "electricity_cost": round(electricity_cost, 2),

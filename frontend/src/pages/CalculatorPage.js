@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Slider } from '../components/ui/slider';
 import { Separator } from '../components/ui/separator';
 import { Checkbox } from '../components/ui/checkbox';
-import { Calculator, Receipt, Save, AlertCircle, Package, Plus, Minus } from 'lucide-react';
+import { Calculator, Receipt, Save, AlertCircle, Package, Plus, Minus, Trash2, Palette } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function CalculatorPage() {
@@ -20,15 +20,14 @@ export default function CalculatorPage() {
   const [saving, setSaving] = useState(false);
 
   const [formData, setFormData] = useState({
-    filament_id: '',
+    filaments: [], // [{filament_id, grams_used}]
     printer_id: '',
-    grams_used: 50,
     print_time_hours: 2,
     labor_hours: 0,
     design_hours: 0,
     margin_percent: 30,
     product_name: '',
-    accessories: [] // [{accessory_id, quantity}]
+    accessories: []
   });
 
   const [result, setResult] = useState(null);
@@ -48,11 +47,15 @@ export default function CalculatorPage() {
       setPrinters(printersData);
       setAccessories(accessoriesData);
       
-      if (filamentsData.length > 0) {
-        setFormData(prev => ({ ...prev, filament_id: filamentsData[0].id }));
-      }
       if (printersData.length > 0) {
         setFormData(prev => ({ ...prev, printer_id: printersData[0].id }));
+      }
+      // Add first filament by default if available
+      if (filamentsData.length > 0) {
+        setFormData(prev => ({ 
+          ...prev, 
+          filaments: [{ filament_id: filamentsData[0].id, grams_used: 50 }]
+        }));
       }
     } catch (err) {
       toast.error('Errore nel caricamento dati');
@@ -62,7 +65,7 @@ export default function CalculatorPage() {
   };
 
   const handleCalculate = useCallback(async () => {
-    if (!formData.filament_id || !formData.printer_id) return;
+    if (formData.filaments.length === 0 || !formData.printer_id) return;
     
     setCalculating(true);
     try {
@@ -76,12 +79,42 @@ export default function CalculatorPage() {
   }, [formData]);
 
   useEffect(() => {
-    if (formData.filament_id && formData.printer_id) {
+    if (formData.filaments.length > 0 && formData.printer_id) {
       const timer = setTimeout(handleCalculate, 300);
       return () => clearTimeout(timer);
     }
   }, [formData, handleCalculate]);
 
+  // Filament management
+  const addFilament = () => {
+    if (filaments.length === 0) return;
+    // Find a filament not already in the list, or use first one
+    const usedIds = formData.filaments.map(f => f.filament_id);
+    const available = filaments.find(f => !usedIds.includes(f.id)) || filaments[0];
+    setFormData(prev => ({
+      ...prev,
+      filaments: [...prev.filaments, { filament_id: available.id, grams_used: 30 }]
+    }));
+  };
+
+  const removeFilament = (index) => {
+    if (formData.filaments.length <= 1) return; // Keep at least one
+    setFormData(prev => ({
+      ...prev,
+      filaments: prev.filaments.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateFilament = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      filaments: prev.filaments.map((f, i) => 
+        i === index ? { ...f, [field]: value } : f
+      )
+    }));
+  };
+
+  // Accessory management
   const handleAccessoryToggle = (accessoryId, checked) => {
     if (checked) {
       setFormData(prev => ({
@@ -128,9 +161,8 @@ export default function CalculatorPage() {
       await createSale({
         date: new Date().toISOString().split('T')[0],
         product_name: formData.product_name,
-        filament_id: formData.filament_id,
+        filaments: formData.filaments,
         printer_id: formData.printer_id,
-        grams_used: formData.grams_used,
         print_time_hours: formData.print_time_hours,
         labor_hours: formData.labor_hours,
         design_hours: formData.design_hours,
@@ -139,7 +171,7 @@ export default function CalculatorPage() {
       });
       toast.success('Vendita registrata!');
       setFormData(prev => ({ ...prev, product_name: '', accessories: [] }));
-      loadData(); // Refresh accessories stock
+      loadData(); // Refresh stock
     } catch (err) {
       toast.error('Errore nel salvataggio');
     } finally {
@@ -147,7 +179,6 @@ export default function CalculatorPage() {
     }
   };
 
-  const selectedFilament = filaments.find(f => f.id === formData.filament_id);
   const selectedPrinter = printers.find(p => p.id === formData.printer_id);
 
   if (loading) {
@@ -183,7 +214,7 @@ export default function CalculatorPage() {
     <div className="space-y-6 animate-fadeIn" data-testid="calculator-page">
       <div>
         <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight">Calcolatore Costi</h1>
-        <p className="text-muted-foreground mt-1">Calcola i costi di stampa in tempo reale</p>
+        <p className="text-muted-foreground mt-1">Calcola i costi di stampa in tempo reale - supporta multicolore</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -196,59 +227,101 @@ export default function CalculatorPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Filamento</Label>
-                <Select 
-                  value={formData.filament_id} 
-                  onValueChange={(v) => setFormData({...formData, filament_id: v})}
+            {/* Filaments Section - Multicolor Support */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2">
+                  <Palette className="w-4 h-4" />
+                  Filamenti {formData.filaments.length > 1 && <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Multicolore</span>}
+                </Label>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={addFilament}
+                  data-testid="add-filament-btn"
                 >
-                  <SelectTrigger data-testid="calc-filament-select">
-                    <SelectValue placeholder="Seleziona..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filaments.map(f => (
-                      <SelectItem key={f.id} value={f.id}>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: f.color_hex }} />
-                          {f.material_type} - {f.color}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Aggiungi Colore
+                </Button>
               </div>
+              
               <div className="space-y-2">
-                <Label>Stampante</Label>
-                <Select 
-                  value={formData.printer_id} 
-                  onValueChange={(v) => setFormData({...formData, printer_id: v})}
-                >
-                  <SelectTrigger data-testid="calc-printer-select">
-                    <SelectValue placeholder="Seleziona..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {printers.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.printer_name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {formData.filaments.map((f, index) => {
+                  const filamentData = filaments.find(fil => fil.id === f.filament_id);
+                  return (
+                    <div key={index} className="flex items-center gap-2 p-2 rounded-sm bg-muted/30 border border-border/40">
+                      <div 
+                        className="w-6 h-6 rounded-sm border border-border flex-shrink-0"
+                        style={{ backgroundColor: filamentData?.color_hex || '#FFFFFF' }}
+                      />
+                      <Select 
+                        value={f.filament_id} 
+                        onValueChange={(v) => updateFilament(index, 'filament_id', v)}
+                      >
+                        <SelectTrigger className="flex-1" data-testid={`filament-select-${index}`}>
+                          <SelectValue placeholder="Seleziona..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filaments.map(fil => (
+                            <SelectItem key={fil.id} value={fil.id}>
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: fil.color_hex }} />
+                                {fil.material_type} - {fil.color}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        value={f.grams_used}
+                        onChange={(e) => updateFilament(index, 'grams_used', parseFloat(e.target.value) || 0)}
+                        className="w-20 font-mono"
+                        placeholder="g"
+                        data-testid={`filament-grams-${index}`}
+                      />
+                      <span className="text-xs text-muted-foreground">g</span>
+                      {formData.filaments.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          onClick={() => removeFilament(index)}
+                          data-testid={`remove-filament-${index}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Printer Selection */}
+            <div className="space-y-2">
+              <Label>Stampante</Label>
+              <Select 
+                value={formData.printer_id} 
+                onValueChange={(v) => setFormData({...formData, printer_id: v})}
+              >
+                <SelectTrigger data-testid="calc-printer-select">
+                  <SelectValue placeholder="Seleziona..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {printers.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.printer_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Time and Labor */}
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>Grammi Filamento</Label>
-                <Input
-                  type="number"
-                  value={formData.grams_used}
-                  onChange={(e) => setFormData({...formData, grams_used: parseFloat(e.target.value) || 0})}
-                  className="font-mono"
-                  data-testid="calc-grams-input"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Tempo Stampa (ore)</Label>
+                <Label>Tempo Stampa (h)</Label>
                 <Input
                   type="number"
                   step="0.5"
@@ -258,9 +331,6 @@ export default function CalculatorPage() {
                   data-testid="calc-time-input"
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Ore Lavoro</Label>
                 <Input
@@ -338,6 +408,7 @@ export default function CalculatorPage() {
               </div>
             )}
 
+            {/* Margin Slider */}
             <div className="space-y-3">
               <div className="flex justify-between">
                 <Label>Margine di Profitto</Label>
@@ -355,12 +426,13 @@ export default function CalculatorPage() {
 
             <Separator />
 
+            {/* Product Name */}
             <div className="space-y-2">
               <Label>Nome Prodotto (per registrare vendita)</Label>
               <Input
                 value={formData.product_name}
                 onChange={(e) => setFormData({...formData, product_name: e.target.value})}
-                placeholder="Es. Vaso geometrico"
+                placeholder="Es. Vaso geometrico multicolore"
                 data-testid="calc-product-name"
               />
             </div>
@@ -382,13 +454,19 @@ export default function CalculatorPage() {
               </div>
             ) : result ? (
               <>
+                {/* Filaments Details */}
                 <div className="space-y-2 text-sm">
-                  {selectedFilament && (
-                    <div className="line-item">
-                      <span className="text-muted-foreground">Filamento:</span>
-                      <span className="font-mono">{selectedFilament.material_type} ({selectedFilament.brand})</span>
+                  {result.filaments_details?.map((f, i) => (
+                    <div key={i} className="flex items-center gap-2 p-2 rounded-sm bg-muted/20">
+                      <div 
+                        className="w-4 h-4 rounded-sm border border-border"
+                        style={{ backgroundColor: f.color_hex }}
+                      />
+                      <span className="flex-1">{f.material_type} {f.color}</span>
+                      <span className="font-mono text-muted-foreground">{f.grams_used}g</span>
+                      <span className="font-mono">€{f.total.toFixed(2)}</span>
                     </div>
-                  )}
+                  ))}
                   {selectedPrinter && (
                     <div className="line-item">
                       <span className="text-muted-foreground">Stampante:</span>
@@ -401,7 +479,7 @@ export default function CalculatorPage() {
 
                 <div className="space-y-2">
                   <div className="line-item">
-                    <span>Costo Materiale</span>
+                    <span>Costo Materiale ({result.total_grams}g totali)</span>
                     <span className="font-mono">€{result.material_cost.toFixed(2)}</span>
                   </div>
                   <div className="line-item">
