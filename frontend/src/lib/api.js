@@ -43,6 +43,7 @@ export const deletePurchase = (id) => api.delete(`/purchases/${id}`).then(r => r
 
 // Sales
 export const getSales = () => api.get('/sales').then(r => r.data);
+export const getRecentSales = (limit = 10) => api.get(`/sales/recent?limit=${limit}`).then(r => r.data);
 export const createSale = (data) => api.post('/sales', data).then(r => r.data);
 export const deleteSale = (id) => api.delete(`/sales/${id}`).then(r => r.data);
 

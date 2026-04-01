@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getFilaments, getPrinters, getAccessories, calculatePrint, createSale } from '../lib/api';
+import { getFilaments, getPrinters, getAccessories, getRecentSales, calculatePrint, createSale } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -8,24 +8,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Slider } from '../components/ui/slider';
 import { Separator } from '../components/ui/separator';
 import { Checkbox } from '../components/ui/checkbox';
-import { Calculator, Receipt, Save, AlertCircle, Package, Plus, Minus, Trash2, Palette } from 'lucide-react';
+import { Switch } from '../components/ui/switch';
+import { ScrollArea } from '../components/ui/scroll-area';
+import { 
+  Calculator, Receipt, Save, AlertCircle, Package, Plus, Minus, Trash2, 
+  Palette, Copy, History, Euro, Percent
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function CalculatorPage() {
   const [filaments, setFilaments] = useState([]);
   const [printers, setPrinters] = useState([]);
   const [accessories, setAccessories] = useState([]);
+  const [recentSales, setRecentSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [useManualPrice, setUseManualPrice] = useState(false);
 
   const [formData, setFormData] = useState({
-    filaments: [], // [{filament_id, grams_used}]
+    filaments: [],
     printer_id: '',
     print_time_hours: 2,
     labor_hours: 0,
     design_hours: 0,
     margin_percent: 30,
+    manual_price: null,
+    quantity: 1,
     product_name: '',
     accessories: []
   });
@@ -38,19 +47,20 @@ export default function CalculatorPage() {
 
   const loadData = async () => {
     try {
-      const [filamentsData, printersData, accessoriesData] = await Promise.all([
+      const [filamentsData, printersData, accessoriesData, recentData] = await Promise.all([
         getFilaments(),
         getPrinters(),
-        getAccessories()
+        getAccessories(),
+        getRecentSales(10)
       ]);
       setFilaments(filamentsData);
       setPrinters(printersData);
       setAccessories(accessoriesData);
+      setRecentSales(recentData);
       
       if (printersData.length > 0) {
         setFormData(prev => ({ ...prev, printer_id: printersData[0].id }));
       }
-      // Add first filament by default if available
       if (filamentsData.length > 0) {
         setFormData(prev => ({ 
           ...prev, 
@@ -69,26 +79,59 @@ export default function CalculatorPage() {
     
     setCalculating(true);
     try {
-      const data = await calculatePrint(formData);
+      const calcData = {
+        ...formData,
+        manual_price: useManualPrice ? formData.manual_price : null
+      };
+      const data = await calculatePrint(calcData);
       setResult(data);
     } catch (err) {
       console.error('Calculation error:', err);
     } finally {
       setCalculating(false);
     }
-  }, [formData]);
+  }, [formData, useManualPrice]);
 
   useEffect(() => {
     if (formData.filaments.length > 0 && formData.printer_id) {
       const timer = setTimeout(handleCalculate, 300);
       return () => clearTimeout(timer);
     }
-  }, [formData, handleCalculate]);
+  }, [formData, useManualPrice, handleCalculate]);
+
+  // Copy from previous sale
+  const copyFromSale = (sale) => {
+    // Filter filaments that still exist
+    const validFilaments = (sale.filaments || []).filter(sf => 
+      filaments.some(f => f.id === sf.filament_id)
+    );
+    
+    // Filter accessories that still exist
+    const validAccessories = (sale.accessories || []).filter(sa =>
+      accessories.some(a => a.id === sa.accessory_id)
+    );
+    
+    // Check if printer still exists
+    const printerExists = printers.some(p => p.id === sale.printer_id);
+    
+    setFormData(prev => ({
+      ...prev,
+      filaments: validFilaments.length > 0 ? validFilaments : prev.filaments,
+      printer_id: printerExists ? sale.printer_id : prev.printer_id,
+      print_time_hours: sale.print_time_hours || 2,
+      labor_hours: sale.labor_hours || 0,
+      design_hours: sale.design_hours || 0,
+      quantity: sale.quantity || 1,
+      accessories: validAccessories,
+      product_name: sale.product_name || ''
+    }));
+    
+    toast.success(`Configurazione "${sale.product_name}" caricata`);
+  };
 
   // Filament management
   const addFilament = () => {
     if (filaments.length === 0) return;
-    // Find a filament not already in the list, or use first one
     const usedIds = formData.filaments.map(f => f.filament_id);
     const available = filaments.find(f => !usedIds.includes(f.id)) || filaments[0];
     setFormData(prev => ({
@@ -98,7 +141,7 @@ export default function CalculatorPage() {
   };
 
   const removeFilament = (index) => {
-    if (formData.filaments.length <= 1) return; // Keep at least one
+    if (formData.filaments.length <= 1) return;
     setFormData(prev => ({
       ...prev,
       filaments: prev.filaments.filter((_, i) => i !== index)
@@ -134,8 +177,7 @@ export default function CalculatorPage() {
       ...prev,
       accessories: prev.accessories.map(a => {
         if (a.accessory_id === accessoryId) {
-          const newQty = Math.max(1, a.quantity + delta);
-          return { ...a, quantity: newQty };
+          return { ...a, quantity: Math.max(1, a.quantity + delta) };
         }
         return a;
       })
@@ -166,12 +208,13 @@ export default function CalculatorPage() {
         print_time_hours: formData.print_time_hours,
         labor_hours: formData.labor_hours,
         design_hours: formData.design_hours,
-        sale_price: result.sale_price,
+        quantity: formData.quantity,
+        sale_price: result.sale_price_total,
         accessories: formData.accessories
       });
       toast.success('Vendita registrata!');
-      setFormData(prev => ({ ...prev, product_name: '', accessories: [] }));
-      loadData(); // Refresh stock
+      setFormData(prev => ({ ...prev, product_name: '' }));
+      loadData();
     } catch (err) {
       toast.error('Errore nel salvataggio');
     } finally {
@@ -214,60 +257,89 @@ export default function CalculatorPage() {
     <div className="space-y-6 animate-fadeIn" data-testid="calculator-page">
       <div>
         <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight">Calcolatore Costi</h1>
-        <p className="text-muted-foreground mt-1">Calcola i costi di stampa in tempo reale - supporta multicolore</p>
+        <p className="text-muted-foreground mt-1">Multicolore • Quantità multiple • Prezzo manuale</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent Sales - Copy Feature */}
+        <Card className="border-border/40 lg:col-span-1">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-heading">
+              <History className="w-4 h-4" />
+              Stampe Recenti
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ScrollArea className="h-[400px]">
+              {recentSales.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground text-sm">
+                  Nessuna stampa precedente
+                </div>
+              ) : (
+                <div className="space-y-1 p-2">
+                  {recentSales.map(sale => (
+                    <div 
+                      key={sale.id}
+                      className="p-3 rounded-sm hover:bg-muted/50 cursor-pointer group transition-colors"
+                      onClick={() => copyFromSale(sale)}
+                      data-testid={`copy-sale-${sale.id}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{sale.product_name}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {sale.material_type} • {sale.grams_used}g • {sale.print_time_hours}h
+                          </p>
+                          <p className="text-xs font-mono text-primary">
+                            €{sale.sale_price?.toFixed(2)} {sale.quantity > 1 && `(x${sale.quantity})`}
+                          </p>
+                        </div>
+                        <Copy className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
         {/* Input Form */}
-        <Card className="border-border/40">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg font-heading">
-              <Calculator className="w-5 h-5" />
+        <Card className="border-border/40 lg:col-span-1">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-heading">
+              <Calculator className="w-4 h-4" />
               Parametri Stampa
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Filaments Section - Multicolor Support */}
-            <div className="space-y-3">
+          <CardContent className="space-y-4">
+            {/* Filaments */}
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="flex items-center gap-2">
-                  <Palette className="w-4 h-4" />
-                  Filamenti {formData.filaments.length > 1 && <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Multicolore</span>}
+                <Label className="flex items-center gap-2 text-xs">
+                  <Palette className="w-3 h-3" />
+                  Filamenti {formData.filaments.length > 1 && <span className="bg-primary/20 text-primary px-1.5 py-0.5 rounded-full text-[10px]">Multi</span>}
                 </Label>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  onClick={addFilament}
-                  data-testid="add-filament-btn"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Aggiungi Colore
+                <Button type="button" variant="ghost" size="sm" className="h-6 text-xs" onClick={addFilament}>
+                  <Plus className="w-3 h-3 mr-1" />Colore
                 </Button>
               </div>
-              
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {formData.filaments.map((f, index) => {
                   const filamentData = filaments.find(fil => fil.id === f.filament_id);
                   return (
-                    <div key={index} className="flex items-center gap-2 p-2 rounded-sm bg-muted/30 border border-border/40">
-                      <div 
-                        className="w-6 h-6 rounded-sm border border-border flex-shrink-0"
-                        style={{ backgroundColor: filamentData?.color_hex || '#FFFFFF' }}
-                      />
-                      <Select 
-                        value={f.filament_id} 
-                        onValueChange={(v) => updateFilament(index, 'filament_id', v)}
-                      >
-                        <SelectTrigger className="flex-1" data-testid={`filament-select-${index}`}>
-                          <SelectValue placeholder="Seleziona..." />
+                    <div key={index} className="flex items-center gap-1.5 p-1.5 rounded-sm bg-muted/30 border border-border/40">
+                      <div className="w-5 h-5 rounded-sm border" style={{ backgroundColor: filamentData?.color_hex || '#FFF' }} />
+                      <Select value={f.filament_id} onValueChange={(v) => updateFilament(index, 'filament_id', v)}>
+                        <SelectTrigger className="flex-1 h-7 text-xs">
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {filaments.map(fil => (
                             <SelectItem key={fil.id} value={fil.id}>
-                              <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: fil.color_hex }} />
-                                {fil.material_type} - {fil.color}
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: fil.color_hex }} />
+                                {fil.material_type} {fil.color}
                               </div>
                             </SelectItem>
                           ))}
@@ -277,21 +349,12 @@ export default function CalculatorPage() {
                         type="number"
                         value={f.grams_used}
                         onChange={(e) => updateFilament(index, 'grams_used', parseFloat(e.target.value) || 0)}
-                        className="w-20 font-mono"
-                        placeholder="g"
-                        data-testid={`filament-grams-${index}`}
+                        className="w-16 h-7 font-mono text-xs"
                       />
-                      <span className="text-xs text-muted-foreground">g</span>
+                      <span className="text-[10px] text-muted-foreground">g</span>
                       {formData.filaments.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive"
-                          onClick={() => removeFilament(index)}
-                          data-testid={`remove-filament-${index}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
+                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeFilament(index)}>
+                          <Trash2 className="w-3 h-3 text-destructive" />
                         </Button>
                       )}
                     </div>
@@ -300,104 +363,82 @@ export default function CalculatorPage() {
               </div>
             </div>
 
-            {/* Printer Selection */}
-            <div className="space-y-2">
-              <Label>Stampante</Label>
-              <Select 
-                value={formData.printer_id} 
-                onValueChange={(v) => setFormData({...formData, printer_id: v})}
-              >
-                <SelectTrigger data-testid="calc-printer-select">
-                  <SelectValue placeholder="Seleziona..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {printers.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.printer_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Time and Labor */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Tempo Stampa (h)</Label>
+            {/* Printer + Time */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Stampante</Label>
+                <Select value={formData.printer_id} onValueChange={(v) => setFormData({...formData, printer_id: v})}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {printers.map(p => <SelectItem key={p.id} value={p.id}>{p.printer_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Tempo (ore)</Label>
                 <Input
-                  type="number"
-                  step="0.5"
+                  type="number" step="0.5"
                   value={formData.print_time_hours}
                   onChange={(e) => setFormData({...formData, print_time_hours: parseFloat(e.target.value) || 0})}
-                  className="font-mono"
-                  data-testid="calc-time-input"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Ore Lavoro</Label>
-                <Input
-                  type="number"
-                  step="0.5"
-                  value={formData.labor_hours}
-                  onChange={(e) => setFormData({...formData, labor_hours: parseFloat(e.target.value) || 0})}
-                  className="font-mono"
-                  data-testid="calc-labor-input"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Ore Design</Label>
-                <Input
-                  type="number"
-                  step="0.5"
-                  value={formData.design_hours}
-                  onChange={(e) => setFormData({...formData, design_hours: parseFloat(e.target.value) || 0})}
-                  className="font-mono"
-                  data-testid="calc-design-input"
+                  className="h-8 font-mono text-xs"
                 />
               </div>
             </div>
 
-            {/* Accessories Section */}
+            {/* Labor + Design + Quantity */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Lavoro (h)</Label>
+                <Input
+                  type="number" step="0.5"
+                  value={formData.labor_hours}
+                  onChange={(e) => setFormData({...formData, labor_hours: parseFloat(e.target.value) || 0})}
+                  className="h-8 font-mono text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Design (h)</Label>
+                <Input
+                  type="number" step="0.5"
+                  value={formData.design_hours}
+                  onChange={(e) => setFormData({...formData, design_hours: parseFloat(e.target.value) || 0})}
+                  className="h-8 font-mono text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Quantità</Label>
+                <Input
+                  type="number" min="1"
+                  value={formData.quantity}
+                  onChange={(e) => setFormData({...formData, quantity: parseInt(e.target.value) || 1})}
+                  className="h-8 font-mono text-xs"
+                  data-testid="quantity-input"
+                />
+              </div>
+            </div>
+
+            {/* Accessories */}
             {accessories.length > 0 && (
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2">
-                  <Package className="w-4 h-4" />
-                  Accessori
-                </Label>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-xs"><Package className="w-3 h-3" />Accessori</Label>
+                <div className="space-y-1 max-h-24 overflow-y-auto">
                   {accessories.map(acc => {
                     const usage = getAccessoryUsage(acc.id);
-                    const isSelected = !!usage;
-                    
                     return (
-                      <div key={acc.id} className="flex items-center justify-between p-2 rounded-sm bg-muted/30 border border-border/40">
+                      <div key={acc.id} className="flex items-center justify-between p-1.5 rounded-sm bg-muted/30 border border-border/40">
                         <div className="flex items-center gap-2">
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={(checked) => handleAccessoryToggle(acc.id, checked)}
-                            data-testid={`acc-checkbox-${acc.id}`}
-                          />
-                          <span className="text-sm">{acc.name}</span>
-                          <span className="text-xs text-muted-foreground font-mono">€{acc.unit_cost.toFixed(2)}</span>
+                          <Checkbox checked={!!usage} onCheckedChange={(c) => handleAccessoryToggle(acc.id, c)} />
+                          <span className="text-xs">{acc.name}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">€{acc.unit_cost.toFixed(2)}</span>
                         </div>
-                        {isSelected && (
-                          <div className="flex items-center gap-1">
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              className="h-6 w-6"
-                              onClick={() => handleAccessoryQuantity(acc.id, -1)}
-                            >
-                              <Minus className="w-3 h-3" />
+                        {usage && (
+                          <div className="flex items-center gap-0.5">
+                            <Button type="button" size="icon" variant="ghost" className="h-5 w-5" onClick={() => handleAccessoryQuantity(acc.id, -1)}>
+                              <Minus className="w-2.5 h-2.5" />
                             </Button>
-                            <span className="font-mono text-sm w-6 text-center">{usage.quantity}</span>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              className="h-6 w-6"
-                              onClick={() => handleAccessoryQuantity(acc.id, 1)}
-                            >
-                              <Plus className="w-3 h-3" />
+                            <span className="font-mono text-xs w-5 text-center">{usage.quantity}</span>
+                            <Button type="button" size="icon" variant="ghost" className="h-5 w-5" onClick={() => handleAccessoryQuantity(acc.id, 1)}>
+                              <Plus className="w-2.5 h-2.5" />
                             </Button>
                           </div>
                         )}
@@ -408,31 +449,51 @@ export default function CalculatorPage() {
               </div>
             )}
 
-            {/* Margin Slider */}
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <Label>Margine di Profitto</Label>
-                <span className="font-mono text-primary font-semibold">{formData.margin_percent}%</span>
+            {/* Price Mode Toggle */}
+            <div className="space-y-3 pt-2 border-t border-border/40">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2 text-xs">
+                  {useManualPrice ? <Euro className="w-3 h-3" /> : <Percent className="w-3 h-3" />}
+                  {useManualPrice ? 'Prezzo Manuale' : 'Margine %'}
+                </Label>
+                <Switch checked={useManualPrice} onCheckedChange={setUseManualPrice} data-testid="price-mode-toggle" />
               </div>
-              <Slider
-                value={[formData.margin_percent]}
-                onValueChange={(v) => setFormData({...formData, margin_percent: v[0]})}
-                min={0}
-                max={200}
-                step={5}
-                data-testid="calc-margin-slider"
-              />
+              
+              {useManualPrice ? (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Prezzo per unità (€)</Label>
+                  <Input
+                    type="number" step="0.01"
+                    value={formData.manual_price || ''}
+                    onChange={(e) => setFormData({...formData, manual_price: parseFloat(e.target.value) || null})}
+                    placeholder="Es. 15.00"
+                    className="h-8 font-mono text-xs"
+                    data-testid="manual-price-input"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Margine</span>
+                    <span className="font-mono text-primary font-semibold">{formData.margin_percent}%</span>
+                  </div>
+                  <Slider
+                    value={[formData.margin_percent]}
+                    onValueChange={(v) => setFormData({...formData, margin_percent: v[0]})}
+                    min={0} max={200} step={5}
+                  />
+                </div>
+              )}
             </div>
 
-            <Separator />
-
             {/* Product Name */}
-            <div className="space-y-2">
-              <Label>Nome Prodotto (per registrare vendita)</Label>
+            <div className="space-y-1">
+              <Label className="text-xs">Nome Prodotto</Label>
               <Input
                 value={formData.product_name}
                 onChange={(e) => setFormData({...formData, product_name: e.target.value})}
-                placeholder="Es. Vaso geometrico multicolore"
+                placeholder="Es. Portachiavi logo"
+                className="h-8 text-xs"
                 data-testid="calc-product-name"
               />
             </div>
@@ -440,126 +501,101 @@ export default function CalculatorPage() {
         </Card>
 
         {/* Receipt / Results */}
-        <Card className="border-border/40 calculator-receipt">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg font-heading">
-              <Receipt className="w-5 h-5" />
-              Riepilogo Costi
+        <Card className="border-border/40 lg:col-span-1">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-heading">
+              <Receipt className="w-4 h-4" />
+              Riepilogo
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             {calculating ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Calcolo in corso...
-              </div>
+              <div className="text-center py-8 text-muted-foreground text-sm">Calcolo...</div>
             ) : result ? (
               <>
-                {/* Filaments Details */}
-                <div className="space-y-2 text-sm">
+                {/* Filaments */}
+                <div className="space-y-1">
                   {result.filaments_details?.map((f, i) => (
-                    <div key={i} className="flex items-center gap-2 p-2 rounded-sm bg-muted/20">
-                      <div 
-                        className="w-4 h-4 rounded-sm border border-border"
-                        style={{ backgroundColor: f.color_hex }}
-                      />
+                    <div key={i} className="flex items-center gap-2 text-xs">
+                      <div className="w-3 h-3 rounded-sm border" style={{ backgroundColor: f.color_hex }} />
                       <span className="flex-1">{f.material_type} {f.color}</span>
                       <span className="font-mono text-muted-foreground">{f.grams_used}g</span>
                       <span className="font-mono">€{f.total.toFixed(2)}</span>
                     </div>
                   ))}
-                  {selectedPrinter && (
-                    <div className="line-item">
-                      <span className="text-muted-foreground">Stampante:</span>
-                      <span className="font-mono">{selectedPrinter.printer_name}</span>
-                    </div>
-                  )}
                 </div>
 
                 <Separator className="border-dashed" />
 
-                <div className="space-y-2">
-                  <div className="line-item">
-                    <span>Costo Materiale ({result.total_grams}g totali)</span>
-                    <span className="font-mono">€{result.material_cost.toFixed(2)}</span>
-                  </div>
-                  <div className="line-item">
-                    <span>Costo Elettricità</span>
-                    <span className="font-mono">€{result.electricity_cost.toFixed(2)}</span>
-                  </div>
-                  <div className="line-item">
-                    <span>Ammortamento</span>
-                    <span className="font-mono">€{result.depreciation_cost.toFixed(2)}</span>
-                  </div>
-                  {result.accessories_cost > 0 && (
-                    <>
-                      <div className="line-item">
-                        <span>Accessori</span>
-                        <span className="font-mono">€{result.accessories_cost.toFixed(2)}</span>
-                      </div>
-                      {result.accessories_details?.map((acc, i) => (
-                        <div key={i} className="line-item text-xs text-muted-foreground pl-4">
-                          <span>{acc.name} x{acc.quantity}</span>
-                          <span className="font-mono">€{acc.total.toFixed(2)}</span>
-                        </div>
-                      ))}
-                    </>
-                  )}
-                  <div className="line-item font-medium">
-                    <span>Costo Produzione</span>
-                    <span className="font-mono">€{result.production_cost.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                <Separator className="border-dashed" />
-
-                <div className="space-y-2">
-                  <div className="line-item">
-                    <span>Costo Lavoro</span>
-                    <span className="font-mono">€{result.labor_cost.toFixed(2)}</span>
-                  </div>
-                  <div className="line-item">
-                    <span>Costo Design</span>
-                    <span className="font-mono">€{result.design_cost.toFixed(2)}</span>
-                  </div>
+                {/* Costs breakdown */}
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between"><span>Materiale ({result.total_grams}g)</span><span className="font-mono">€{result.material_cost.toFixed(2)}</span></div>
+                  <div className="flex justify-between"><span>Elettricità</span><span className="font-mono">€{result.electricity_cost.toFixed(2)}</span></div>
+                  <div className="flex justify-between"><span>Ammortamento</span><span className="font-mono">€{result.depreciation_cost.toFixed(2)}</span></div>
+                  {result.accessories_cost > 0 && <div className="flex justify-between"><span>Accessori</span><span className="font-mono">€{result.accessories_cost.toFixed(2)}</span></div>}
+                  {result.labor_cost > 0 && <div className="flex justify-between"><span>Lavoro</span><span className="font-mono">€{result.labor_cost.toFixed(2)}</span></div>}
+                  {result.design_cost > 0 && <div className="flex justify-between"><span>Design</span><span className="font-mono">€{result.design_cost.toFixed(2)}</span></div>}
                 </div>
 
                 <Separator />
 
-                <div className="space-y-2 pt-2">
-                  <div className="line-item font-semibold">
+                {/* Totals */}
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between font-medium">
                     <span>Costo Totale</span>
                     <span className="font-mono">€{result.total_cost.toFixed(2)}</span>
                   </div>
-                  <div className="line-item text-muted-foreground">
-                    <span>Margine ({result.margin_percent}%)</span>
-                    <span className="font-mono">+€{(result.sale_price - result.total_cost).toFixed(2)}</span>
-                  </div>
+                  {result.quantity > 1 && (
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Costo/unità</span>
+                      <span className="font-mono">€{result.cost_per_unit.toFixed(2)}</span>
+                    </div>
+                  )}
                 </div>
 
-                <div className="pt-4 border-t-2 border-primary">
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-heading font-bold">PREZZO VENDITA</span>
-                    <span className="text-2xl font-mono font-bold text-primary">€{result.sale_price.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-sm text-muted-foreground">Profitto Netto</span>
-                    <span className="font-mono font-semibold text-emerald-500">+€{result.net_profit.toFixed(2)}</span>
-                  </div>
+                {/* Sale Price */}
+                <div className="pt-3 border-t-2 border-primary space-y-2">
+                  {result.quantity > 1 ? (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span>Prezzo/unità</span>
+                        <span className="font-mono text-primary font-semibold">€{result.sale_price_per_unit.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-lg font-heading font-bold">TOTALE ({result.quantity} pz)</span>
+                        <span className="text-xl font-mono font-bold text-primary">€{result.sale_price_total.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Profitto/unità</span>
+                        <span className="font-mono text-emerald-500">+€{result.net_profit_per_unit.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Profitto Totale</span>
+                        <span className="font-mono font-semibold text-emerald-500">+€{result.net_profit_total.toFixed(2)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-heading font-bold">PREZZO</span>
+                        <span className="text-2xl font-mono font-bold text-primary">€{result.sale_price_per_unit.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Profitto ({result.margin_percent.toFixed(0)}%)</span>
+                        <span className="font-mono font-semibold text-emerald-500">+€{result.net_profit_per_unit.toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
-                <Button 
-                  className="w-full mt-4" 
-                  onClick={handleSaveSale}
-                  disabled={saving || !formData.product_name}
-                  data-testid="save-sale-btn"
-                >
+                <Button className="w-full mt-3" onClick={handleSaveSale} disabled={saving || !formData.product_name} data-testid="save-sale-btn">
                   <Save className="w-4 h-4 mr-2" />
                   {saving ? 'Salvataggio...' : 'Registra Vendita'}
                 </Button>
               </>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                Seleziona filamento e stampante per calcolare
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                Configura i parametri per calcolare
               </div>
             )}
           </CardContent>

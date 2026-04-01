@@ -162,6 +162,8 @@ class PrintCalculationCreate(BaseModel):
     labor_hours: float = 0
     design_hours: float = 0
     margin_percent: float = 30
+    manual_price: Optional[float] = None  # Manual sale price override
+    quantity: int = 1  # Number of products in this print
     product_name: str = ""
     accessories: List[AccessoryUsage] = []
 
@@ -176,6 +178,18 @@ class SaleCreate(BaseModel):
     sale_price: float
     labor_hours: float = 0
     design_hours: float = 0
+    quantity: int = 1
+    accessories: List[AccessoryUsage] = []
+
+# Template for saving print configurations
+class PrintTemplateCreate(BaseModel):
+    name: str
+    filaments: List[FilamentUsage]
+    printer_id: str
+    print_time_hours: float
+    labor_hours: float = 0
+    design_hours: float = 0
+    margin_percent: float = 30
     accessories: List[AccessoryUsage] = []
 
 # Auth Endpoints
@@ -538,8 +552,23 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
     labor_cost = calc.labor_hours * 15  # 15€/hour labor
     design_cost = calc.design_hours * 20  # 20€/hour design
     total_cost = production_cost + labor_cost + design_cost
-    sale_price = total_cost * (1 + calc.margin_percent / 100)
-    net_profit = sale_price - total_cost
+    
+    # Calculate per-unit cost if quantity > 1
+    quantity = max(1, calc.quantity)
+    cost_per_unit = total_cost / quantity
+    
+    # Use manual price or calculate from margin
+    if calc.manual_price is not None and calc.manual_price > 0:
+        sale_price_per_unit = calc.manual_price
+        sale_price_total = calc.manual_price * quantity
+        margin_percent = ((sale_price_per_unit - cost_per_unit) / cost_per_unit * 100) if cost_per_unit > 0 else 0
+    else:
+        sale_price_per_unit = cost_per_unit * (1 + calc.margin_percent / 100)
+        sale_price_total = sale_price_per_unit * quantity
+        margin_percent = calc.margin_percent
+    
+    net_profit_per_unit = sale_price_per_unit - cost_per_unit
+    net_profit_total = net_profit_per_unit * quantity
     
     return {
         "material_cost": round(material_cost, 2),
@@ -553,9 +582,16 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
         "labor_cost": round(labor_cost, 2),
         "design_cost": round(design_cost, 2),
         "total_cost": round(total_cost, 2),
-        "sale_price": round(sale_price, 2),
-        "net_profit": round(net_profit, 2),
-        "margin_percent": calc.margin_percent
+        "quantity": quantity,
+        "cost_per_unit": round(cost_per_unit, 2),
+        "sale_price_per_unit": round(sale_price_per_unit, 2),
+        "sale_price_total": round(sale_price_total, 2),
+        "net_profit_per_unit": round(net_profit_per_unit, 2),
+        "net_profit_total": round(net_profit_total, 2),
+        "margin_percent": round(margin_percent, 1),
+        # Legacy fields for compatibility
+        "sale_price": round(sale_price_total, 2),
+        "net_profit": round(net_profit_total, 2)
     }
 
 # Sales CRUD
@@ -575,7 +611,35 @@ async def get_sales(current_user: dict = Depends(get_current_user)):
             "depreciation_cost": doc.get("depreciation_cost", 0),
             "total_cost": doc.get("total_cost", 0),
             "sale_price": doc.get("sale_price", 0),
-            "net_profit": doc.get("net_profit", 0)
+            "net_profit": doc.get("net_profit", 0),
+            "quantity": doc.get("quantity", 1),
+            "printer_id": doc.get("printer_id", ""),
+            "filaments": doc.get("filaments", []),
+            "accessories": doc.get("accessories", []),
+            "labor_hours": doc.get("labor_hours", 0),
+            "design_hours": doc.get("design_hours", 0)
+        })
+    return result
+
+# Get recent sales for copy feature
+@api_router.get("/sales/recent")
+async def get_recent_sales(current_user: dict = Depends(get_current_user), limit: int = 10):
+    result = []
+    async for doc in db.sales.find({"user_id": current_user["id"]}).sort("created_at", -1).limit(limit):
+        result.append({
+            "id": str(doc["_id"]),
+            "date": doc.get("date", ""),
+            "product_name": doc.get("product_name", ""),
+            "material_type": doc.get("material_type", ""),
+            "grams_used": doc.get("grams_used", 0),
+            "print_time_hours": doc.get("print_time_hours", 0),
+            "sale_price": doc.get("sale_price", 0),
+            "quantity": doc.get("quantity", 1),
+            "printer_id": doc.get("printer_id", ""),
+            "filaments": doc.get("filaments", []),
+            "accessories": doc.get("accessories", []),
+            "labor_hours": doc.get("labor_hours", 0),
+            "design_hours": doc.get("design_hours", 0)
         })
     return result
 
@@ -630,6 +694,10 @@ async def create_sale(sale: SaleCreate, current_user: dict = Depends(get_current
     total_cost = material_cost + electricity_cost + depreciation_cost + labor_cost + design_cost + accessories_cost
     net_profit = sale.sale_price - total_cost
     
+    # Store filaments data for copy feature
+    filaments_data = [{"filament_id": f.filament_id, "grams_used": f.grams_used} for f in filament_list]
+    accessories_data = [{"accessory_id": a.accessory_id, "quantity": a.quantity} for a in sale.accessories]
+    
     doc = {
         "user_id": current_user["id"],
         "date": sale.date,
@@ -637,6 +705,12 @@ async def create_sale(sale: SaleCreate, current_user: dict = Depends(get_current
         "material_type": " + ".join(material_types) if material_types else "",
         "grams_used": total_grams,
         "print_time_hours": sale.print_time_hours,
+        "printer_id": sale.printer_id,
+        "filaments": filaments_data,
+        "accessories": accessories_data,
+        "labor_hours": sale.labor_hours,
+        "design_hours": sale.design_hours,
+        "quantity": sale.quantity,
         "filament_cost": round(material_cost, 2),
         "electricity_cost": round(electricity_cost, 2),
         "depreciation_cost": round(depreciation_cost, 2),
