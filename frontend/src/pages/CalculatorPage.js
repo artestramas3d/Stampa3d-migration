@@ -101,30 +101,46 @@ export default function CalculatorPage() {
 
   // Copy from previous sale
   const copyFromSale = (sale) => {
+    console.log('Copying sale:', sale);
+    
+    // Handle filaments - support both new format (array) and legacy
+    let saleFilaments = sale.filaments || [];
+    
+    // If filaments is empty but we have legacy single filament data
+    if (saleFilaments.length === 0 && sale.filament_id) {
+      saleFilaments = [{ filament_id: sale.filament_id, grams_used: sale.grams_used || 50 }];
+    }
+    
     // Filter filaments that still exist
-    const validFilaments = (sale.filaments || []).filter(sf => 
+    const validFilaments = saleFilaments.filter(sf => 
       filaments.some(f => f.id === sf.filament_id)
     );
     
-    // Filter accessories that still exist
-    const validAccessories = (sale.accessories || []).filter(sa =>
+    // Handle accessories
+    let saleAccessories = sale.accessories || [];
+    const validAccessories = saleAccessories.filter(sa =>
       accessories.some(a => a.id === sa.accessory_id)
     );
     
     // Check if printer still exists
     const printerExists = printers.some(p => p.id === sale.printer_id);
     
-    setFormData(prev => ({
-      ...prev,
-      filaments: validFilaments.length > 0 ? validFilaments : prev.filaments,
-      printer_id: printerExists ? sale.printer_id : prev.printer_id,
+    const newFormData = {
+      filaments: validFilaments.length > 0 ? validFilaments : formData.filaments,
+      printer_id: printerExists ? sale.printer_id : formData.printer_id,
       print_time_hours: sale.print_time_hours || 2,
       labor_hours: sale.labor_hours || 0,
       design_hours: sale.design_hours || 0,
       quantity: sale.quantity || 1,
       accessories: validAccessories,
-      product_name: sale.product_name || ''
-    }));
+      product_name: sale.product_name || '',
+      margin_percent: formData.margin_percent,
+      manual_price: null
+    };
+    
+    console.log('New form data:', newFormData);
+    setFormData(newFormData);
+    setUseManualPrice(false);
     
     toast.success(`Configurazione "${sale.product_name}" caricata`);
   };
