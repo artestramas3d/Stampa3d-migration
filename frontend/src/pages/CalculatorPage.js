@@ -12,9 +12,27 @@ import { Switch } from '../components/ui/switch';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { 
   Calculator, Receipt, Save, AlertCircle, Package, Plus, Minus, Trash2, 
-  Palette, Copy, History, Euro, Percent
+  Palette, Copy, History, Euro, Percent, Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+// Helper functions for time conversion
+const hoursToHM = (hours) => {
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  return { hours: h, minutes: m };
+};
+
+const hmToHours = (h, m) => {
+  return (parseInt(h) || 0) + (parseInt(m) || 0) / 60;
+};
+
+const formatTime = (hours) => {
+  const { hours: h, minutes: m } = hoursToHM(hours);
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+};
 
 export default function CalculatorPage() {
   const [filaments, setFilaments] = useState([]);
@@ -25,6 +43,14 @@ export default function CalculatorPage() {
   const [calculating, setCalculating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [useManualPrice, setUseManualPrice] = useState(false);
+
+  // Separate state for hours and minutes
+  const [printTimeH, setPrintTimeH] = useState(2);
+  const [printTimeM, setPrintTimeM] = useState(0);
+  const [laborTimeH, setLaborTimeH] = useState(0);
+  const [laborTimeM, setLaborTimeM] = useState(0);
+  const [designTimeH, setDesignTimeH] = useState(0);
+  const [designTimeM, setDesignTimeM] = useState(0);
 
   const [formData, setFormData] = useState({
     filaments: [],
@@ -40,6 +66,16 @@ export default function CalculatorPage() {
   });
 
   const [result, setResult] = useState(null);
+
+  // Update formData when time fields change
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      print_time_hours: hmToHours(printTimeH, printTimeM),
+      labor_hours: hmToHours(laborTimeH, laborTimeM),
+      design_hours: hmToHours(designTimeH, designTimeM)
+    }));
+  }, [printTimeH, printTimeM, laborTimeH, laborTimeM, designTimeH, designTimeM]);
 
   useEffect(() => {
     loadData();
@@ -137,6 +173,18 @@ export default function CalculatorPage() {
       margin_percent: formData.margin_percent,
       manual_price: null
     };
+    
+    // Update time fields from the copied sale
+    const printTime = hoursToHM(sale.print_time_hours || 2);
+    const laborTime = hoursToHM(sale.labor_hours || 0);
+    const designTime = hoursToHM(sale.design_hours || 0);
+    
+    setPrintTimeH(printTime.hours);
+    setPrintTimeM(printTime.minutes);
+    setLaborTimeH(laborTime.hours);
+    setLaborTimeM(laborTime.minutes);
+    setDesignTimeH(designTime.hours);
+    setDesignTimeM(designTime.minutes);
     
     console.log('New form data:', newFormData);
     setFormData(newFormData);
@@ -304,7 +352,7 @@ export default function CalculatorPage() {
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate">{sale.product_name}</p>
                           <p className="text-xs text-muted-foreground truncate">
-                            {sale.material_type} • {sale.grams_used}g • {sale.print_time_hours}h
+                            {sale.material_type} • {sale.grams_used}g • {formatTime(sale.print_time_hours || 0)}
                           </p>
                           <p className="text-xs font-mono text-primary">
                             €{sale.sale_price?.toFixed(2)} {sale.quantity > 1 && `(x${sale.quantity})`}
@@ -379,47 +427,82 @@ export default function CalculatorPage() {
               </div>
             </div>
 
-            {/* Printer + Time */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs">Stampante</Label>
-                <Select value={formData.printer_id} onValueChange={(v) => setFormData({...formData, printer_id: v})}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {printers.map(p => <SelectItem key={p.id} value={p.id}>{p.printer_name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Tempo (ore)</Label>
+            {/* Printer */}
+            <div className="space-y-1">
+              <Label className="text-xs">Stampante</Label>
+              <Select value={formData.printer_id} onValueChange={(v) => setFormData({...formData, printer_id: v})}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {printers.map(p => <SelectItem key={p.id} value={p.id}>{p.printer_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Print Time - Hours and Minutes */}
+            <div className="space-y-1">
+              <Label className="flex items-center gap-2 text-xs">
+                <Clock className="w-3 h-3" />
+                Tempo Stampa
+              </Label>
+              <div className="flex items-center gap-1">
                 <Input
-                  type="number" step="0.5"
-                  value={formData.print_time_hours}
-                  onChange={(e) => setFormData({...formData, print_time_hours: parseFloat(e.target.value) || 0})}
-                  className="h-8 font-mono text-xs"
+                  type="number" min="0"
+                  value={printTimeH}
+                  onChange={(e) => setPrintTimeH(parseInt(e.target.value) || 0)}
+                  className="h-8 w-16 font-mono text-xs text-center"
+                  data-testid="print-time-h"
                 />
+                <span className="text-xs text-muted-foreground">h</span>
+                <Input
+                  type="number" min="0" max="59"
+                  value={printTimeM}
+                  onChange={(e) => setPrintTimeM(Math.min(59, parseInt(e.target.value) || 0))}
+                  className="h-8 w-16 font-mono text-xs text-center"
+                  data-testid="print-time-m"
+                />
+                <span className="text-xs text-muted-foreground">m</span>
               </div>
             </div>
 
             {/* Labor + Design + Quantity */}
             <div className="grid grid-cols-3 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">Lavoro (h)</Label>
-                <Input
-                  type="number" step="0.5"
-                  value={formData.labor_hours}
-                  onChange={(e) => setFormData({...formData, labor_hours: parseFloat(e.target.value) || 0})}
-                  className="h-8 font-mono text-xs"
-                />
+                <Label className="text-xs">Lavoro</Label>
+                <div className="flex items-center gap-0.5">
+                  <Input
+                    type="number" min="0"
+                    value={laborTimeH}
+                    onChange={(e) => setLaborTimeH(parseInt(e.target.value) || 0)}
+                    className="h-8 w-10 font-mono text-xs text-center p-1"
+                  />
+                  <span className="text-[10px]">h</span>
+                  <Input
+                    type="number" min="0" max="59"
+                    value={laborTimeM}
+                    onChange={(e) => setLaborTimeM(Math.min(59, parseInt(e.target.value) || 0))}
+                    className="h-8 w-10 font-mono text-xs text-center p-1"
+                  />
+                  <span className="text-[10px]">m</span>
+                </div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Design (h)</Label>
-                <Input
-                  type="number" step="0.5"
-                  value={formData.design_hours}
-                  onChange={(e) => setFormData({...formData, design_hours: parseFloat(e.target.value) || 0})}
-                  className="h-8 font-mono text-xs"
-                />
+                <Label className="text-xs">Design</Label>
+                <div className="flex items-center gap-0.5">
+                  <Input
+                    type="number" min="0"
+                    value={designTimeH}
+                    onChange={(e) => setDesignTimeH(parseInt(e.target.value) || 0)}
+                    className="h-8 w-10 font-mono text-xs text-center p-1"
+                  />
+                  <span className="text-[10px]">h</span>
+                  <Input
+                    type="number" min="0" max="59"
+                    value={designTimeM}
+                    onChange={(e) => setDesignTimeM(Math.min(59, parseInt(e.target.value) || 0))}
+                    className="h-8 w-10 font-mono text-xs text-center p-1"
+                  />
+                  <span className="text-[10px]">m</span>
+                </div>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Quantità</Label>
