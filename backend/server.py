@@ -623,15 +623,21 @@ async def get_sales(current_user: dict = Depends(get_current_user)):
     return result
 
 # Update sale payment status
+class UpdatePaidRequest(BaseModel):
+    paid: bool
+
 @api_router.patch("/sales/{sale_id}/paid")
-async def update_sale_paid(sale_id: str, paid: bool, current_user: dict = Depends(get_current_user)):
-    result = await db.sales.update_one(
-        {"_id": ObjectId(sale_id), "user_id": current_user["id"]},
-        {"$set": {"paid": paid}}
-    )
-    if result.modified_count == 0:
+async def update_sale_paid(sale_id: str, request: UpdatePaidRequest, current_user: dict = Depends(get_current_user)):
+    # First check if sale exists
+    sale = await db.sales.find_one({"_id": ObjectId(sale_id), "user_id": current_user["id"]})
+    if not sale:
         raise HTTPException(status_code=404, detail="Vendita non trovata")
-    return {"message": "Stato pagamento aggiornato", "paid": paid}
+    
+    await db.sales.update_one(
+        {"_id": ObjectId(sale_id), "user_id": current_user["id"]},
+        {"$set": {"paid": request.paid}}
+    )
+    return {"message": "Stato pagamento aggiornato", "paid": request.paid}
 
 # Get recent sales for copy feature
 @api_router.get("/sales/recent")
