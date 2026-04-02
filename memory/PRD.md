@@ -31,7 +31,8 @@ Creare un'applicazione web che replica ed espande le funzionalità di un calcola
    - Quantità multiple
    - Prezzo manuale di vendita
    - Copia da stampe recenti
-   - Input ore e minuti separati (es. 3h 20m) - Completato 02/04/2026
+   - Input ore e minuti separati per Tempo Stampa e Design
+   - Campo Lavoro rimosso (02/04/2026)
 8. ✅ Registro Vendite con toggle Pagato/Non Pagato e filtri
 9. ✅ Esportazione CSV (vendite e acquisti)
 10. ✅ Tema chiaro/scuro
@@ -42,13 +43,10 @@ Creare un'applicazione web che replica ed espande le funzionalità di un calcola
 - P2: Esportazione fatture
 - P2: Classifica profittabilità prodotti
 
-## Refactoring Necessario
-- server.py (~900 righe): valutare suddivisione in moduli separati
-
 ## Architettura File
 ```
 /app/backend/server.py - API endpoints FastAPI
-/app/frontend/src/pages/ - Pagine React (Dashboard, Filaments, Calculator, Sales, Purchases, Settings, Accessories)
+/app/frontend/src/pages/ - Pagine React
 /app/frontend/src/lib/api.js - Client API
 /app/frontend/src/context/ - AuthContext, ThemeContext
 ```

@@ -47,8 +47,6 @@ export default function CalculatorPage() {
   // Separate state for hours and minutes
   const [printTimeH, setPrintTimeH] = useState(2);
   const [printTimeM, setPrintTimeM] = useState(0);
-  const [laborTimeH, setLaborTimeH] = useState(0);
-  const [laborTimeM, setLaborTimeM] = useState(0);
   const [designTimeH, setDesignTimeH] = useState(0);
   const [designTimeM, setDesignTimeM] = useState(0);
 
@@ -56,7 +54,6 @@ export default function CalculatorPage() {
     filaments: [],
     printer_id: '',
     print_time_hours: 2,
-    labor_hours: 0,
     design_hours: 0,
     margin_percent: 30,
     manual_price: null,
@@ -72,10 +69,10 @@ export default function CalculatorPage() {
     setFormData(prev => ({
       ...prev,
       print_time_hours: hmToHours(printTimeH, printTimeM),
-      labor_hours: hmToHours(laborTimeH, laborTimeM),
+      labor_hours: 0,
       design_hours: hmToHours(designTimeH, designTimeM)
     }));
-  }, [printTimeH, printTimeM, laborTimeH, laborTimeM, designTimeH, designTimeM]);
+  }, [printTimeH, printTimeM, designTimeH, designTimeM]);
 
   useEffect(() => {
     loadData();
@@ -165,7 +162,6 @@ export default function CalculatorPage() {
       filaments: validFilaments.length > 0 ? validFilaments : formData.filaments,
       printer_id: printerExists ? sale.printer_id : formData.printer_id,
       print_time_hours: sale.print_time_hours || 2,
-      labor_hours: sale.labor_hours || 0,
       design_hours: sale.design_hours || 0,
       quantity: sale.quantity || 1,
       accessories: validAccessories,
@@ -174,15 +170,10 @@ export default function CalculatorPage() {
       manual_price: null
     };
     
-    // Update time fields from the copied sale
     const printTime = hoursToHM(sale.print_time_hours || 2);
-    const laborTime = hoursToHM(sale.labor_hours || 0);
-    const designTime = hoursToHM(sale.design_hours || 0);
-    
     setPrintTimeH(printTime.hours);
     setPrintTimeM(printTime.minutes);
-    setLaborTimeH(laborTime.hours);
-    setLaborTimeM(laborTime.minutes);
+    const designTime = hoursToHM(sale.design_hours || 0);
     setDesignTimeH(designTime.hours);
     setDesignTimeM(designTime.minutes);
     
@@ -270,7 +261,7 @@ export default function CalculatorPage() {
         filaments: formData.filaments,
         printer_id: formData.printer_id,
         print_time_hours: formData.print_time_hours,
-        labor_hours: formData.labor_hours,
+        labor_hours: 0,
         design_hours: formData.design_hours,
         quantity: formData.quantity,
         sale_price: result.sale_price_total,
@@ -464,44 +455,27 @@ export default function CalculatorPage() {
               </div>
             </div>
 
-            {/* Labor + Design + Quantity */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs">Lavoro</Label>
-                <div className="flex items-center gap-0.5">
-                  <Input
-                    type="number" min="0"
-                    value={laborTimeH}
-                    onChange={(e) => setLaborTimeH(parseInt(e.target.value) || 0)}
-                    className="h-8 w-10 font-mono text-xs text-center p-1"
-                  />
-                  <span className="text-[10px]">h</span>
-                  <Input
-                    type="number" min="0" max="59"
-                    value={laborTimeM}
-                    onChange={(e) => setLaborTimeM(Math.min(59, parseInt(e.target.value) || 0))}
-                    className="h-8 w-10 font-mono text-xs text-center p-1"
-                  />
-                  <span className="text-[10px]">m</span>
-                </div>
-              </div>
+            {/* Design + Quantity */}
+            <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs">Design</Label>
-                <div className="flex items-center gap-0.5">
+                <div className="flex items-center gap-1">
                   <Input
                     type="number" min="0"
                     value={designTimeH}
                     onChange={(e) => setDesignTimeH(parseInt(e.target.value) || 0)}
-                    className="h-8 w-10 font-mono text-xs text-center p-1"
+                    className="h-8 w-14 font-mono text-xs text-center"
+                    data-testid="design-time-h"
                   />
-                  <span className="text-[10px]">h</span>
+                  <span className="text-xs text-muted-foreground">h</span>
                   <Input
                     type="number" min="0" max="59"
                     value={designTimeM}
                     onChange={(e) => setDesignTimeM(Math.min(59, parseInt(e.target.value) || 0))}
-                    className="h-8 w-10 font-mono text-xs text-center p-1"
+                    className="h-8 w-14 font-mono text-xs text-center"
+                    data-testid="design-time-m"
                   />
-                  <span className="text-[10px]">m</span>
+                  <span className="text-xs text-muted-foreground">m</span>
                 </div>
               </div>
               <div className="space-y-1">
