@@ -24,7 +24,6 @@ export default function VerifyEmailPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4" data-testid="verify-email-page">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <img src="/logo.png" alt="Artes&Tramas" className="w-20 h-20 mx-auto rounded-sm object-contain mb-4" />
           <h1 className="text-3xl font-heading font-bold tracking-tight">Artes&Tramas</h1>
         </div>
         <Card className="border-border/40">

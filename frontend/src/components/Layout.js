@@ -50,9 +50,9 @@ function Sidebar({ onNavigate, banners }) {
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-border/40">
         <Link to="/" className="flex items-center gap-2.5" onClick={onNavigate}>
-          <img src="/logo.png" alt="Artes&Tramas" className="w-9 h-9 rounded-sm object-contain" />
-          <span className="font-heading font-bold text-base leading-tight">Artes&Tramas<br/><span className="text-[10px] font-normal text-muted-foreground">3D Print Manager</span></span>
+          <span className="font-heading font-bold text-lg tracking-tight">Artes&Tramas</span>
         </Link>
+        <span className="text-[10px] text-muted-foreground">3D Print Manager</span>
       </div>
 
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
@@ -203,7 +203,6 @@ export default function Layout({ children }) {
             </SheetContent>
           </Sheet>
           <div className="flex items-center gap-2 ml-3">
-            <img src="/logo.png" alt="Artes&Tramas" className="w-7 h-7 rounded-sm object-contain" />
             <span className="font-heading font-bold text-sm">Artes&Tramas</span>
           </div>
         </div>

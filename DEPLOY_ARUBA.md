@@ -1,140 +1,251 @@
-# FilamentProfit - Guida Deploy su Aruba VPS
+# Come mettere il sito su Aruba - Guida Passo Passo
 
-## Prerequisiti
-- VPS Aruba con Ubuntu 22.04+ (minimo 1GB RAM, 20GB disco)
-- Dominio collegato al VPS (es. artestramas3d.it)
-- Accesso SSH al server
+Questa guida ti spiega come mettere il sito online su un server Aruba.
+Non serve esperienza. Segui ogni passaggio nell'ordine.
 
 ---
 
-## 1. Collegati al VPS via SSH
+## COSA TI SERVE
 
-```bash
-ssh root@TUO_IP_VPS
+1. Un **dominio** comprato su Aruba (es. artestramas3d.it) - costa circa 3-10 euro/anno
+2. Un **VPS** (server virtuale) su Aruba - costa circa 5-10 euro/mese
+3. Il codice del sito su **GitHub** (lo salvi da qui con il pulsante "Save to Github")
+
+---
+
+## PASSO 1 - Compra dominio e VPS su Aruba
+
+1. Vai su https://www.aruba.it
+2. Cerca "VPS" e compra un pacchetto VPS con **Ubuntu 22.04** (il più economico va bene)
+3. Se non hai già il dominio, compralo anche (nella sezione "Domini")
+4. Dopo l'acquisto, Aruba ti manda una email con:
+   - L'indirizzo IP del tuo server (es. 185.xxx.xxx.xxx)
+   - Username: `root`
+   - Password del server
+
+**Conserva questi dati!**
+
+---
+
+## PASSO 2 - Collega il dominio al server
+
+1. Vai nel pannello Aruba → sezione **DNS**
+2. Aggiungi questi 2 record:
+   - Tipo: **A** | Nome: **@** | Valore: **IL_TUO_IP** (quello della email)
+   - Tipo: **A** | Nome: **www** | Valore: **IL_TUO_IP**
+3. Salva. I DNS possono metterci fino a 24 ore per funzionare.
+
+---
+
+## PASSO 3 - Collegati al server
+
+### Se usi Windows:
+1. Scarica **PuTTY** da https://putty.org
+2. Aprilo, scrivi l'IP del server nel campo "Host Name"
+3. Clicca "Open"
+4. Scrivi `root` e poi la password che ti ha dato Aruba
+
+### Se usi Mac:
+1. Apri l'app **Terminale**
+2. Scrivi: `ssh root@IL_TUO_IP`
+3. Scrivi la password quando la chiede
+
+Ora sei dentro al server! Vedrai una schermata nera con scritto qualcosa tipo `root@vps:~#`
+
+---
+
+## PASSO 4 - Installa Docker (copia e incolla questi comandi uno alla volta)
+
 ```
-
-## 2. Installa Docker e Docker Compose
-
-```bash
-# Aggiorna il sistema
 apt update && apt upgrade -y
+```
+(aspetta che finisca, ci mette qualche minuto)
 
-# Installa Docker
+```
 curl -fsSL https://get.docker.com | sh
+```
+(installa Docker, aspetta che finisca)
 
-# Installa Docker Compose
-apt install docker-compose-plugin -y
+```
+apt install docker-compose-plugin git -y
+```
+(installa Docker Compose e Git)
 
-# Verifica installazione
+Verifica che funzioni:
+```
 docker --version
-docker compose version
 ```
+Deve uscire qualcosa tipo "Docker version 24.xxx"
 
-## 3. Clona il repository
+---
 
-```bash
+## PASSO 5 - Scarica il codice del sito
+
+```
 cd /opt
-git clone https://github.com/TUO_USERNAME/TUO_REPO.git filament-profit
-cd filament-profit
 ```
 
-## 4. Configura le variabili d'ambiente
+```
+git clone https://github.com/TUO_USERNAME/TUO_REPO.git sito
+```
+(sostituisci con il link del tuo repository GitHub)
 
-### Backend (.env)
-```bash
+```
+cd sito
+```
+
+---
+
+## PASSO 6 - Configura il sito
+
+### Configura il backend:
+```
 nano backend/.env
 ```
 
-Inserisci:
+Cancella tutto quello che c'è e scrivi queste 4 righe (sostituisci IL_TUO_DOMINIO):
 ```
 MONGO_URL=mongodb://mongo:27017
 DB_NAME=filament_profit
-JWT_SECRET=GENERA_UNA_STRINGA_CASUALE_LUNGA
-FRONTEND_URL=https://artestramas3d.it
+JWT_SECRET=CAMBIAMI_CON_STRINGA_LUNGA_CASUALE
+FRONTEND_URL=https://IL_TUO_DOMINIO.it
 ```
 
-Per generare JWT_SECRET:
-```bash
+Per salvare: premi **Ctrl+O**, poi **Invio**, poi **Ctrl+X**
+
+Per generare la stringa casuale per JWT_SECRET:
+```
 openssl rand -hex 32
 ```
+Copia il risultato e mettilo al posto di CAMBIAMI_CON_STRINGA_LUNGA_CASUALE
 
-### Frontend (.env)
-```bash
+### Configura il frontend:
+```
 nano frontend/.env
 ```
 
-Inserisci:
+Scrivi (sostituisci IL_TUO_DOMINIO):
 ```
-REACT_APP_BACKEND_URL=https://artestramas3d.it
-```
-
-## 5. Avvia con Docker Compose
-
-```bash
-docker compose up -d --build
+REACT_APP_BACKEND_URL=https://IL_TUO_DOMINIO.it
 ```
 
-Questo avvierà:
-- **MongoDB** (database)
-- **Backend** (FastAPI su porta 8001)
-- **Frontend** (React su porta 3000)
-- **Nginx** (reverse proxy + SSL su porta 80/443)
+Salva con **Ctrl+O**, **Invio**, **Ctrl+X**
 
-## 6. Configura SSL con Let's Encrypt
-
-```bash
-# Installa certbot
-apt install certbot python3-certbot-nginx -y
-
-# Genera certificato (sostituisci con il tuo dominio)
-certbot --nginx -d artestramas3d.it -d www.artestramas3d.it
+### Configura Nginx (il nome dominio):
+```
+nano nginx/default.conf
 ```
 
-## 7. Configura DNS su Aruba
-
-Nel pannello Aruba, aggiungi questi record DNS:
-```
-Tipo A    → @ → TUO_IP_VPS
-Tipo A    → www → TUO_IP_VPS
-```
+Trova le righe con `artestramas3d.it` e sostituiscile con il tuo dominio reale.
+Salva con **Ctrl+O**, **Invio**, **Ctrl+X**
 
 ---
 
-## Comandi utili
+## PASSO 7 - Avvia il sito!
 
-```bash
-# Vedere i log
-docker compose logs -f
+```
+docker compose up -d --build
+```
 
-# Riavviare i servizi
-docker compose restart
+**Aspetta 2-5 minuti.** Vedrai tante righe scorrere. Quando finisce e torni al `root@vps:~#`, il sito è attivo!
 
-# Fermare tutto
+Prova ad aprire nel browser: `http://IL_TUO_DOMINIO.it`
+
+Se funziona, vai al passo successivo per aggiungere HTTPS (il lucchetto).
+
+---
+
+## PASSO 8 - Aggiungi HTTPS (il lucchetto verde)
+
+```
+apt install certbot python3-certbot-nginx -y
+```
+
+Questo comando non funzionerà direttamente con Docker. Facciamo in modo diverso:
+
+```
 docker compose down
+```
 
-# Aggiornare il codice
-cd /opt/filament-profit
+```
+apt install nginx -y
+```
+
+```
+certbot --nginx -d IL_TUO_DOMINIO.it -d www.IL_TUO_DOMINIO.it
+```
+
+Ti chiederà:
+- La tua email → scrivila
+- Accetti i termini → scrivi **Y**
+- Vuoi condividere la email → scrivi **N**
+
+Dopo che ha finito:
+```
+systemctl stop nginx
+```
+
+Ora modifica il file nginx per usare HTTPS:
+```
+nano nginx/default.conf
+```
+
+Togli il `#` davanti alle righe del blocco HTTPS (quelle sotto "Decommentare dopo aver configurato SSL").
+Metti il `#` davanti a tutte le righe del primo blocco (quello senza ssl).
+Salva con **Ctrl+O**, **Invio**, **Ctrl+X**
+
+Riavvia:
+```
+docker compose up -d --build
+```
+
+Ora prova: `https://IL_TUO_DOMINIO.it` - Dovresti vedere il lucchetto verde!
+
+---
+
+## COMANDI UTILI DA RICORDARE
+
+| Cosa vuoi fare | Comando |
+|---|---|
+| Vedere se il sito funziona | `docker compose ps` |
+| Vedere i log (errori) | `docker compose logs -f` |
+| Riavviare il sito | `docker compose restart` |
+| Spegnere il sito | `docker compose down` |
+| Accendere il sito | `docker compose up -d` |
+| Aggiornare il sito dopo modifiche | vedi sotto |
+
+### Come aggiornare il sito dopo che fai modifiche qui su Emergent:
+
+1. Salva su GitHub (pulsante "Save to Github" qui nella chat)
+2. Collegati al server (PuTTY o Terminale)
+3. Scrivi questi comandi:
+
+```
+cd /opt/sito
 git pull
 docker compose up -d --build
 ```
 
-## Backup MongoDB
-
-```bash
-# Backup
-docker compose exec mongo mongodump --out /dump
-
-# Restore
-docker compose exec mongo mongorestore /dump
-```
+Fatto! Il sito si aggiorna in 2-3 minuti.
 
 ---
 
-## Configurazione Email (Resend) - Da fare dopo aver comprato il dominio
+## SE QUALCOSA NON FUNZIONA
 
-1. Registrati su https://resend.com (gratis)
-2. Aggiungi il tuo dominio
-3. Configura i record DNS (DKIM, SPF) su Aruba
-4. Ottieni la API Key
-5. Aggiorna backend/.env con: `RESEND_API_KEY=re_xxx`
-6. Riavvia: `docker compose restart backend`
+- **Il sito non si apre**: aspetta 24 ore per i DNS, poi riprova
+- **Errore "connection refused"**: scrivi `docker compose ps` per vedere se i servizi girano
+- **Errore nei log**: scrivi `docker compose logs backend` per vedere gli errori del backend
+- **Hai sbagliato qualcosa**: torna qui su Emergent e chiedimi aiuto! Copiami il messaggio di errore e ti aiuto.
+
+---
+
+## BACKUP DEI DATI
+
+Per fare un backup del database (fallo ogni tanto!):
+```
+cd /opt/sito
+docker compose exec mongo mongodump --out /dump
+docker cp filament-mongo:/dump ./backup_$(date +%Y%m%d)
+```
+
+I tuoi dati saranno nella cartella `backup_XXXXXXXX`.
