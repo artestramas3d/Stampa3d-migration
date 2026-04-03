@@ -1,52 +1,39 @@
-# FilamentProfit - PRD (Product Requirements Document)
+# FilamentProfit - PRD
 
 ## Problema Originale
-Creare un'applicazione web che replica ed espande le funzionalità di un calcolatore di costi per stampa 3D basato su foglio di calcolo. L'app è progettata per maker che tracciano costi di stampa, materiali, vendite e profittabilità.
+App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite e profittabilità.
 
-## Moduli
-- Dashboard con statistiche
-- Gestione Filamenti (con avvisi scorte basse)
-- Impostazioni Stampante (Costi Fissi)
-- Gestione Accessori
-- Calcolatore Costi Stampa (multicolore, quantità, prezzo manuale, ore/minuti)
-- Registro Vendite (con stato pagato/non pagato)
-- Tracciamento Acquisti (con creazione automatica filamenti)
-- Esportazione CSV
-
-## Stack Tecnologico
-- Frontend: React + TailwindCSS + shadcn/ui
-- Backend: FastAPI (Python)
-- Database: MongoDB
-- Auth: JWT con cookies httpOnly
+## Stack: React + FastAPI + MongoDB + JWT Auth
 
 ## Funzionalità Completate
-1. ✅ Autenticazione JWT (Login/Register)
-2. ✅ Dashboard con statistiche, grafici mensili, top prodotti, avvisi scorte
+1. ✅ Autenticazione JWT con cookies httpOnly
+2. ✅ Dashboard con statistiche, grafici, avvisi scorte
 3. ✅ CRUD Filamenti con avvisi scorte basse (< 200g)
-4. ✅ CRUD Stampanti con calcolo ammortamento/elettricità
-5. ✅ CRUD Accessori (gancetti, magneti, packaging)
-6. ✅ Tracciamento Acquisti con creazione/aggiornamento automatico filamenti
-7. ✅ Calcolatore Costi avanzato:
-   - Supporto multicolore
-   - Quantità multiple
-   - Prezzo manuale di vendita
-   - Copia da stampe recenti
-   - Input ore e minuti separati per Tempo Stampa e Design
-   - Campo Lavoro rimosso (02/04/2026)
-8. ✅ Registro Vendite con toggle Pagato/Non Pagato e filtri
-9. ✅ Esportazione CSV (vendite e acquisti)
+4. ✅ CRUD Stampanti con ammortamento/elettricità
+5. ✅ CRUD Accessori
+6. ✅ Acquisti con creazione automatica filamenti
+7. ✅ Calcolatore Costi (multicolore, quantità, prezzo manuale, ore/minuti stampa+design)
+8. ✅ Registro Vendite con toggle Pagato/Non Pagato
+9. ✅ Esportazione CSV
 10. ✅ Tema chiaro/scuro
+11. ✅ Banner pubblicitari (4 posizioni: header, sidebar, footer, sotto contenuto) - Solo admin
+12. ✅ **Pannello Admin** (03/04/2026):
+    - Lista utenti registrati con stato, ruolo, data
+    - Verifica manuale email utenti
+    - Toggle admin utenti
+    - Eliminazione utenti + dati
+    - Newsletter (simulata - pronta per servizio email reale)
+    - Log email (verifica + recovery) con link copiabili
+13. ✅ **Recupero Password** (03/04/2026): Pagina forgot + reset con token
+14. ✅ **Conferma Email** (03/04/2026): Registrazione crea utente non verificato, link verifica
+
+## Note Importanti
+- Email SIMULATE: loggate nel backend + salvate in email_logs. Admin vede i link nel pannello.
+- Quando l'utente avrà un dominio, basta collegare un servizio email reale (Resend/SendGrid).
 
 ## Task Futuri (Backlog)
-- P1: Esportazione dati completa CSV/Excel (più moduli)
-- P2: Importazione dati da Bambu Studio / Orca Slicer
+- P1: Esportazione dati CSV/Excel completa
+- P2: Importazione Bambu Studio / Orca Slicer
 - P2: Esportazione fatture
 - P2: Classifica profittabilità prodotti
-
-## Architettura File
-```
-/app/backend/server.py - API endpoints FastAPI
-/app/frontend/src/pages/ - Pagine React
-/app/frontend/src/lib/api.js - Client API
-/app/frontend/src/context/ - AuthContext, ThemeContext
-```
+- P2: Collegare servizio email reale quando disponibile dominio
