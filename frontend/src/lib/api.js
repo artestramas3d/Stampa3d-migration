@@ -58,4 +58,27 @@ export const getDashboardStats = () => api.get('/dashboard/stats').then(r => r.d
 export const exportSalesCSV = () => `${API}/export/sales`;
 export const exportPurchasesCSV = () => `${API}/export/purchases`;
 
+// Banners
+export const getBanners = () => api.get('/banners').then(r => r.data);
+export const getActiveBanners = () => api.get('/banners/active').then(r => r.data);
+export const createBanner = (data) => api.post('/banners', data).then(r => r.data);
+export const updateBanner = (id, data) => api.put(`/banners/${id}`, data).then(r => r.data);
+export const deleteBanner = (id) => api.delete(`/banners/${id}`).then(r => r.data);
+
+// Auth - Password Recovery & Verification
+export const forgotPassword = (email) => api.post('/auth/forgot-password', { email }).then(r => r.data);
+export const resetPassword = (token, new_password) => api.post('/auth/reset-password', { token, new_password }).then(r => r.data);
+export const verifyEmail = (token) => api.get(`/auth/verify-email?token=${token}`).then(r => r.data);
+export const resendVerification = () => api.post('/auth/resend-verification').then(r => r.data);
+
+// Admin
+export const getAdminUsers = () => api.get('/admin/users').then(r => r.data);
+export const adminVerifyUser = (id) => api.post(`/admin/verify-user/${id}`).then(r => r.data);
+export const adminToggleAdmin = (id) => api.post(`/admin/toggle-admin/${id}`).then(r => r.data);
+export const adminDeleteUser = (id) => api.delete(`/admin/users/${id}`).then(r => r.data);
+export const getAdminStats = () => api.get('/admin/stats').then(r => r.data);
+export const getAdminEmailLogs = () => api.get('/admin/email-logs').then(r => r.data);
+export const getAdminNewsletters = () => api.get('/admin/newsletters').then(r => r.data);
+export const sendAdminNewsletter = (data) => api.post('/admin/newsletters', data).then(r => r.data);
+
 export default api;

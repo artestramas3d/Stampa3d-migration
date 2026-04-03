@@ -84,6 +84,12 @@ export default function LoginPage() {
               <Button type="submit" className="w-full" disabled={loading} data-testid="login-submit">
                 {loading ? 'Accesso...' : 'Accedi'}
               </Button>
+
+              <div className="text-center">
+                <Link to="/forgot-password" className="text-xs text-muted-foreground hover:text-primary transition-colors" data-testid="forgot-password-link">
+                  Password dimenticata?
+                </Link>
+              </div>
             </form>
 
             <div className="mt-6 text-center text-sm">

@@ -17,6 +17,22 @@ from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 import io
 import csv
+import uuid
+
+# Frontend URL for links
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://filament-profit.preview.emergentagent.com")
+
+# Email simulation helper
+def send_simulated_email(to_email: str, subject: str, body: str, link: str = ""):
+    """Simulates sending an email by logging it. Replace with real email service when domain is ready."""
+    logger.info(f"=== EMAIL SIMULATA ===")
+    logger.info(f"A: {to_email}")
+    logger.info(f"Oggetto: {subject}")
+    logger.info(f"Corpo: {body}")
+    if link:
+        logger.info(f"Link: {link}")
+    logger.info(f"======================")
+
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -67,7 +83,7 @@ async def get_current_user(request: Request) -> dict:
         user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
         if not user:
             raise HTTPException(status_code=401, detail="Utente non trovato")
-        return {"id": str(user["_id"]), "email": user["email"], "name": user.get("name", "")}
+        return {"id": str(user["_id"]), "email": user["email"], "name": user.get("name", ""), "is_admin": user.get("is_admin", False), "email_verified": user.get("email_verified", True)}
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token scaduto")
     except jwt.InvalidTokenError:
@@ -200,18 +216,41 @@ async def register(user: UserRegister, response: Response):
     if existing:
         raise HTTPException(status_code=400, detail="Email già registrata")
     hashed = hash_password(user.password)
+    verification_token = str(uuid.uuid4())
     result = await db.users.insert_one({
         "email": email,
         "password_hash": hashed,
         "name": user.name,
+        "is_admin": False,
+        "email_verified": False,
+        "verification_token": verification_token,
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     user_id = str(result.inserted_id)
+    
+    # Send verification email (simulated)
+    verify_link = f"{FRONTEND_URL}/verify-email?token={verification_token}"
+    send_simulated_email(
+        to_email=email,
+        subject="Conferma la tua email - FilamentProfit",
+        body=f"Ciao {user.name}, clicca sul link per verificare la tua email.",
+        link=verify_link
+    )
+    
+    # Store email log for admin visibility
+    await db.email_logs.insert_one({
+        "to": email,
+        "subject": "Conferma email",
+        "link": verify_link,
+        "type": "verification",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
     response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
-    return {"id": user_id, "email": email, "name": user.name}
+    return {"id": user_id, "email": email, "name": user.name, "is_admin": False, "email_verified": False}
 
 @api_router.post("/auth/login")
 async def login(user: UserLogin, response: Response):
@@ -224,7 +263,7 @@ async def login(user: UserLogin, response: Response):
     refresh_token = create_refresh_token(user_id)
     response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
-    return {"id": user_id, "email": email, "name": db_user.get("name", "")}
+    return {"id": user_id, "email": email, "name": db_user.get("name", ""), "is_admin": db_user.get("is_admin", False), "email_verified": db_user.get("email_verified", True)}
 
 @api_router.post("/auth/logout")
 async def logout(response: Response):
@@ -877,6 +916,311 @@ async def export_purchases_csv(current_user: dict = Depends(get_current_user)):
         headers={"Content-Disposition": "attachment; filename=acquisti.csv"}
     )
 
+# Admin guard
+async def require_admin(current_user: dict = Depends(get_current_user)):
+    if not current_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Accesso non autorizzato")
+    return current_user
+
+# Banner Models
+class BannerCreate(BaseModel):
+    position: str  # header, sidebar, footer, content
+    name: str
+    html_code: str
+    is_active: bool = True
+
+class BannerUpdate(BaseModel):
+    position: Optional[str] = None
+    name: Optional[str] = None
+    html_code: Optional[str] = None
+    is_active: Optional[bool] = None
+
+# Banner Endpoints (Admin only)
+@api_router.get("/banners")
+async def get_banners(current_user: dict = Depends(require_admin)):
+    result = []
+    async for doc in db.banners.find().sort("created_at", -1):
+        result.append({
+            "id": str(doc["_id"]),
+            "position": doc.get("position", ""),
+            "name": doc.get("name", ""),
+            "html_code": doc.get("html_code", ""),
+            "is_active": doc.get("is_active", False),
+            "created_at": doc.get("created_at", "")
+        })
+    return result
+
+@api_router.post("/banners")
+async def create_banner(banner: BannerCreate, current_user: dict = Depends(require_admin)):
+    doc = {
+        "position": banner.position,
+        "name": banner.name,
+        "html_code": banner.html_code,
+        "is_active": banner.is_active,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    result = await db.banners.insert_one(doc)
+    doc["id"] = str(result.inserted_id)
+    doc.pop("_id", None)
+    return doc
+
+@api_router.put("/banners/{banner_id}")
+async def update_banner(banner_id: str, banner: BannerUpdate, current_user: dict = Depends(require_admin)):
+    update_data = {k: v for k, v in banner.model_dump().items() if v is not None}
+    await db.banners.update_one({"_id": ObjectId(banner_id)}, {"$set": update_data})
+    return {"message": "Banner aggiornato"}
+
+@api_router.delete("/banners/{banner_id}")
+async def delete_banner(banner_id: str, current_user: dict = Depends(require_admin)):
+    await db.banners.delete_one({"_id": ObjectId(banner_id)})
+    return {"message": "Banner eliminato"}
+
+# Public endpoint - active banners (no auth needed for display)
+@api_router.get("/banners/active")
+async def get_active_banners(current_user: dict = Depends(get_current_user)):
+    result = []
+    async for doc in db.banners.find({"is_active": True}):
+        result.append({
+            "id": str(doc["_id"]),
+            "position": doc.get("position", ""),
+            "html_code": doc.get("html_code", "")
+        })
+    return result
+
+# Email Verification
+@api_router.get("/auth/verify-email")
+async def verify_email(token: str):
+    user = await db.users.find_one({"verification_token": token})
+    if not user:
+        raise HTTPException(status_code=400, detail="Token di verifica non valido")
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"email_verified": True}, "$unset": {"verification_token": ""}}
+    )
+    return {"message": "Email verificata con successo"}
+
+@api_router.post("/auth/resend-verification")
+async def resend_verification(current_user: dict = Depends(get_current_user)):
+    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+    if user.get("email_verified"):
+        return {"message": "Email già verificata"}
+    
+    verification_token = str(uuid.uuid4())
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"verification_token": verification_token}}
+    )
+    verify_link = f"{FRONTEND_URL}/verify-email?token={verification_token}"
+    send_simulated_email(
+        to_email=user["email"],
+        subject="Conferma la tua email - FilamentProfit",
+        body="Clicca sul link per verificare la tua email.",
+        link=verify_link
+    )
+    await db.email_logs.insert_one({
+        "to": user["email"],
+        "subject": "Conferma email (reinvio)",
+        "link": verify_link,
+        "type": "verification",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    return {"message": "Email di verifica reinviata"}
+
+# Password Recovery
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(req: ForgotPasswordRequest):
+    email = req.email.lower().strip()
+    user = await db.users.find_one({"email": email})
+    # Always return success to prevent email enumeration
+    if not user:
+        return {"message": "Se l'email è registrata, riceverai un link per reimpostare la password"}
+    
+    reset_token = str(uuid.uuid4())
+    await db.password_resets.insert_one({
+        "user_id": str(user["_id"]),
+        "email": email,
+        "token": reset_token,
+        "expires_at": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
+        "used": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    reset_link = f"{FRONTEND_URL}/reset-password?token={reset_token}"
+    send_simulated_email(
+        to_email=email,
+        subject="Recupero Password - FilamentProfit",
+        body="Clicca sul link per reimpostare la tua password. Il link scade tra 1 ora.",
+        link=reset_link
+    )
+    await db.email_logs.insert_one({
+        "to": email,
+        "subject": "Recupero password",
+        "link": reset_link,
+        "type": "password_reset",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    return {"message": "Se l'email è registrata, riceverai un link per reimpostare la password"}
+
+@api_router.post("/auth/reset-password")
+async def reset_password(req: ResetPasswordRequest):
+    reset = await db.password_resets.find_one({"token": req.token, "used": False})
+    if not reset:
+        raise HTTPException(status_code=400, detail="Token non valido o scaduto")
+    
+    expires = datetime.fromisoformat(reset["expires_at"])
+    if datetime.now(timezone.utc) > expires:
+        raise HTTPException(status_code=400, detail="Token scaduto")
+    
+    hashed = hash_password(req.new_password)
+    await db.users.update_one(
+        {"_id": ObjectId(reset["user_id"])},
+        {"$set": {"password_hash": hashed}}
+    )
+    await db.password_resets.update_one(
+        {"_id": reset["_id"]},
+        {"$set": {"used": True}}
+    )
+    return {"message": "Password reimpostata con successo"}
+
+# ========== ADMIN PANEL ENDPOINTS ==========
+
+# Admin - User Management
+@api_router.get("/admin/users")
+async def admin_get_users(current_user: dict = Depends(require_admin)):
+    result = []
+    async for doc in db.users.find().sort("created_at", -1):
+        result.append({
+            "id": str(doc["_id"]),
+            "email": doc.get("email", ""),
+            "name": doc.get("name", ""),
+            "is_admin": doc.get("is_admin", False),
+            "email_verified": doc.get("email_verified", False),
+            "created_at": doc.get("created_at", "")
+        })
+    return result
+
+@api_router.post("/admin/verify-user/{user_id}")
+async def admin_verify_user(user_id: str, current_user: dict = Depends(require_admin)):
+    await db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"email_verified": True}, "$unset": {"verification_token": ""}}
+    )
+    return {"message": "Utente verificato manualmente"}
+
+@api_router.post("/admin/toggle-admin/{user_id}")
+async def admin_toggle_admin(user_id: str, current_user: dict = Depends(require_admin)):
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+    new_admin = not user.get("is_admin", False)
+    await db.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"is_admin": new_admin}})
+    return {"message": f"Admin {'attivato' if new_admin else 'disattivato'}", "is_admin": new_admin}
+
+@api_router.delete("/admin/users/{user_id}")
+async def admin_delete_user(user_id: str, current_user: dict = Depends(require_admin)):
+    if user_id == current_user["id"]:
+        raise HTTPException(status_code=400, detail="Non puoi eliminare te stesso")
+    await db.users.delete_one({"_id": ObjectId(user_id)})
+    # Clean up user data
+    await db.filaments.delete_many({"user_id": user_id})
+    await db.printers.delete_many({"user_id": user_id})
+    await db.sales.delete_many({"user_id": user_id})
+    await db.purchases.delete_many({"user_id": user_id})
+    await db.accessories.delete_many({"user_id": user_id})
+    return {"message": "Utente e dati eliminati"}
+
+# Admin - Email Logs
+@api_router.get("/admin/email-logs")
+async def admin_get_email_logs(current_user: dict = Depends(require_admin)):
+    result = []
+    async for doc in db.email_logs.find().sort("created_at", -1).limit(50):
+        result.append({
+            "id": str(doc["_id"]),
+            "to": doc.get("to", ""),
+            "subject": doc.get("subject", ""),
+            "link": doc.get("link", ""),
+            "type": doc.get("type", ""),
+            "created_at": doc.get("created_at", "")
+        })
+    return result
+
+# Admin - Newsletter
+class NewsletterCreate(BaseModel):
+    subject: str
+    body: str
+
+@api_router.get("/admin/newsletters")
+async def admin_get_newsletters(current_user: dict = Depends(require_admin)):
+    result = []
+    async for doc in db.newsletters.find().sort("created_at", -1):
+        result.append({
+            "id": str(doc["_id"]),
+            "subject": doc.get("subject", ""),
+            "body": doc.get("body", ""),
+            "recipients_count": doc.get("recipients_count", 0),
+            "created_at": doc.get("created_at", "")
+        })
+    return result
+
+@api_router.post("/admin/newsletters")
+async def admin_send_newsletter(newsletter: NewsletterCreate, current_user: dict = Depends(require_admin)):
+    # Get all verified users
+    users = []
+    async for u in db.users.find({"email_verified": True}):
+        users.append(u)
+    # Also include users without the field (legacy users)
+    async for u in db.users.find({"email_verified": {"$exists": False}}):
+        users.append(u)
+    
+    recipients = [u["email"] for u in users]
+    
+    for email in recipients:
+        send_simulated_email(
+            to_email=email,
+            subject=newsletter.subject,
+            body=newsletter.body
+        )
+    
+    doc = {
+        "subject": newsletter.subject,
+        "body": newsletter.body,
+        "recipients_count": len(recipients),
+        "recipients": recipients,
+        "sent_by": current_user["email"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    result = await db.newsletters.insert_one(doc)
+    doc["id"] = str(result.inserted_id)
+    doc.pop("_id", None)
+    doc.pop("recipients", None)
+    return doc
+
+# Admin - Stats
+@api_router.get("/admin/stats")
+async def admin_get_stats(current_user: dict = Depends(require_admin)):
+    total_users = await db.users.count_documents({})
+    verified_users = await db.users.count_documents({"email_verified": True})
+    # Count legacy users (without email_verified field) as verified
+    legacy_users = await db.users.count_documents({"email_verified": {"$exists": False}})
+    total_sales = await db.sales.count_documents({})
+    total_newsletters = await db.newsletters.count_documents({})
+    return {
+        "total_users": total_users,
+        "verified_users": verified_users + legacy_users,
+        "unverified_users": total_users - verified_users - legacy_users,
+        "total_sales": total_sales,
+        "total_newsletters": total_newsletters
+    }
+
 # Include router
 app.include_router(api_router)
 
@@ -896,6 +1240,8 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup():
     await db.users.create_index("email", unique=True)
+    # Make testuser admin + verified
+    await db.users.update_one({"email": "testuser@example.com"}, {"$set": {"is_admin": True, "email_verified": True}})
     logger.info("Database indexes created")
 
 @app.on_event("shutdown")

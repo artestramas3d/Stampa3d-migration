@@ -122,3 +122,22 @@
 .receipt-line:last-child {
     @apply border-b-0;
 }
+
+
+/* Banner slots */
+.banner-slot {
+    @apply w-full overflow-hidden;
+}
+
+.banner-slot iframe {
+    max-width: 100%;
+}
+
+.banner-slot img {
+    max-width: 100%;
+    height: auto;
+}
+
+.banner-preview iframe {
+    max-width: 100%;
+}

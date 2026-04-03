@@ -13,6 +13,11 @@ import CalculatorPage from "./pages/CalculatorPage";
 import SalesPage from "./pages/SalesPage";
 import PurchasesPage from "./pages/PurchasesPage";
 import SettingsPage from "./pages/SettingsPage";
+import BannersPage from "./pages/BannersPage";
+import AdminPanelPage from "./pages/AdminPanelPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -55,6 +60,9 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+      <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
+      <Route path="/reset-password" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/filaments" element={<ProtectedRoute><FilamentsPage /></ProtectedRoute>} />
       <Route path="/accessories" element={<ProtectedRoute><AccessoriesPage /></ProtectedRoute>} />
@@ -62,6 +70,8 @@ function AppRoutes() {
       <Route path="/sales" element={<ProtectedRoute><SalesPage /></ProtectedRoute>} />
       <Route path="/purchases" element={<ProtectedRoute><PurchasesPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+      <Route path="/banners" element={<ProtectedRoute><BannersPage /></ProtectedRoute>} />
+      <Route path="/admin" element={<ProtectedRoute><AdminPanelPage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
