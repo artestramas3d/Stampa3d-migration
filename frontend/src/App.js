@@ -2,6 +2,7 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { LangProvider } from "./context/LangContext";
 import { Toaster } from "./components/ui/sonner";
 import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
@@ -18,6 +19,7 @@ import AdminPanelPage from "./pages/AdminPanelPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
+import ProfilePage from "./pages/ProfilePage";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -25,7 +27,7 @@ function ProtectedRoute({ children }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-muted-foreground">Caricamento...</div>
+        <div className="text-muted-foreground">...</div>
       </div>
     );
   }
@@ -43,7 +45,7 @@ function PublicRoute({ children }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-muted-foreground">Caricamento...</div>
+        <div className="text-muted-foreground">...</div>
       </div>
     );
   }
@@ -72,6 +74,7 @@ function AppRoutes() {
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       <Route path="/banners" element={<ProtectedRoute><BannersPage /></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute><AdminPanelPage /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -80,12 +83,14 @@ function AppRoutes() {
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-          <Toaster position="top-right" richColors />
-        </BrowserRouter>
-      </AuthProvider>
+      <LangProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <AppRoutes />
+            <Toaster position="top-right" richColors />
+          </BrowserRouter>
+        </AuthProvider>
+      </LangProvider>
     </ThemeProvider>
   );
 }

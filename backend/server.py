@@ -922,6 +922,41 @@ async def require_admin(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Accesso non autorizzato")
     return current_user
 
+# Profile endpoints
+class ProfileUpdate(BaseModel):
+    name: Optional[str] = None
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+@api_router.put("/auth/profile")
+async def update_profile(profile: ProfileUpdate, current_user: dict = Depends(get_current_user)):
+    update_data = {}
+    if profile.name is not None:
+        update_data["name"] = profile.name
+    if update_data:
+        await db.users.update_one({"_id": ObjectId(current_user["id"])}, {"$set": update_data})
+    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    return {
+        "id": str(user["_id"]),
+        "email": user["email"],
+        "name": user.get("name", ""),
+        "is_admin": user.get("is_admin", False),
+        "email_verified": user.get("email_verified", True)
+    }
+
+@api_router.post("/auth/change-password")
+async def change_password(req: ChangePasswordRequest, current_user: dict = Depends(get_current_user)):
+    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    if not user or not verify_password(req.current_password, user["password_hash"]):
+        raise HTTPException(status_code=400, detail="Password attuale non corretta")
+    if len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="La nuova password deve avere almeno 6 caratteri")
+    hashed = hash_password(req.new_password)
+    await db.users.update_one({"_id": ObjectId(current_user["id"])}, {"$set": {"password_hash": hashed}})
+    return {"message": "Password cambiata con successo"}
+
 # Banner Models
 class BannerCreate(BaseModel):
     position: str  # header, sidebar, footer, content

@@ -2,35 +2,15 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { getActiveBanners } from '../lib/api';
+import { useLang } from '../context/LangContext';
+import { getActiveBanners, resendVerification } from '../lib/api';
 import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { 
-  LayoutDashboard, 
-  Cylinder, 
-  Calculator, 
-  ShoppingCart, 
-  Receipt, 
-  Settings,
-  Menu,
-  Sun,
-  Moon,
-  LogOut,
-  Printer,
-  Package,
-  Megaphone,
-  ShieldCheck
+  LayoutDashboard, Cylinder, Calculator, ShoppingCart, Receipt, Settings,
+  Menu, Sun, Moon, LogOut, Package, Megaphone, ShieldCheck, User, AlertTriangle, Mail
 } from 'lucide-react';
-
-const navItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/filaments', label: 'Filamenti', icon: Cylinder },
-  { path: '/accessories', label: 'Accessori', icon: Package },
-  { path: '/calculator', label: 'Calcolatore', icon: Calculator },
-  { path: '/sales', label: 'Vendite', icon: Receipt },
-  { path: '/purchases', label: 'Acquisti', icon: ShoppingCart },
-  { path: '/settings', label: 'Impostazioni', icon: Settings },
-];
+import { toast } from 'sonner';
 
 function BannerSlot({ banners, position }) {
   const filtered = banners.filter(b => b.position === position);
@@ -48,7 +28,18 @@ function Sidebar({ onNavigate, banners }) {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { t } = useLang();
   const navigate = useNavigate();
+
+  const navItems = [
+    { path: '/', label: t('dashboard'), icon: LayoutDashboard },
+    { path: '/filaments', label: t('filaments'), icon: Cylinder },
+    { path: '/accessories', label: t('accessories'), icon: Package },
+    { path: '/calculator', label: t('calculator'), icon: Calculator },
+    { path: '/sales', label: t('sales'), icon: Receipt },
+    { path: '/purchases', label: t('purchases'), icon: ShoppingCart },
+    { path: '/settings', label: t('settings'), icon: Settings },
+  ];
 
   const handleLogout = async () => {
     await logout();
@@ -58,11 +49,9 @@ function Sidebar({ onNavigate, banners }) {
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-border/40">
-        <Link to="/" className="flex items-center gap-2" onClick={onNavigate}>
-          <div className="w-8 h-8 rounded-sm bg-primary/10 flex items-center justify-center">
-            <Printer className="w-4 h-4 text-primary" />
-          </div>
-          <span className="font-heading font-bold text-lg">FilamentProfit</span>
+        <Link to="/" className="flex items-center gap-2.5" onClick={onNavigate}>
+          <img src="/logo.png" alt="Artes&Tramas" className="w-9 h-9 rounded-sm object-contain" />
+          <span className="font-heading font-bold text-base leading-tight">Artes&Tramas<br/><span className="text-[10px] font-normal text-muted-foreground">3D Print Manager</span></span>
         </Link>
       </div>
 
@@ -84,11 +73,22 @@ function Sidebar({ onNavigate, banners }) {
           );
         })}
 
-        {/* Admin: Banner management */}
+        {/* Profile link */}
+        <Link
+          to="/profile"
+          onClick={onNavigate}
+          className={`sidebar-link ${location.pathname === '/profile' ? 'active' : ''}`}
+          data-testid="nav-profile"
+        >
+          <User className="w-4 h-4" />
+          <span>{t('profile')}</span>
+        </Link>
+
+        {/* Admin section */}
         {user?.is_admin && (
           <>
             <div className="mt-3 mb-1 px-2">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Admin</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('admin')}</span>
             </div>
             <Link
               to="/admin"
@@ -97,7 +97,7 @@ function Sidebar({ onNavigate, banners }) {
               data-testid="nav-admin"
             >
               <ShieldCheck className="w-4 h-4" />
-              <span>Pannello</span>
+              <span>{t('admin_panel')}</span>
             </Link>
             <Link
               to="/banners"
@@ -106,7 +106,7 @@ function Sidebar({ onNavigate, banners }) {
               data-testid="nav-banners"
             >
               <Megaphone className="w-4 h-4" />
-              <span>Banner</span>
+              <span>{t('banners')}</span>
             </Link>
           </>
         )}
@@ -117,26 +117,53 @@ function Sidebar({ onNavigate, banners }) {
 
       <div className="p-3 border-t border-border/40 space-y-2">
         <Button
-          variant="ghost"
-          size="sm"
+          variant="ghost" size="sm"
           className="w-full justify-start gap-2"
           onClick={toggleTheme}
           data-testid="theme-toggle"
         >
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          <span>{theme === 'dark' ? 'Tema Chiaro' : 'Tema Scuro'}</span>
+          <span>{theme === 'dark' ? t('light_theme') : t('dark_theme')}</span>
         </Button>
         <Button
-          variant="ghost"
-          size="sm"
+          variant="ghost" size="sm"
           className="w-full justify-start gap-2 text-destructive hover:text-destructive"
           onClick={handleLogout}
           data-testid="logout-btn"
         >
           <LogOut className="w-4 h-4" />
-          <span>Esci</span>
+          <span>{t('logout')}</span>
         </Button>
       </div>
+    </div>
+  );
+}
+
+function EmailVerificationBanner() {
+  const { user, checkAuth } = useAuth();
+  const { t } = useLang();
+  const [resending, setResending] = useState(false);
+
+  if (!user || user.email_verified) return null;
+
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      await resendVerification();
+      toast.success(t('resend_sent'));
+    } catch { toast.error('Error'); }
+    finally { setResending(false); }
+  };
+
+  return (
+    <div className="bg-yellow-500/10 border-b border-yellow-500/30 px-4 py-2 flex items-center justify-between gap-3" data-testid="email-verify-banner">
+      <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
+        <AlertTriangle className="w-4 h-4 shrink-0" />
+        <span className="text-sm">{t('email_not_verified_msg')}</span>
+      </div>
+      <Button size="sm" variant="outline" className="shrink-0 h-7 text-xs border-yellow-500/50 text-yellow-600" onClick={handleResend} disabled={resending}>
+        <Mail className="w-3 h-3 mr-1" />{t('resend_email')}
+      </Button>
     </div>
   );
 }
@@ -153,6 +180,9 @@ export default function Layout({ children }) {
     <div className="min-h-screen bg-background flex flex-col" data-testid="main-layout">
       {/* Header Banner */}
       <BannerSlot banners={banners} position="header" />
+
+      {/* Email Verification Warning */}
+      <EmailVerificationBanner />
 
       <div className="flex flex-1">
         {/* Desktop Sidebar */}
@@ -173,8 +203,8 @@ export default function Layout({ children }) {
             </SheetContent>
           </Sheet>
           <div className="flex items-center gap-2 ml-3">
-            <Printer className="w-5 h-5 text-primary" />
-            <span className="font-heading font-bold">FilamentProfit</span>
+            <img src="/logo.png" alt="Artes&Tramas" className="w-7 h-7 rounded-sm object-contain" />
+            <span className="font-heading font-bold text-sm">Artes&Tramas</span>
           </div>
         </div>
 
@@ -182,8 +212,6 @@ export default function Layout({ children }) {
         <main className="flex-1 md:ml-64 pt-14 md:pt-0">
           <div className="p-4 md:p-6 max-w-7xl mx-auto">
             {children}
-
-            {/* Content bottom banner */}
             <div className="mt-6">
               <BannerSlot banners={banners} position="content" />
             </div>

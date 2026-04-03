@@ -70,6 +70,8 @@ export const forgotPassword = (email) => api.post('/auth/forgot-password', { ema
 export const resetPassword = (token, new_password) => api.post('/auth/reset-password', { token, new_password }).then(r => r.data);
 export const verifyEmail = (token) => api.get(`/auth/verify-email?token=${token}`).then(r => r.data);
 export const resendVerification = () => api.post('/auth/resend-verification').then(r => r.data);
+export const updateProfile = (data) => api.put('/auth/profile', data).then(r => r.data);
+export const changePassword = (data) => api.post('/auth/change-password', data).then(r => r.data);
 
 // Admin
 export const getAdminUsers = () => api.get('/admin/users').then(r => r.data);
