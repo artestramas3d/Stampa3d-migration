@@ -1,13 +1,14 @@
-# Come mettere il sito su Aruba - Guida Passo Passo
+# Come mettere il Calcolatore su Aruba - Guida Passo Passo
 
-Questa guida ti spiega come mettere il sito online su un server Aruba.
+Questa guida ti spiega come mettere il calcolatore online su un server Aruba.
+Il calcolatore sarà su **calc.artestramas3d.it** (sottodominio).
 Non serve esperienza. Segui ogni passaggio nell'ordine.
 
 ---
 
 ## COSA TI SERVE
 
-1. Un **dominio** comprato su Aruba (es. artestramas3d.it) - costa circa 3-10 euro/anno
+1. Il **dominio** artestramas3d.it comprato su Aruba
 2. Un **VPS** (server virtuale) su Aruba - costa circa 5-10 euro/mese
 3. Il codice del sito su **GitHub** (lo salvi da qui con il pulsante "Save to Github")
 
@@ -27,12 +28,11 @@ Non serve esperienza. Segui ogni passaggio nell'ordine.
 
 ---
 
-## PASSO 2 - Collega il dominio al server
+## PASSO 2 - Collega il sottodominio al server
 
-1. Vai nel pannello Aruba → sezione **DNS**
-2. Aggiungi questi 2 record:
-   - Tipo: **A** | Nome: **@** | Valore: **IL_TUO_IP** (quello della email)
-   - Tipo: **A** | Nome: **www** | Valore: **IL_TUO_IP**
+1. Vai nel pannello Aruba → sezione **DNS** del dominio artestramas3d.it
+2. Aggiungi questo record:
+   - Tipo: **A** | Nome: **calc** | Valore: **IL_TUO_IP** (quello della email)
 3. Salva. I DNS possono metterci fino a 24 ore per funzionare.
 
 ---
@@ -103,12 +103,12 @@ cd sito
 nano backend/.env
 ```
 
-Cancella tutto quello che c'è e scrivi queste 4 righe (sostituisci IL_TUO_DOMINIO):
+Cancella tutto quello che c'è e scrivi queste 4 righe:
 ```
 MONGO_URL=mongodb://mongo:27017
 DB_NAME=filament_profit
 JWT_SECRET=CAMBIAMI_CON_STRINGA_LUNGA_CASUALE
-FRONTEND_URL=https://IL_TUO_DOMINIO.it
+FRONTEND_URL=https://calc.artestramas3d.it
 ```
 
 Per salvare: premi **Ctrl+O**, poi **Invio**, poi **Ctrl+X**
@@ -124,9 +124,9 @@ Copia il risultato e mettilo al posto di CAMBIAMI_CON_STRINGA_LUNGA_CASUALE
 nano frontend/.env
 ```
 
-Scrivi (sostituisci IL_TUO_DOMINIO):
+Scrivi:
 ```
-REACT_APP_BACKEND_URL=https://IL_TUO_DOMINIO.it
+REACT_APP_BACKEND_URL=https://calc.artestramas3d.it
 ```
 
 Salva con **Ctrl+O**, **Invio**, **Ctrl+X**
@@ -136,7 +136,7 @@ Salva con **Ctrl+O**, **Invio**, **Ctrl+X**
 nano nginx/default.conf
 ```
 
-Trova le righe con `artestramas3d.it` e sostituiscile con il tuo dominio reale.
+Trova le righe con `artestramas3d.it` e sostituiscile con `calc.artestramas3d.it`.
 Salva con **Ctrl+O**, **Invio**, **Ctrl+X**
 
 ---
@@ -149,7 +149,7 @@ docker compose up -d --build
 
 **Aspetta 2-5 minuti.** Vedrai tante righe scorrere. Quando finisce e torni al `root@vps:~#`, il sito è attivo!
 
-Prova ad aprire nel browser: `http://IL_TUO_DOMINIO.it`
+Prova ad aprire nel browser: `http://calc.artestramas3d.it`
 
 Se funziona, vai al passo successivo per aggiungere HTTPS (il lucchetto).
 
@@ -172,7 +172,7 @@ apt install nginx -y
 ```
 
 ```
-certbot --nginx -d IL_TUO_DOMINIO.it -d www.IL_TUO_DOMINIO.it
+certbot --nginx -d calc.artestramas3d.it
 ```
 
 Ti chiederà:
@@ -199,7 +199,7 @@ Riavvia:
 docker compose up -d --build
 ```
 
-Ora prova: `https://IL_TUO_DOMINIO.it` - Dovresti vedere il lucchetto verde!
+Ora prova: `https://calc.artestramas3d.it` - Dovresti vedere il lucchetto verde!
 
 ---
 

@@ -52,7 +52,7 @@ function Sidebar({ onNavigate, banners }) {
         <Link to="/" className="flex items-center gap-2.5" onClick={onNavigate}>
           <span className="font-heading font-bold text-lg tracking-tight">Artes&Tramas</span>
         </Link>
-        <span className="text-[10px] text-muted-foreground">3D Print Manager</span>
+        <span className="text-[10px] text-muted-foreground">Calcolatore</span>
       </div>
 
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
