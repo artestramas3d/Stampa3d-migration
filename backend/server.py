@@ -67,6 +67,88 @@ def send_email(to_email: str, subject: str, body: str, link: str = ""):
     except Exception as e:
         logger.error(f"Errore invio email a {to_email}: {e}")
 
+def send_html_email(to_email: str, subject: str, html_content: str):
+    """Send email with custom HTML body via SMTP."""
+    if not SMTP_EMAIL or not SMTP_PASSWORD:
+        logger.info(f"=== EMAIL SIMULATA (SMTP non configurato) ===")
+        logger.info(f"A: {to_email} | Oggetto: {subject}")
+        return
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["From"] = SMTP_EMAIL
+        msg["To"] = to_email
+        msg["Subject"] = subject
+        msg.attach(MIMEText(subject, "plain"))
+        msg.attach(MIMEText(html_content, "html"))
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
+            server.login(SMTP_EMAIL, SMTP_PASSWORD)
+            server.sendmail(SMTP_EMAIL, to_email, msg.as_string())
+        logger.info(f"Email HTML inviata a {to_email}: {subject}")
+    except Exception as e:
+        logger.error(f"Errore invio email HTML a {to_email}: {e}")
+
+def send_welcome_email(to_email: str, user_name: str):
+    """Send welcome email explaining all app features."""
+    name = user_name or "Utente"
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 0; background: #f9f9f9;">
+      <div style="background: linear-gradient(135deg, #f97316, #ea580c); padding: 30px 24px; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 28px;">Benvenuto in Artes&Tramas!</h1>
+        <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0; font-size: 15px;">Il tuo calcolatore costi stampa 3D</p>
+      </div>
+      <div style="padding: 24px; background: white;">
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">Ciao <strong>{name}</strong>,</p>
+        <p style="color: #555; font-size: 15px; line-height: 1.6;">
+          La tua email è stata verificata con successo! Ecco tutto quello che puoi fare con il calcolatore:
+        </p>
+
+        <div style="margin: 20px 0; padding: 16px; background: #fff7ed; border-left: 4px solid #f97316; border-radius: 4px;">
+          <h3 style="color: #ea580c; margin: 0 0 12px; font-size: 16px;">Le Funzionalità</h3>
+
+          <p style="color: #555; font-size: 14px; margin: 8px 0; line-height: 1.5;">
+            <strong style="color: #333;">Dashboard</strong> — Panoramica completa: fatturato, profitti, trend mensili, scorte basse e prodotti più venduti.
+          </p>
+          <p style="color: #555; font-size: 14px; margin: 8px 0; line-height: 1.5;">
+            <strong style="color: #333;">Gestione Filamenti</strong> — Registra tutte le tue bobine con materiale, colore, brand, peso e prezzo. Avviso automatico quando le scorte scendono sotto i 200g.
+          </p>
+          <p style="color: #555; font-size: 14px; margin: 8px 0; line-height: 1.5;">
+            <strong style="color: #333;">Gestione Accessori</strong> — Tieni traccia di gancetti, magneti, packaging e altri materiali con costi unitari e quantità in stock.
+          </p>
+          <p style="color: #555; font-size: 14px; margin: 8px 0; line-height: 1.5;">
+            <strong style="color: #333;">Calcolatore Costi</strong> — Il cuore dell'app! Calcola il costo esatto di ogni stampa considerando: filamento (anche multicolore), elettricità, ammortamento stampante, accessori, tempo di design e margine di profitto. Imposta un prezzo manuale o lascia calcolare al sistema.
+          </p>
+          <p style="color: #555; font-size: 14px; margin: 8px 0; line-height: 1.5;">
+            <strong style="color: #333;">Registro Vendite</strong> — Salva ogni vendita con tutti i dettagli. Segna se è stata pagata o meno. Esporta tutto in CSV.
+          </p>
+          <p style="color: #555; font-size: 14px; margin: 8px 0; line-height: 1.5;">
+            <strong style="color: #333;">Acquisti</strong> — Registra gli acquisti di materiale. I filamenti vengono aggiornati automaticamente in magazzino.
+          </p>
+          <p style="color: #555; font-size: 14px; margin: 8px 0; line-height: 1.5;">
+            <strong style="color: #333;">Impostazioni</strong> — Gestisci le tue stampanti con costo, vita stimata, potenza e costo elettricità per calcoli precisi.
+          </p>
+          <p style="color: #555; font-size: 14px; margin: 8px 0; line-height: 1.5;">
+            <strong style="color: #333;">Profilo</strong> — Cambia nome, lingua (IT/EN/ES/FR) e password.
+          </p>
+          <p style="color: #555; font-size: 14px; margin: 8px 0; line-height: 1.5;">
+            <strong style="color: #333;">Segnala Problema</strong> — Hai trovato un bug? Segnalalo con screenshot e lo risolveremo!
+          </p>
+        </div>
+
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="{FRONTEND_URL}" style="background-color: #f97316; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">Inizia ad usare il Calcolatore</a>
+        </div>
+
+        <p style="color: #555; font-size: 14px; line-height: 1.6;">
+          <strong>Consiglio per iniziare:</strong> Aggiungi prima le tue stampanti nelle Impostazioni, poi i filamenti che hai in magazzino. Dopo potrai usare il Calcolatore per avere il costo preciso di ogni stampa!
+        </p>
+      </div>
+      <div style="padding: 16px 24px; background: #f3f4f6; text-align: center;">
+        <p style="color: #999; font-size: 11px; margin: 0;">Artes&Tramas 3D — Email automatica, non rispondere.</p>
+      </div>
+    </div>
+    """
+    send_html_email(to_email, "Benvenuto in Artes&Tramas! - Guida alle Funzionalità", html)
+
 
 
 # MongoDB connection
@@ -1067,6 +1149,15 @@ async def verify_email(token: str):
         {"_id": user["_id"]},
         {"$set": {"email_verified": True}, "$unset": {"verification_token": ""}}
     )
+    # Send welcome email
+    send_welcome_email(user["email"], user.get("name", ""))
+    await db.email_logs.insert_one({
+        "to": user["email"],
+        "subject": "Email di benvenuto",
+        "link": "",
+        "type": "welcome",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
     return {"message": "Email verificata con successo"}
 
 @api_router.post("/auth/resend-verification")
