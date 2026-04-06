@@ -1266,7 +1266,9 @@ app.add_middleware(
     allow_origins=[
         "https://filament-profit.preview.emergentagent.com",
         "http://localhost:3000",
-        "http://127.0.0.1:3000"
+        "http://127.0.0.1:3000",
+        "http://calcolatore.artestramas3d.it",
+        "https://calcolatore.artestramas3d.it",
     ],
     allow_methods=["*"],
     allow_headers=["*"],
