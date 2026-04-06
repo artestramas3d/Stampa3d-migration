@@ -115,7 +115,7 @@ function Sidebar({ onNavigate, banners }) {
         <BannerSlot banners={banners} position="sidebar" />
       </nav>
 
-      <div className="p-3 border-t border-border/40 space-y-2">
+      <div className="p-3 border-t border-border/40 space-y-2 shrink-0">
         <Button
           variant="ghost" size="sm"
           className="w-full justify-start gap-2"
@@ -171,6 +171,14 @@ function EmailVerificationBanner() {
 export default function Layout({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [banners, setBanners] = useState([]);
+  const { logout } = useAuth();
+  const { t } = useLang();
+  const navigate = useNavigate();
+
+  const handleLogoutMain = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   useEffect(() => {
     getActiveBanners().then(setBanners).catch(() => {});
@@ -186,7 +194,7 @@ export default function Layout({ children }) {
 
       <div className="flex flex-1">
         {/* Desktop Sidebar */}
-        <aside className="hidden md:flex w-64 border-r border-border/40 bg-card flex-col fixed h-screen">
+        <aside className="hidden md:flex w-64 border-r border-border/40 bg-card flex-col fixed top-0 bottom-0 h-screen overflow-hidden">
           <Sidebar banners={banners} />
         </aside>
 
@@ -209,7 +217,12 @@ export default function Layout({ children }) {
 
         {/* Main Content */}
         <main className="flex-1 md:ml-64 pt-14 md:pt-0">
-          <div className="p-4 md:p-6 max-w-7xl mx-auto">
+          <div className="hidden md:flex justify-end p-2 pr-6">
+            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-destructive" onClick={handleLogoutMain} data-testid="logout-top-btn">
+              <LogOut className="w-3.5 h-3.5 mr-1" />{t('logout')}
+            </Button>
+          </div>
+          <div className="p-4 md:px-6 md:pt-0 md:pb-6 max-w-7xl mx-auto">
             {children}
             <div className="mt-6">
               <BannerSlot banners={banners} position="content" />
