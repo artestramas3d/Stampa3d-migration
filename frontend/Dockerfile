@@ -6,6 +6,7 @@ COPY package.json yarn.lock* ./
 RUN yarn install
 
 COPY . .
+ENV NODE_OPTIONS=--max-old-space-size=512
 RUN yarn build
 
 FROM nginx:alpine
