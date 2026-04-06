@@ -1641,7 +1641,7 @@ class ContactFormRequest(BaseModel):
 
 @api_router.post("/public/contact")
 async def submit_contact_form(form: ContactFormRequest):
-    """Public contact form - sends email to admin"""
+    """Public contact form - sends email to info@artestramas3d.it"""
     # Save to DB
     await db.contact_requests.insert_one({
         "name": form.name,
@@ -1650,14 +1650,12 @@ async def submit_contact_form(form: ContactFormRequest):
         "message": form.message,
         "created_at": datetime.now(timezone.utc).isoformat()
     })
-    # Send email notification to admin
-    admin = await db.users.find_one({"is_admin": True})
-    if admin:
-        send_email(
-            to_email=admin["email"],
-            subject=f"Nuova richiesta preventivo da {form.name}",
-            body=f"Nome: {form.name}\nEmail: {form.email}\nTelefono: {form.phone}\n\nMessaggio:\n{form.message}"
-        )
+    # Send email notification to info@artestramas3d.it
+    send_email(
+        to_email="info@artestramas3d.it",
+        subject=f"Nuova richiesta preventivo da {form.name}",
+        body=f"Nome: {form.name}\nEmail: {form.email}\nTelefono: {form.phone}\n\nMessaggio:\n{form.message}"
+    )
     return {"message": "Richiesta inviata con successo"}
 
 # Landing Settings (Admin)

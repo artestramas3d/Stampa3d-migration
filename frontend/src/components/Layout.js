@@ -38,7 +38,6 @@ function Sidebar({ onNavigate, banners, siteSettings }) {
     { path: '/calculator', label: t('calculator'), icon: Calculator },
     { path: '/sales', label: t('sales'), icon: Receipt },
     { path: '/purchases', label: t('purchases'), icon: ShoppingCart },
-    { path: '/catalog', label: 'Catalogo', icon: ShoppingBag },
     { path: '/settings', label: t('settings'), icon: Settings },
   ];
 

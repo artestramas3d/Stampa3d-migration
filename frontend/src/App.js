@@ -21,7 +21,6 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ProfilePage from "./pages/ProfilePage";
 import BugReportPage from "./pages/BugReportPage";
-import CatalogPage from "./pages/CatalogPage";
 import PublicListinoPage from "./pages/PublicListinoPage";
 import LandingPage from "./pages/LandingPage";
 
@@ -80,7 +79,6 @@ function AppRoutes() {
       <Route path="/admin" element={<ProtectedRoute><AdminPanelPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/bug-report" element={<ProtectedRoute><BugReportPage /></ProtectedRoute>} />
-      <Route path="/catalog" element={<ProtectedRoute><CatalogPage /></ProtectedRoute>} />
       {/* Public pages - no auth */}
       <Route path="/listino" element={<PublicListinoPage />} />
       <Route path="/landing" element={<LandingPage />} />

@@ -16,28 +16,34 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
 8. Registro Vendite con toggle Pagato/Non Pagato
 9. Esportazione CSV (vendite + acquisti)
 10. Tema chiaro/scuro
-11. Banner pubblicitari (4 posizioni: header, sidebar, footer, sotto contenuto) - Solo admin
-12. Pannello Admin: Lista utenti, verifica manuale, toggle admin, eliminazione utenti + dati, newsletter, email logs
-13. Recupero Password: Pagina forgot + reset con token via SMTP reale
-14. Conferma Email: Registrazione crea utente non verificato, link verifica via SMTP reale
+11. Banner pubblicitari (4 posizioni) - Solo admin
+12. Pannello Admin: Utenti, Prodotti, Sito, Landing, Newsletter, Segnalazioni, Preventivi, Email Log
+13. Recupero Password via SMTP reale (Aruba)
+14. Conferma Email con email di benvenuto HTML
 15. Multi-lingua: IT, EN, ES, FR
 16. Profilo Utente: cambia nome, lingua, password
-17. SMTP Reale: Email inviate tramite Aruba (smtps.aruba.it)
-18. Deploy Docker: docker-compose.yml, Dockerfiles, Nginx SSL, guida DEPLOY_ARUBA.md
-19. **Impostazioni Sito** (06/04/2026): Admin può cambiare nome brand, sottotitolo, colore primario e accento. Colori applicati dinamicamente via CSS variables.
-20. **Newsletter con Programmazione** (06/04/2026): Admin crea newsletter da inviare subito o programmare per data/ora futura. Scheduler background controlla ogni 60 secondi.
-21. **Segnalazione Problemi** (06/04/2026): Utenti inviano bug report con titolo, descrizione, priorità e screenshot opzionale. Admin gestisce con stato (aperto/in lavorazione/risolto) e note.
+17. SMTP Reale: smtps.aruba.it
+18. Deploy Docker: docker-compose.yml, Dockerfiles, Nginx SSL
+19. Impostazioni Sito: nome brand, sottotitolo, colori primario/accento (dinamici via CSS vars)
+20. Newsletter con Programmazione: invio immediato o programmato, scheduler background 60s
+21. Segnalazione Problemi: bug report con screenshot, gestione admin con stati
+22. **Catalogo Prodotti** (06/04/2026): CRUD prodotti con foto, toggle pubblico/nascosto, gestito da Admin Panel tab "Prodotti"
+23. **Listino Pubblico** (06/04/2026): Pagina /listino senza auth, mostra prodotti pubblici con filtri categoria. Pensato per listino.artestramas3d.it
+24. **Landing Page** (06/04/2026): Pagina /landing senza auth con hero, chi siamo, servizi, portfolio prodotti, form preventivo. Preventivi inviati a info@artestramas3d.it
+25. **Import Bambu Studio .3mf** (06/04/2026): Upload file .3mf nel calcolatore, estrae tempo stampa e grammi filamento dal metadata. Disponibile a tutti gli utenti.
+26. **Admin Landing Settings**: Configura hero, about, servizi, contatti e social dal Pannello Admin
+27. **Admin Preventivi**: Visualizza richieste preventivo dal form pubblico
 
 ## Note Importanti
-- SMTP REALE configurato con Aruba (smtps.aruba.it)
-- Deploy su VPS Aruba: calcolatore.artestramas3d.it
-- Frontend Dockerfile usa NODE_OPTIONS=--max-old-space-size=512 per VPS 1GB RAM
+- SMTP REALE: smtps.aruba.it, preventivi a info@artestramas3d.it
+- Deploy VPS Aruba: calcolatore.artestramas3d.it
+- Listino pubblico: listino.artestramas3d.it (punta alla stessa app, route /listino)
+- Frontend Dockerfile: NODE_OPTIONS=--max-old-space-size=512
 - requirements.txt NON deve contenere emergentintegrations
+- Badge "Made with Emergent" rimosso
 
 ## Task Futuri (Backlog)
-- P1: Sito web collegato (template condiviso per landing page/portfolio)
-- P1: Export dati CSV/Excel completa per tutte le sezioni
-- P2: Importazione Bambu Studio / Orca Slicer
-- P2: Esportazione fatture
+- P1: Export CSV/Excel completo per tutte le sezioni
+- P2: Esportazione fatture PDF
 - P2: Classifica profittabilità prodotti
 - P3: Refactoring server.py in moduli (routes, models, services)
