@@ -18,20 +18,53 @@ from datetime import datetime, timezone, timedelta
 import io
 import csv
 import uuid
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # Frontend URL for links
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://filament-profit.preview.emergentagent.com")
 
-# Email simulation helper
-def send_simulated_email(to_email: str, subject: str, body: str, link: str = ""):
-    """Simulates sending an email by logging it. Replace with real email service when domain is ready."""
-    logger.info(f"=== EMAIL SIMULATA ===")
-    logger.info(f"A: {to_email}")
-    logger.info(f"Oggetto: {subject}")
-    logger.info(f"Corpo: {body}")
-    if link:
-        logger.info(f"Link: {link}")
-    logger.info(f"======================")
+# SMTP Config
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtps.aruba.it")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "465"))
+SMTP_EMAIL = os.environ.get("SMTP_EMAIL", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+
+def send_email(to_email: str, subject: str, body: str, link: str = ""):
+    """Send email via SMTP. Falls back to logging if SMTP not configured."""
+    if not SMTP_EMAIL or not SMTP_PASSWORD:
+        logger.info(f"=== EMAIL SIMULATA (SMTP non configurato) ===")
+        logger.info(f"A: {to_email} | Oggetto: {subject}")
+        if link:
+            logger.info(f"Link: {link}")
+        return
+
+    try:
+        html_body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333;">Artes&Tramas - Calcolatore</h2>
+            <p style="color: #555; font-size: 15px; line-height: 1.6;">{body}</p>
+            {f'<p style="margin: 20px 0;"><a href="{link}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Clicca qui</a></p>' if link else ''}
+            {f'<p style="color: #999; font-size: 12px;">Oppure copia questo link: {link}</p>' if link else ''}
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #999; font-size: 11px;">Artes&Tramas 3D - Email automatica, non rispondere.</p>
+        </div>
+        """
+        msg = MIMEMultipart("alternative")
+        msg["From"] = SMTP_EMAIL
+        msg["To"] = to_email
+        msg["Subject"] = subject
+        msg.attach(MIMEText(body, "plain"))
+        msg.attach(MIMEText(html_body, "html"))
+
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
+            server.login(SMTP_EMAIL, SMTP_PASSWORD)
+            server.sendmail(SMTP_EMAIL, to_email, msg.as_string())
+        logger.info(f"Email inviata a {to_email}: {subject}")
+    except Exception as e:
+        logger.error(f"Errore invio email a {to_email}: {e}")
+
 
 
 # MongoDB connection
@@ -230,7 +263,7 @@ async def register(user: UserRegister, response: Response):
     
     # Send verification email (simulated)
     verify_link = f"{FRONTEND_URL}/verify-email?token={verification_token}"
-    send_simulated_email(
+    send_email(
         to_email=email,
         subject="Conferma la tua email - FilamentProfit",
         body=f"Ciao {user.name}, clicca sul link per verificare la tua email.",
@@ -1048,7 +1081,7 @@ async def resend_verification(current_user: dict = Depends(get_current_user)):
         {"$set": {"verification_token": verification_token}}
     )
     verify_link = f"{FRONTEND_URL}/verify-email?token={verification_token}"
-    send_simulated_email(
+    send_email(
         to_email=user["email"],
         subject="Conferma la tua email - FilamentProfit",
         body="Clicca sul link per verificare la tua email.",
@@ -1090,7 +1123,7 @@ async def forgot_password(req: ForgotPasswordRequest):
     })
     
     reset_link = f"{FRONTEND_URL}/reset-password?token={reset_token}"
-    send_simulated_email(
+    send_email(
         to_email=email,
         subject="Recupero Password - FilamentProfit",
         body="Clicca sul link per reimpostare la tua password. Il link scade tra 1 ora.",
@@ -1219,7 +1252,7 @@ async def admin_send_newsletter(newsletter: NewsletterCreate, current_user: dict
     recipients = [u["email"] for u in users]
     
     for email in recipients:
-        send_simulated_email(
+        send_email(
             to_email=email,
             subject=newsletter.subject,
             body=newsletter.body
