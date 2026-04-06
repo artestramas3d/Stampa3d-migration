@@ -1,7 +1,7 @@
 # Come mettere il Calcolatore su Aruba - Guida Passo Passo
 
 Questa guida ti spiega come mettere il calcolatore online su un server Aruba.
-Il calcolatore sarà su **calc.artestramas3d.it** (sottodominio).
+Il calcolatore sarà su **calcolatore.artestramas3d.it** (sottodominio).
 Non serve esperienza. Segui ogni passaggio nell'ordine.
 
 ---
@@ -108,7 +108,7 @@ Cancella tutto quello che c'è e scrivi queste 4 righe:
 MONGO_URL=mongodb://mongo:27017
 DB_NAME=filament_profit
 JWT_SECRET=CAMBIAMI_CON_STRINGA_LUNGA_CASUALE
-FRONTEND_URL=https://calc.artestramas3d.it
+FRONTEND_URL=https://calcolatore.artestramas3d.it
 ```
 
 Per salvare: premi **Ctrl+O**, poi **Invio**, poi **Ctrl+X**
@@ -126,7 +126,7 @@ nano frontend/.env
 
 Scrivi:
 ```
-REACT_APP_BACKEND_URL=https://calc.artestramas3d.it
+REACT_APP_BACKEND_URL=https://calcolatore.artestramas3d.it
 ```
 
 Salva con **Ctrl+O**, **Invio**, **Ctrl+X**
@@ -136,7 +136,7 @@ Salva con **Ctrl+O**, **Invio**, **Ctrl+X**
 nano nginx/default.conf
 ```
 
-Trova le righe con `artestramas3d.it` e sostituiscile con `calc.artestramas3d.it`.
+Trova le righe con `artestramas3d.it` e sostituiscile con `calcolatore.artestramas3d.it`.
 Salva con **Ctrl+O**, **Invio**, **Ctrl+X**
 
 ---
@@ -149,7 +149,7 @@ docker compose up -d --build
 
 **Aspetta 2-5 minuti.** Vedrai tante righe scorrere. Quando finisce e torni al `root@vps:~#`, il sito è attivo!
 
-Prova ad aprire nel browser: `http://calc.artestramas3d.it`
+Prova ad aprire nel browser: `http://calcolatore.artestramas3d.it`
 
 Se funziona, vai al passo successivo per aggiungere HTTPS (il lucchetto).
 
@@ -172,7 +172,7 @@ apt install nginx -y
 ```
 
 ```
-certbot --nginx -d calc.artestramas3d.it
+certbot --nginx -d calcolatore.artestramas3d.it
 ```
 
 Ti chiederà:
@@ -199,7 +199,7 @@ Riavvia:
 docker compose up -d --build
 ```
 
-Ora prova: `https://calc.artestramas3d.it` - Dovresti vedere il lucchetto verde!
+Ora prova: `https://calcolatore.artestramas3d.it` - Dovresti vedere il lucchetto verde!
 
 ---
 
