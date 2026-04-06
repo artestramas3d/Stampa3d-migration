@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File
 from fastapi.responses import StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -18,8 +18,12 @@ from datetime import datetime, timezone, timedelta
 import io
 import csv
 import uuid
+import re
 import base64
 import asyncio
+import zipfile
+import json
+import xml.etree.ElementTree as ET
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -36,7 +40,7 @@ SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 def send_email(to_email: str, subject: str, body: str, link: str = ""):
     """Send email via SMTP. Falls back to logging if SMTP not configured."""
     if not SMTP_EMAIL or not SMTP_PASSWORD:
-        logger.info(f"=== EMAIL SIMULATA (SMTP non configurato) ===")
+        logger.info("=== EMAIL SIMULATA (SMTP non configurato) ===")
         logger.info(f"A: {to_email} | Oggetto: {subject}")
         if link:
             logger.info(f"Link: {link}")
@@ -70,7 +74,7 @@ def send_email(to_email: str, subject: str, body: str, link: str = ""):
 def send_html_email(to_email: str, subject: str, html_content: str):
     """Send email with custom HTML body via SMTP."""
     if not SMTP_EMAIL or not SMTP_PASSWORD:
-        logger.info(f"=== EMAIL SIMULATA (SMTP non configurato) ===")
+        logger.info("=== EMAIL SIMULATA (SMTP non configurato) ===")
         logger.info(f"A: {to_email} | Oggetto: {subject}")
         return
     try:
@@ -1507,6 +1511,321 @@ async def admin_update_bug_report(report_id: str, update: BugReportStatusUpdate,
     await db.bug_reports.update_one({"_id": ObjectId(report_id)}, {"$set": update_data})
     return {"message": "Segnalazione aggiornata"}
 
+# ========== PRODUCT CATALOG ==========
+
+class ProductCreate(BaseModel):
+    name: str
+    description: str = ""
+    price: float
+    category: str = ""
+    materials: str = ""
+    photo: Optional[str] = None  # base64
+    is_public: bool = True  # visible on public listino
+
+class ProductUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    category: Optional[str] = None
+    materials: Optional[str] = None
+    photo: Optional[str] = None
+    is_public: Optional[bool] = None
+
+@api_router.get("/products")
+async def get_products(current_user: dict = Depends(get_current_user)):
+    result = []
+    async for doc in db.products.find({"user_id": current_user["id"]}).sort("created_at", -1):
+        result.append({
+            "id": str(doc["_id"]),
+            "name": doc.get("name", ""),
+            "description": doc.get("description", ""),
+            "price": doc.get("price", 0),
+            "category": doc.get("category", ""),
+            "materials": doc.get("materials", ""),
+            "has_photo": bool(doc.get("photo")),
+            "photo": doc.get("photo", ""),
+            "is_public": doc.get("is_public", True),
+            "created_at": doc.get("created_at", "")
+        })
+    return result
+
+@api_router.post("/products")
+async def create_product(product: ProductCreate, current_user: dict = Depends(get_current_user)):
+    doc = {
+        "user_id": current_user["id"],
+        "name": product.name,
+        "description": product.description,
+        "price": product.price,
+        "category": product.category,
+        "materials": product.materials,
+        "photo": product.photo,
+        "is_public": product.is_public,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    result = await db.products.insert_one(doc)
+    doc["id"] = str(result.inserted_id)
+    doc["has_photo"] = bool(doc.get("photo"))
+    doc.pop("_id", None)
+    return doc
+
+@api_router.put("/products/{product_id}")
+async def update_product(product_id: str, product: ProductUpdate, current_user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in product.model_dump().items() if v is not None}
+    await db.products.update_one({"_id": ObjectId(product_id), "user_id": current_user["id"]}, {"$set": update_data})
+    return {"message": "Prodotto aggiornato"}
+
+@api_router.delete("/products/{product_id}")
+async def delete_product(product_id: str, current_user: dict = Depends(get_current_user)):
+    await db.products.delete_one({"_id": ObjectId(product_id), "user_id": current_user["id"]})
+    return {"message": "Prodotto eliminato"}
+
+# ========== PUBLIC ENDPOINTS (no auth) ==========
+
+@api_router.get("/public/listino")
+async def get_public_listino():
+    """Public price list - no auth required"""
+    settings = await db.site_settings.find_one({"_id": "global"})
+    brand = settings.get("brand_name", "Artes&Tramas") if settings else "Artes&Tramas"
+    primary = settings.get("primary_color", "#f97316") if settings else "#f97316"
+
+    products = []
+    async for doc in db.products.find({"is_public": True}).sort("category", 1):
+        products.append({
+            "id": str(doc["_id"]),
+            "name": doc.get("name", ""),
+            "description": doc.get("description", ""),
+            "price": doc.get("price", 0),
+            "category": doc.get("category", ""),
+            "materials": doc.get("materials", ""),
+            "photo": doc.get("photo", ""),
+        })
+    return {"brand_name": brand, "primary_color": primary, "products": products}
+
+@api_router.get("/public/landing")
+async def get_public_landing():
+    """Landing page data - no auth required"""
+    settings = await db.site_settings.find_one({"_id": "global"})
+    landing = await db.landing_settings.find_one({"_id": "global"})
+    brand = settings.get("brand_name", "Artes&Tramas") if settings else "Artes&Tramas"
+    primary = settings.get("primary_color", "#f97316") if settings else "#f97316"
+    data = {
+        "brand_name": brand,
+        "primary_color": primary,
+        "hero_title": landing.get("hero_title", "") if landing else "",
+        "hero_subtitle": landing.get("hero_subtitle", "") if landing else "",
+        "about_text": landing.get("about_text", "") if landing else "",
+        "services": landing.get("services", []) if landing else [],
+        "contact_email": landing.get("contact_email", "") if landing else "",
+        "contact_phone": landing.get("contact_phone", "") if landing else "",
+        "social_instagram": landing.get("social_instagram", "") if landing else "",
+        "social_facebook": landing.get("social_facebook", "") if landing else "",
+    }
+    # Include public products as portfolio
+    products = []
+    async for doc in db.products.find({"is_public": True}).sort("created_at", -1).limit(12):
+        products.append({
+            "name": doc.get("name", ""),
+            "description": doc.get("description", ""),
+            "price": doc.get("price", 0),
+            "photo": doc.get("photo", ""),
+            "category": doc.get("category", ""),
+        })
+    data["portfolio"] = products
+    return data
+
+class ContactFormRequest(BaseModel):
+    name: str
+    email: str
+    message: str
+    phone: str = ""
+
+@api_router.post("/public/contact")
+async def submit_contact_form(form: ContactFormRequest):
+    """Public contact form - sends email to admin"""
+    # Save to DB
+    await db.contact_requests.insert_one({
+        "name": form.name,
+        "email": form.email,
+        "phone": form.phone,
+        "message": form.message,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    # Send email notification to admin
+    admin = await db.users.find_one({"is_admin": True})
+    if admin:
+        send_email(
+            to_email=admin["email"],
+            subject=f"Nuova richiesta preventivo da {form.name}",
+            body=f"Nome: {form.name}\nEmail: {form.email}\nTelefono: {form.phone}\n\nMessaggio:\n{form.message}"
+        )
+    return {"message": "Richiesta inviata con successo"}
+
+# Landing Settings (Admin)
+class LandingSettingsUpdate(BaseModel):
+    hero_title: Optional[str] = None
+    hero_subtitle: Optional[str] = None
+    about_text: Optional[str] = None
+    services: Optional[List[str]] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    social_instagram: Optional[str] = None
+    social_facebook: Optional[str] = None
+
+@api_router.get("/admin/landing-settings")
+async def get_landing_settings(current_user: dict = Depends(require_admin)):
+    doc = await db.landing_settings.find_one({"_id": "global"})
+    if not doc:
+        return {"hero_title": "", "hero_subtitle": "", "about_text": "", "services": [], "contact_email": "", "contact_phone": "", "social_instagram": "", "social_facebook": ""}
+    return {k: doc.get(k, "") for k in ["hero_title", "hero_subtitle", "about_text", "services", "contact_email", "contact_phone", "social_instagram", "social_facebook"]}
+
+@api_router.put("/admin/landing-settings")
+async def update_landing_settings(settings: LandingSettingsUpdate, current_user: dict = Depends(require_admin)):
+    update_data = {k: v for k, v in settings.model_dump().items() if v is not None}
+    if update_data:
+        await db.landing_settings.update_one({"_id": "global"}, {"$set": update_data}, upsert=True)
+    doc = await db.landing_settings.find_one({"_id": "global"})
+    return {k: doc.get(k, "") for k in ["hero_title", "hero_subtitle", "about_text", "services", "contact_email", "contact_phone", "social_instagram", "social_facebook"]}
+
+# Admin - Contact Requests
+@api_router.get("/admin/contact-requests")
+async def get_contact_requests(current_user: dict = Depends(require_admin)):
+    result = []
+    async for doc in db.contact_requests.find().sort("created_at", -1).limit(50):
+        result.append({
+            "id": str(doc["_id"]),
+            "name": doc.get("name", ""),
+            "email": doc.get("email", ""),
+            "phone": doc.get("phone", ""),
+            "message": doc.get("message", ""),
+            "created_at": doc.get("created_at", "")
+        })
+    return result
+
+# ========== BAMBU STUDIO .3MF IMPORT ==========
+
+@api_router.post("/import/3mf")
+async def import_3mf(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+    """Parse a Bambu Studio .3mf file and extract print time + filament usage"""
+    if not file.filename.endswith('.3mf'):
+        raise HTTPException(status_code=400, detail="Il file deve essere in formato .3mf")
+
+    content = await file.read()
+    if len(content) > 50 * 1024 * 1024:  # 50MB limit
+        raise HTTPException(status_code=400, detail="File troppo grande (max 50MB)")
+
+    try:
+        result = {"plates": [], "total_time_seconds": 0, "total_filament_grams": 0}
+        with zipfile.ZipFile(io.BytesIO(content), 'r') as zf:
+            # Look for plate JSON files
+            for name in zf.namelist():
+                if name.startswith('Metadata/plate_') and name.endswith('.json'):
+                    try:
+                        plate_data = json.loads(zf.read(name).decode('utf-8'))
+                        plate_info = {"plate": name}
+
+                        # Extract print time (can be seconds or string like "1h 30m")
+                        raw_time = plate_data.get("prediction", plate_data.get("print_time", 0))
+                        if isinstance(raw_time, (int, float)):
+                            plate_info["print_time_seconds"] = int(raw_time)
+                        elif isinstance(raw_time, str):
+                            # Parse "Xh Ym Zs" format
+                            secs = 0
+                            h = re.search(r'(\d+)h', raw_time)
+                            m = re.search(r'(\d+)m', raw_time)
+                            s = re.search(r'(\d+)s', raw_time)
+                            if h: secs += int(h.group(1)) * 3600
+                            if m: secs += int(m.group(1)) * 60
+                            if s: secs += int(s.group(1))
+                            plate_info["print_time_seconds"] = secs
+                        else:
+                            plate_info["print_time_seconds"] = 0
+
+                        # Extract filament usage
+                        filament_data = plate_data.get("filament", [])
+                        total_grams = 0
+                        filament_details = []
+                        if isinstance(filament_data, list):
+                            for f in filament_data:
+                                if isinstance(f, dict):
+                                    g = f.get("used_g", f.get("g", 0))
+                                    total_grams += float(g) if g else 0
+                                    filament_details.append({
+                                        "type": f.get("type", f.get("filament_type", "")),
+                                        "color": f.get("color", ""),
+                                        "grams": round(float(g) if g else 0, 1)
+                                    })
+                        elif isinstance(filament_data, dict):
+                            for key, f in filament_data.items():
+                                if isinstance(f, dict):
+                                    g = f.get("used_g", f.get("g", 0))
+                                    total_grams += float(g) if g else 0
+                                    filament_details.append({
+                                        "type": f.get("type", ""),
+                                        "color": f.get("color", ""),
+                                        "grams": round(float(g) if g else 0, 1)
+                                    })
+
+                        # Also check weight field
+                        if total_grams == 0:
+                            weight = plate_data.get("weight", 0)
+                            if weight:
+                                total_grams = float(weight)
+
+                        plate_info["filament_grams"] = round(total_grams, 1)
+                        plate_info["filament_details"] = filament_details
+
+                        hours = plate_info["print_time_seconds"] / 3600
+                        plate_info["print_time_hours"] = round(hours, 2)
+
+                        result["plates"].append(plate_info)
+                        result["total_time_seconds"] += plate_info["print_time_seconds"]
+                        result["total_filament_grams"] += total_grams
+                    except Exception as e:
+                        logger.warning(f"Errore parsing plate {name}: {e}")
+
+            # Also try to extract from gcode comments if no plate JSON found
+            if not result["plates"]:
+                for name in zf.namelist():
+                    if name.endswith('.gcode'):
+                        try:
+                            gcode = zf.read(name).decode('utf-8', errors='ignore')
+                            # Look for Bambu Studio comments
+                            time_match = re.search(r'; estimated printing time.*?=\s*(\d+)h?\s*(\d+)m?\s*(\d+)?s?', gcode)
+                            weight_match = re.search(r'; total filament used \[g\]\s*=\s*([\d.]+)', gcode)
+                            if time_match:
+                                h = int(time_match.group(1) or 0)
+                                m = int(time_match.group(2) or 0)
+                                s = int(time_match.group(3) or 0)
+                                total_secs = h * 3600 + m * 60 + s
+                                result["total_time_seconds"] = total_secs
+                            if weight_match:
+                                result["total_filament_grams"] = round(float(weight_match.group(1)), 1)
+                            if time_match or weight_match:
+                                result["plates"].append({
+                                    "plate": name,
+                                    "print_time_seconds": result["total_time_seconds"],
+                                    "print_time_hours": round(result["total_time_seconds"] / 3600, 2),
+                                    "filament_grams": result["total_filament_grams"],
+                                    "filament_details": []
+                                })
+                        except Exception:
+                            pass
+
+        result["total_time_hours"] = round(result["total_time_seconds"] / 3600, 2)
+        result["total_filament_grams"] = round(result["total_filament_grams"], 1)
+
+        if not result["plates"]:
+            raise HTTPException(status_code=400, detail="Nessun dato di stampa trovato nel file .3mf. Assicurati di aver eseguito lo slicing in Bambu Studio prima di esportare.")
+
+        return result
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=400, detail="Il file non è un archivio .3mf valido")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Errore parsing .3mf: {e}")
+        raise HTTPException(status_code=500, detail=f"Errore nell'analisi del file: {str(e)}")
+
 # Admin - Stats
 @api_router.get("/admin/stats")
 async def admin_get_stats(current_user: dict = Depends(require_admin)):
@@ -1537,6 +1856,8 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://calcolatore.artestramas3d.it",
         "https://calcolatore.artestramas3d.it",
+        "http://listino.artestramas3d.it",
+        "https://listino.artestramas3d.it",
     ],
     allow_methods=["*"],
     allow_headers=["*"],

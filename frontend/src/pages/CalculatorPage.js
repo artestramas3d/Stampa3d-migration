@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getFilaments, getPrinters, getAccessories, getRecentSales, calculatePrint, createSale } from '../lib/api';
+import { getFilaments, getPrinters, getAccessories, getRecentSales, calculatePrint, createSale, import3mf } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -12,7 +12,7 @@ import { Switch } from '../components/ui/switch';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { 
   Calculator, Receipt, Save, AlertCircle, Package, Plus, Minus, Trash2, 
-  Palette, Copy, History, Euro, Percent, Clock
+  Palette, Copy, History, Euro, Percent, Clock, Upload
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -50,6 +50,8 @@ export default function CalculatorPage() {
   const [designTimeH, setDesignTimeH] = useState(0);
   const [designTimeM, setDesignTimeM] = useState(0);
   const skipTimeEffect = useRef(false);
+  const file3mfRef = useRef(null);
+  const [importing3mf, setImporting3mf] = useState(false);
 
   const [formData, setFormData] = useState({
     filaments: [],
@@ -109,6 +111,38 @@ export default function CalculatorPage() {
       toast.error('Errore nel caricamento dati');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handle3mfImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImporting3mf(true);
+    try {
+      const data = await import3mf(file);
+      if (data.total_time_seconds > 0) {
+        const totalH = Math.floor(data.total_time_seconds / 3600);
+        const totalM = Math.round((data.total_time_seconds % 3600) / 60);
+        skipTimeEffect.current = true;
+        setPrintTimeH(totalH);
+        setPrintTimeM(totalM);
+        setFormData(prev => ({
+          ...prev,
+          print_time_hours: data.total_time_hours || hmToHours(totalH, totalM),
+        }));
+      }
+      if (data.total_filament_grams > 0 && formData.filaments.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          filaments: prev.filaments.map((f, i) => i === 0 ? { ...f, grams_used: Math.round(data.total_filament_grams) } : f)
+        }));
+      }
+      toast.success(`Importato: ${formatTime(data.total_time_hours)}h, ${Math.round(data.total_filament_grams)}g filamento`);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Errore nell\'importazione del file .3mf');
+    } finally {
+      setImporting3mf(false);
+      if (file3mfRef.current) file3mfRef.current.value = '';
     }
   };
 
@@ -313,9 +347,18 @@ export default function CalculatorPage() {
 
   return (
     <div className="space-y-6 animate-fadeIn" data-testid="calculator-page">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight">Calcolatore Costi</h1>
-        <p className="text-muted-foreground mt-1">Multicolore • Quantità multiple • Prezzo manuale</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight">Calcolatore Costi</h1>
+          <p className="text-muted-foreground mt-1">Multicolore • Quantità multiple • Prezzo manuale</p>
+        </div>
+        <div>
+          <input ref={file3mfRef} type="file" accept=".3mf" className="hidden" onChange={handle3mfImport} />
+          <Button variant="outline" size="sm" onClick={() => file3mfRef.current?.click()} disabled={importing3mf} data-testid="import-3mf-btn">
+            <Upload className="w-3.5 h-3.5 mr-1.5" />
+            {importing3mf ? 'Importazione...' : 'Importa .3mf'}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

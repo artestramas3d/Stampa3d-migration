@@ -8,7 +8,7 @@ import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { 
   LayoutDashboard, Cylinder, Calculator, ShoppingCart, Receipt, Settings,
-  Menu, Sun, Moon, LogOut, Package, Megaphone, ShieldCheck, User, AlertTriangle, Mail, Bug
+  Menu, Sun, Moon, LogOut, Package, Megaphone, ShieldCheck, User, AlertTriangle, Mail, Bug, ShoppingBag
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -38,6 +38,7 @@ function Sidebar({ onNavigate, banners, siteSettings }) {
     { path: '/calculator', label: t('calculator'), icon: Calculator },
     { path: '/sales', label: t('sales'), icon: Receipt },
     { path: '/purchases', label: t('purchases'), icon: ShoppingCart },
+    { path: '/catalog', label: 'Catalogo', icon: ShoppingBag },
     { path: '/settings', label: t('settings'), icon: Settings },
   ];
 

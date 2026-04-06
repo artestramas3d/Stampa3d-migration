@@ -95,4 +95,27 @@ export const getAdminBugReports = () => api.get('/admin/bug-reports').then(r => 
 export const getAdminBugScreenshot = (id) => api.get(`/admin/bug-reports/${id}/screenshot`).then(r => r.data);
 export const updateAdminBugReport = (id, data) => api.put(`/admin/bug-reports/${id}`, data).then(r => r.data);
 
+// Products
+export const getProducts = () => api.get('/products').then(r => r.data);
+export const createProduct = (data) => api.post('/products', data).then(r => r.data);
+export const updateProduct = (id, data) => api.put(`/products/${id}`, data).then(r => r.data);
+export const deleteProduct = (id) => api.delete(`/products/${id}`).then(r => r.data);
+
+// Public endpoints (no auth)
+export const getPublicListino = () => api.get('/public/listino').then(r => r.data);
+export const getPublicLanding = () => api.get('/public/landing').then(r => r.data);
+export const submitContactForm = (data) => api.post('/public/contact', data).then(r => r.data);
+
+// Admin - Landing Settings
+export const getLandingSettings = () => api.get('/admin/landing-settings').then(r => r.data);
+export const updateLandingSettings = (data) => api.put('/admin/landing-settings', data).then(r => r.data);
+export const getContactRequests = () => api.get('/admin/contact-requests').then(r => r.data);
+
+// 3MF Import
+export const import3mf = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post('/import/3mf', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data);
+};
+
 export default api;

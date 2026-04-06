@@ -3,7 +3,8 @@ import {
   getAdminUsers, getAdminStats, getAdminEmailLogs, getAdminNewsletters,
   sendAdminNewsletter, deleteAdminNewsletter, adminVerifyUser, adminToggleAdmin, adminDeleteUser,
   getSiteSettings, updateSiteSettings,
-  getAdminBugReports, getAdminBugScreenshot, updateAdminBugReport
+  getAdminBugReports, getAdminBugScreenshot, updateAdminBugReport,
+  getLandingSettings, updateLandingSettings, getContactRequests
 } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -16,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import {
   Users, Mail, Send, Shield, ShieldCheck, Trash2, CheckCircle,
-  XCircle, Newspaper, Copy, Settings2, Bug, Image, Calendar, Clock, Wrench, X
+  XCircle, Newspaper, Copy, Settings2, Bug, Image, Calendar, Clock, Wrench, X, Globe, MessageSquare, Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -371,6 +372,149 @@ function BugReportsTab() {
   );
 }
 
+function LandingSettingsTab() {
+  const [settings, setSettings] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [newService, setNewService] = useState('');
+
+  useEffect(() => {
+    getLandingSettings().then(setSettings).catch(() => {});
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const updated = await updateLandingSettings(settings);
+      setSettings(updated);
+      toast.success('Impostazioni landing salvate!');
+    } catch { toast.error('Errore'); }
+    finally { setSaving(false); }
+  };
+
+  const addService = () => {
+    if (!newService.trim()) return;
+    const services = [...(settings.services || []), newService.trim()];
+    setSettings({ ...settings, services });
+    setNewService('');
+  };
+
+  const removeService = (i) => {
+    const services = (settings.services || []).filter((_, idx) => idx !== i);
+    setSettings({ ...settings, services });
+  };
+
+  if (!settings) return <div className="py-8 text-center text-muted-foreground">Caricamento...</div>;
+
+  return (
+    <Card className="border-border/40">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-heading flex items-center gap-2">
+          <Globe className="w-4 h-4" /> Impostazioni Landing Page
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">Configura la pagina pubblica del tuo sito</p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label className="text-xs">Titolo Hero</Label>
+            <Input value={settings.hero_title || ''} onChange={e => setSettings({...settings, hero_title: e.target.value})} placeholder="Il tuo slogan..." className="h-9" data-testid="landing-hero-title" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Sottotitolo Hero</Label>
+            <Input value={settings.hero_subtitle || ''} onChange={e => setSettings({...settings, hero_subtitle: e.target.value})} placeholder="Descrizione breve..." className="h-9" data-testid="landing-hero-subtitle" />
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Chi Siamo (Testo)</Label>
+          <Textarea value={settings.about_text || ''} onChange={e => setSettings({...settings, about_text: e.target.value})} rows={4} placeholder="Racconta la tua storia..." data-testid="landing-about" />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Servizi</Label>
+          <div className="flex gap-2">
+            <Input value={newService} onChange={e => setNewService(e.target.value)} placeholder="Es. Stampa 3D personalizzata" className="h-9" onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addService())} data-testid="landing-new-service" />
+            <Button type="button" variant="outline" size="sm" className="h-9 shrink-0" onClick={addService}>
+              <Plus className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+          {(settings.services || []).length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {(settings.services || []).map((s, i) => (
+                <Badge key={i} variant="outline" className="text-xs py-1 gap-1">
+                  {s}
+                  <button onClick={() => removeService(i)} className="ml-1 hover:text-destructive"><X className="w-3 h-3" /></button>
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label className="text-xs">Email Contatto</Label>
+            <Input value={settings.contact_email || ''} onChange={e => setSettings({...settings, contact_email: e.target.value})} className="h-9" data-testid="landing-contact-email" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Telefono</Label>
+            <Input value={settings.contact_phone || ''} onChange={e => setSettings({...settings, contact_phone: e.target.value})} className="h-9" data-testid="landing-contact-phone" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label className="text-xs">Instagram (URL)</Label>
+            <Input value={settings.social_instagram || ''} onChange={e => setSettings({...settings, social_instagram: e.target.value})} placeholder="https://instagram.com/..." className="h-9" data-testid="landing-instagram" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Facebook (URL)</Label>
+            <Input value={settings.social_facebook || ''} onChange={e => setSettings({...settings, social_facebook: e.target.value})} placeholder="https://facebook.com/..." className="h-9" data-testid="landing-facebook" />
+          </div>
+        </div>
+        <Button onClick={handleSave} disabled={saving} data-testid="landing-settings-save">
+          {saving ? 'Salvataggio...' : 'Salva Impostazioni Landing'}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ContactRequestsTab() {
+  const [requests, setRequests] = useState([]);
+
+  useEffect(() => {
+    getContactRequests().then(setRequests).catch(() => {});
+  }, []);
+
+  return (
+    <Card className="border-border/40">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-heading flex items-center gap-2">
+          <MessageSquare className="w-4 h-4" /> Richieste Preventivo ({requests.length})
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {requests.length === 0 ? (
+          <p className="text-center text-muted-foreground py-8">Nessuna richiesta</p>
+        ) : (
+          <div className="space-y-3">
+            {requests.map(r => (
+              <div key={r.id} className="p-3 rounded-md bg-muted/30 border border-border/40">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{r.name}</p>
+                    <p className="text-xs text-muted-foreground">{r.email} {r.phone && `• ${r.phone}`}</p>
+                    <p className="text-xs mt-1 whitespace-pre-wrap">{r.message}</p>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground shrink-0">
+                    {r.created_at ? new Date(r.created_at).toLocaleString('it-IT') : ''}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AdminPanelPage() {
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState(null);
@@ -473,18 +617,24 @@ export default function AdminPanelPage() {
       )}
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
+        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-8">
           <TabsTrigger value="users" data-testid="tab-users">
             <Users className="w-4 h-4 mr-1.5 hidden sm:inline" />Utenti
           </TabsTrigger>
           <TabsTrigger value="settings" data-testid="tab-settings">
             <Settings2 className="w-4 h-4 mr-1.5 hidden sm:inline" />Sito
           </TabsTrigger>
+          <TabsTrigger value="landing" data-testid="tab-landing">
+            <Globe className="w-4 h-4 mr-1.5 hidden sm:inline" />Landing
+          </TabsTrigger>
           <TabsTrigger value="newsletter" data-testid="tab-newsletter">
             <Newspaper className="w-4 h-4 mr-1.5 hidden sm:inline" />Newsletter
           </TabsTrigger>
           <TabsTrigger value="bugs" data-testid="tab-bugs">
             <Bug className="w-4 h-4 mr-1.5 hidden sm:inline" />Segnalazioni
+          </TabsTrigger>
+          <TabsTrigger value="contacts" data-testid="tab-contacts">
+            <MessageSquare className="w-4 h-4 mr-1.5 hidden sm:inline" />Preventivi
           </TabsTrigger>
           <TabsTrigger value="emails" data-testid="tab-emails">
             <Mail className="w-4 h-4 mr-1.5 hidden sm:inline" />Email Log
@@ -572,6 +722,11 @@ export default function AdminPanelPage() {
           <SiteSettingsTab />
         </TabsContent>
 
+        {/* Landing Settings Tab */}
+        <TabsContent value="landing">
+          <LandingSettingsTab />
+        </TabsContent>
+
         {/* Newsletter Tab */}
         <TabsContent value="newsletter">
           <NewsletterTab newsletters={newsletters} onReload={loadAll} />
@@ -580,6 +735,11 @@ export default function AdminPanelPage() {
         {/* Bug Reports Tab */}
         <TabsContent value="bugs">
           <BugReportsTab />
+        </TabsContent>
+
+        {/* Contact Requests Tab */}
+        <TabsContent value="contacts">
+          <ContactRequestsTab />
         </TabsContent>
 
         {/* Email Logs Tab */}

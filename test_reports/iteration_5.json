@@ -1,0 +1,103 @@
+{
+  "summary": "Comprehensive testing of 4 new features: Product Catalog CRUD, Public Listino page, Public Landing page with contact form, and 3MF import. All 20 backend tests pass (100%). All frontend UI elements verified working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "GET /api/products requires authentication (401)",
+    "GET /api/products returns user's products list",
+    "POST /api/products creates a product with name, price, category, materials, is_public",
+    "POST /api/products with base64 photo stores photo correctly",
+    "PUT /api/products/{id} updates a product",
+    "DELETE /api/products/{id} deletes a product",
+    "GET /api/public/listino returns public products without auth",
+    "GET /api/public/listino only shows products with is_public=True",
+    "GET /api/public/landing returns landing page data without auth",
+    "POST /api/public/contact sends contact form without auth",
+    "POST /api/public/contact validates required fields (422 on missing)",
+    "GET /api/admin/landing-settings requires admin auth",
+    "GET /api/admin/landing-settings returns landing config",
+    "PUT /api/admin/landing-settings updates hero_title, about_text, services, contact info, social links",
+    "GET /api/admin/contact-requests requires admin auth",
+    "GET /api/admin/contact-requests returns contact requests list",
+    "POST /api/import/3mf requires authentication",
+    "POST /api/import/3mf rejects non-.3mf files (400)",
+    "POST /api/import/3mf parses valid .3mf file and returns time/filament data",
+    "POST /api/import/3mf handles multiple plates (sums time and filament)",
+    "Catalog page (/catalog) shows products grid with photo, name, price, category, public badge",
+    "Catalog page has Add Product dialog with photo upload, public toggle",
+    "Catalog page has 'Vedi Listino' button to open public listino",
+    "Public Listino page (/listino) loads without login, shows products with category filter buttons",
+    "Landing page (/landing) loads without login, shows hero, about, services, portfolio, contact form",
+    "Landing page contact form submits and shows success message 'Messaggio inviato!'",
+    "Calculator page (/calculator) has 'Importa .3mf' button",
+    "Admin panel has Landing tab with hero_title, hero_subtitle, about_text, services, contact_email, contact_phone, social links",
+    "Admin panel has Preventivi tab showing contact requests",
+    "Sidebar has 'Catalogo' link"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_new_features_v2.py",
+    "/app/test_reports/pytest/pytest_results_v2.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_new_features_v2.py"
+  ],
+  "success_rate": {
+    "backend": "100% (20/20 tests passed)",
+    "frontend": "100% (all features verified)"
+  },
+  "test_credentials": {
+    "admin_email": "testuser@example.com",
+    "admin_password": "password123",
+    "is_admin": true,
+    "email_verified": true
+  },
+  "seed_data_creation": "Created test products and contact requests during testing (TEST_ prefix)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Four new features fully implemented and tested: 1) Product Catalog - CRUD at /api/products with photo upload (base64), is_public toggle. Catalog page at /catalog shows products grid with edit/delete. 2) Public Listino - GET /api/public/listino returns only is_public=True products. Page at /listino with category filters. 3) Public Landing - GET /api/public/landing returns hero, about, services, portfolio (public products). Contact form at POST /api/public/contact. Admin configures via /api/admin/landing-settings. Contact requests visible at /api/admin/contact-requests. 4) 3MF Import - POST /api/import/3mf parses Bambu Studio .3mf files (ZIP with Metadata/plate_*.json), extracts prediction (time) and filament[].used_g. Calculator page has 'Importa .3mf' button.",
+  "features_verified": {
+    "product_catalog": {
+      "api_crud": "GET/POST/PUT/DELETE /api/products - full CRUD with photo upload",
+      "public_toggle": "is_public field controls visibility in public listino",
+      "ui_page": "/catalog page with product grid, Add/Edit/Delete dialogs",
+      "photo_upload": "Base64 photo upload with preview"
+    },
+    "public_listino": {
+      "api": "GET /api/public/listino - no auth required, returns only public products",
+      "ui_page": "/listino page with category filter buttons",
+      "brand_integration": "Shows brand_name and primary_color from site settings"
+    },
+    "public_landing": {
+      "api_landing": "GET /api/public/landing - no auth, returns hero, about, services, portfolio",
+      "api_contact": "POST /api/public/contact - no auth, stores contact request",
+      "api_admin_settings": "GET/PUT /api/admin/landing-settings - admin configures landing content",
+      "api_admin_contacts": "GET /api/admin/contact-requests - admin views contact requests",
+      "ui_page": "/landing page with hero, about, services, portfolio, contact form",
+      "contact_form": "Form submits and shows 'Messaggio inviato!' success message"
+    },
+    "3mf_import": {
+      "api": "POST /api/import/3mf - parses .3mf ZIP, extracts time and filament from plate JSON",
+      "ui_button": "Calculator page has 'Importa .3mf' button",
+      "data_extraction": "Extracts prediction (seconds), filament[].used_g from Metadata/plate_*.json"
+    },
+    "admin_panel_tabs": {
+      "landing_tab": "Landing tab with hero_title, hero_subtitle, about_text, services list, contact info, social links",
+      "preventivi_tab": "Preventivi tab showing contact requests with name, email, phone, message, timestamp"
+    },
+    "sidebar": {
+      "catalogo_link": "Sidebar has 'Catalogo' link navigating to /catalog"
+    }
+  },
+  "mocked_apis": {
+    "email_sending": "REAL - SMTP configured with Aruba (smtps.aruba.it). Contact form emails are actually sent to admin."
+  }
+}
