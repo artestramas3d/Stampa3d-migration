@@ -20,6 +20,7 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ProfilePage from "./pages/ProfilePage";
+import BugReportPage from "./pages/BugReportPage";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -75,6 +76,7 @@ function AppRoutes() {
       <Route path="/banners" element={<ProtectedRoute><BannersPage /></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute><AdminPanelPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+      <Route path="/bug-report" element={<ProtectedRoute><BugReportPage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

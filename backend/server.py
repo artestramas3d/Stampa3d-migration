@@ -18,6 +18,8 @@ from datetime import datetime, timezone, timedelta
 import io
 import csv
 import uuid
+import base64
+import asyncio
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -1225,6 +1227,7 @@ async def admin_get_email_logs(current_user: dict = Depends(require_admin)):
 class NewsletterCreate(BaseModel):
     subject: str
     body: str
+    scheduled_at: Optional[str] = None  # ISO date string, None = send immediately
 
 @api_router.get("/admin/newsletters")
 async def admin_get_newsletters(current_user: dict = Depends(require_admin)):
@@ -1235,42 +1238,183 @@ async def admin_get_newsletters(current_user: dict = Depends(require_admin)):
             "subject": doc.get("subject", ""),
             "body": doc.get("body", ""),
             "recipients_count": doc.get("recipients_count", 0),
+            "status": doc.get("status", "sent"),
+            "scheduled_at": doc.get("scheduled_at", ""),
+            "sent_at": doc.get("sent_at", ""),
             "created_at": doc.get("created_at", "")
         })
     return result
 
 @api_router.post("/admin/newsletters")
-async def admin_send_newsletter(newsletter: NewsletterCreate, current_user: dict = Depends(require_admin)):
-    # Get all verified users
-    users = []
-    async for u in db.users.find({"email_verified": True}):
-        users.append(u)
-    # Also include users without the field (legacy users)
-    async for u in db.users.find({"email_verified": {"$exists": False}}):
-        users.append(u)
+async def admin_create_newsletter(newsletter: NewsletterCreate, current_user: dict = Depends(require_admin)):
+    now = datetime.now(timezone.utc).isoformat()
     
-    recipients = [u["email"] for u in users]
-    
-    for email in recipients:
-        send_email(
-            to_email=email,
-            subject=newsletter.subject,
-            body=newsletter.body
+    if newsletter.scheduled_at:
+        # Schedule for later
+        doc = {
+            "subject": newsletter.subject,
+            "body": newsletter.body,
+            "status": "scheduled",
+            "scheduled_at": newsletter.scheduled_at,
+            "recipients_count": 0,
+            "sent_by": current_user["email"],
+            "created_at": now
+        }
+        result = await db.newsletters.insert_one(doc)
+        doc["id"] = str(result.inserted_id)
+        doc.pop("_id", None)
+        return doc
+    else:
+        # Send immediately
+        users = []
+        async for u in db.users.find({"email_verified": True}):
+            users.append(u)
+        async for u in db.users.find({"email_verified": {"$exists": False}}):
+            users.append(u)
+        
+        recipients = [u["email"] for u in users]
+        
+        for email in recipients:
+            send_email(to_email=email, subject=newsletter.subject, body=newsletter.body)
+        
+        doc = {
+            "subject": newsletter.subject,
+            "body": newsletter.body,
+            "status": "sent",
+            "recipients_count": len(recipients),
+            "recipients": recipients,
+            "sent_by": current_user["email"],
+            "sent_at": now,
+            "created_at": now
+        }
+        result = await db.newsletters.insert_one(doc)
+        doc["id"] = str(result.inserted_id)
+        doc.pop("_id", None)
+        doc.pop("recipients", None)
+        return doc
+
+@api_router.delete("/admin/newsletters/{newsletter_id}")
+async def admin_delete_newsletter(newsletter_id: str, current_user: dict = Depends(require_admin)):
+    await db.newsletters.delete_one({"_id": ObjectId(newsletter_id)})
+    return {"message": "Newsletter eliminata"}
+
+# ========== SITE SETTINGS ==========
+
+class SiteSettingsUpdate(BaseModel):
+    brand_name: Optional[str] = None
+    subtitle: Optional[str] = None
+    primary_color: Optional[str] = None
+    accent_color: Optional[str] = None
+
+@api_router.get("/site-settings")
+async def get_site_settings(current_user: dict = Depends(get_current_user)):
+    doc = await db.site_settings.find_one({"_id": "global"})
+    if not doc:
+        return {"brand_name": "Artes&Tramas", "subtitle": "Calcolatore", "primary_color": "#f97316", "accent_color": "#2563eb"}
+    return {
+        "brand_name": doc.get("brand_name", "Artes&Tramas"),
+        "subtitle": doc.get("subtitle", "Calcolatore"),
+        "primary_color": doc.get("primary_color", "#f97316"),
+        "accent_color": doc.get("accent_color", "#2563eb"),
+    }
+
+@api_router.put("/admin/site-settings")
+async def update_site_settings(settings: SiteSettingsUpdate, current_user: dict = Depends(require_admin)):
+    update_data = {k: v for k, v in settings.model_dump().items() if v is not None}
+    if update_data:
+        await db.site_settings.update_one(
+            {"_id": "global"},
+            {"$set": update_data},
+            upsert=True
         )
-    
+    doc = await db.site_settings.find_one({"_id": "global"})
+    return {
+        "brand_name": doc.get("brand_name", "Artes&Tramas"),
+        "subtitle": doc.get("subtitle", "Calcolatore"),
+        "primary_color": doc.get("primary_color", "#f97316"),
+        "accent_color": doc.get("accent_color", "#2563eb"),
+    }
+
+# ========== BUG REPORTS ==========
+
+class BugReportCreate(BaseModel):
+    title: str
+    description: str
+    priority: str = "media"  # bassa, media, alta
+    screenshot: Optional[str] = None  # base64 encoded image
+
+@api_router.post("/bug-reports")
+async def create_bug_report(report: BugReportCreate, current_user: dict = Depends(get_current_user)):
     doc = {
-        "subject": newsletter.subject,
-        "body": newsletter.body,
-        "recipients_count": len(recipients),
-        "recipients": recipients,
-        "sent_by": current_user["email"],
+        "user_id": current_user["id"],
+        "user_email": current_user["email"],
+        "user_name": current_user.get("name", ""),
+        "title": report.title,
+        "description": report.description,
+        "priority": report.priority,
+        "screenshot": report.screenshot,
+        "status": "aperto",
+        "admin_note": "",
         "created_at": datetime.now(timezone.utc).isoformat()
     }
-    result = await db.newsletters.insert_one(doc)
+    result = await db.bug_reports.insert_one(doc)
     doc["id"] = str(result.inserted_id)
     doc.pop("_id", None)
-    doc.pop("recipients", None)
+    doc.pop("screenshot", None)  # Don't return screenshot in list
     return doc
+
+@api_router.get("/bug-reports")
+async def get_my_bug_reports(current_user: dict = Depends(get_current_user)):
+    result = []
+    async for doc in db.bug_reports.find({"user_id": current_user["id"]}).sort("created_at", -1):
+        result.append({
+            "id": str(doc["_id"]),
+            "title": doc.get("title", ""),
+            "description": doc.get("description", ""),
+            "priority": doc.get("priority", "media"),
+            "status": doc.get("status", "aperto"),
+            "admin_note": doc.get("admin_note", ""),
+            "has_screenshot": bool(doc.get("screenshot")),
+            "created_at": doc.get("created_at", "")
+        })
+    return result
+
+@api_router.get("/admin/bug-reports")
+async def admin_get_bug_reports(current_user: dict = Depends(require_admin)):
+    result = []
+    async for doc in db.bug_reports.find().sort("created_at", -1):
+        result.append({
+            "id": str(doc["_id"]),
+            "user_email": doc.get("user_email", ""),
+            "user_name": doc.get("user_name", ""),
+            "title": doc.get("title", ""),
+            "description": doc.get("description", ""),
+            "priority": doc.get("priority", "media"),
+            "status": doc.get("status", "aperto"),
+            "admin_note": doc.get("admin_note", ""),
+            "has_screenshot": bool(doc.get("screenshot")),
+            "created_at": doc.get("created_at", "")
+        })
+    return result
+
+@api_router.get("/admin/bug-reports/{report_id}/screenshot")
+async def admin_get_screenshot(report_id: str, current_user: dict = Depends(require_admin)):
+    doc = await db.bug_reports.find_one({"_id": ObjectId(report_id)})
+    if not doc or not doc.get("screenshot"):
+        raise HTTPException(status_code=404, detail="Screenshot non trovato")
+    return {"screenshot": doc["screenshot"]}
+
+class BugReportStatusUpdate(BaseModel):
+    status: str  # aperto, in_lavorazione, risolto
+    admin_note: Optional[str] = None
+
+@api_router.put("/admin/bug-reports/{report_id}")
+async def admin_update_bug_report(report_id: str, update: BugReportStatusUpdate, current_user: dict = Depends(require_admin)):
+    update_data = {"status": update.status}
+    if update.admin_note is not None:
+        update_data["admin_note"] = update.admin_note
+    await db.bug_reports.update_one({"_id": ObjectId(report_id)}, {"$set": update_data})
+    return {"message": "Segnalazione aggiornata"}
 
 # Admin - Stats
 @api_router.get("/admin/stats")
@@ -1307,12 +1451,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+async def newsletter_scheduler():
+    """Background task to send scheduled newsletters"""
+    while True:
+        try:
+            now = datetime.now(timezone.utc).isoformat()
+            scheduled = await db.newsletters.find({"status": "scheduled", "scheduled_at": {"$lte": now}}).to_list(100)
+            for nl in scheduled:
+                users = []
+                async for u in db.users.find({"email_verified": True}):
+                    users.append(u)
+                async for u in db.users.find({"email_verified": {"$exists": False}}):
+                    users.append(u)
+                recipients = [u["email"] for u in users]
+                for email in recipients:
+                    send_email(to_email=email, subject=nl["subject"], body=nl["body"])
+                await db.newsletters.update_one(
+                    {"_id": nl["_id"]},
+                    {"$set": {"status": "sent", "recipients_count": len(recipients), "recipients": recipients, "sent_at": now}}
+                )
+                logger.info(f"Newsletter programmata inviata: {nl['subject']} a {len(recipients)} destinatari")
+        except Exception as e:
+            logger.error(f"Errore scheduler newsletter: {e}")
+        await asyncio.sleep(60)  # Check every 60 seconds
+
 @app.on_event("startup")
 async def startup():
     await db.users.create_index("email", unique=True)
     # Make testuser admin + verified
     await db.users.update_one({"email": "testuser@example.com"}, {"$set": {"is_admin": True, "email_verified": True}})
-    logger.info("Database indexes created")
+    # Start newsletter scheduler
+    asyncio.create_task(newsletter_scheduler())
+    logger.info("Database indexes created, newsletter scheduler started")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

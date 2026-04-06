@@ -82,5 +82,17 @@ export const getAdminStats = () => api.get('/admin/stats').then(r => r.data);
 export const getAdminEmailLogs = () => api.get('/admin/email-logs').then(r => r.data);
 export const getAdminNewsletters = () => api.get('/admin/newsletters').then(r => r.data);
 export const sendAdminNewsletter = (data) => api.post('/admin/newsletters', data).then(r => r.data);
+export const deleteAdminNewsletter = (id) => api.delete(`/admin/newsletters/${id}`).then(r => r.data);
+
+// Site Settings
+export const getSiteSettings = () => api.get('/site-settings').then(r => r.data);
+export const updateSiteSettings = (data) => api.put('/admin/site-settings', data).then(r => r.data);
+
+// Bug Reports
+export const createBugReport = (data) => api.post('/bug-reports', data).then(r => r.data);
+export const getMyBugReports = () => api.get('/bug-reports').then(r => r.data);
+export const getAdminBugReports = () => api.get('/admin/bug-reports').then(r => r.data);
+export const getAdminBugScreenshot = (id) => api.get(`/admin/bug-reports/${id}/screenshot`).then(r => r.data);
+export const updateAdminBugReport = (id, data) => api.put(`/admin/bug-reports/${id}`, data).then(r => r.data);
 
 export default api;
