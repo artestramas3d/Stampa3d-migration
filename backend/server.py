@@ -227,6 +227,7 @@ class FilamentCreate(BaseModel):
     spool_weight_g: float
     spool_price: float
     color_hex: str = "#FFFFFF"
+    color_hex2: str = ""
     notes: str = ""
     remaining_grams: Optional[float] = None  # If not provided, defaults to spool_weight_g
 
@@ -237,6 +238,7 @@ class FilamentUpdate(BaseModel):
     spool_weight_g: Optional[float] = None
     spool_price: Optional[float] = None
     color_hex: Optional[str] = None
+    color_hex2: Optional[str] = None
     notes: Optional[str] = None
     remaining_grams: Optional[float] = None
 
@@ -260,6 +262,7 @@ class PurchaseCreate(BaseModel):
     brand: str
     color: str
     color_hex: str = "#FFFFFF"
+    color_hex2: str = ""
     quantity_spools: int
     price_total: float
     grams_total: float
@@ -413,6 +416,7 @@ async def get_filaments(current_user: dict = Depends(get_current_user)):
             "spool_price": doc.get("spool_price", 0),
             "cost_per_gram": doc.get("cost_per_gram", 0),
             "color_hex": doc.get("color_hex", "#FFFFFF"),
+            "color_hex2": doc.get("color_hex2", ""),
             "notes": doc.get("notes", ""),
             "remaining_grams": remaining,
             "low_stock": remaining < 200
@@ -432,6 +436,7 @@ async def create_filament(filament: FilamentCreate, current_user: dict = Depends
         "spool_price": filament.spool_price,
         "cost_per_gram": cost_per_gram,
         "color_hex": filament.color_hex,
+        "color_hex2": filament.color_hex2,
         "notes": filament.notes,
         "remaining_grams": remaining,
         "created_at": datetime.now(timezone.utc).isoformat()
@@ -581,6 +586,7 @@ async def create_purchase(purchase: PurchaseCreate, current_user: dict = Depends
                     "spool_price": spool_price,
                     "cost_per_gram": cost_per_gram,
                     "color_hex": purchase.color_hex,
+                    "color_hex2": purchase.color_hex2,
                     "notes": f"Creato da acquisto del {purchase.date}",
                     "remaining_grams": purchase.grams_total,
                     "created_at": datetime.now(timezone.utc).isoformat()
@@ -685,6 +691,7 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
                 "material_type": filament.get("material_type", ""),
                 "color": filament.get("color", ""),
                 "color_hex": filament.get("color_hex", "#FFFFFF"),
+                "color_hex2": filament.get("color_hex2", ""),
                 "grams_used": f_usage.grams_used,
                 "cost_per_gram": filament.get("cost_per_gram", 0),
                 "total": round(cost, 2)

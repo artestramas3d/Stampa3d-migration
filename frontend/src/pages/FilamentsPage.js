@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { Progress } from '../components/ui/progress';
 import { Plus, Pencil, Trash2, Cylinder, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { FilamentColorDot } from '../components/FilamentColorDot';
 
 const MATERIAL_TYPES = ['PLA', 'PETG', 'ABS', 'TPU', 'ASA', 'Nylon', 'PLA+', 'PETG-CF', 'Altro'];
 const LOW_STOCK_THRESHOLD = 200; // grams
@@ -22,6 +23,7 @@ const defaultFilament = {
   spool_weight_g: 1000,
   spool_price: 25,
   color_hex: '#FFFFFF',
+  color_hex2: '',
   notes: ''
 };
 
@@ -75,6 +77,7 @@ export default function FilamentsPage() {
       spool_weight_g: filament.spool_weight_g,
       spool_price: filament.spool_price,
       color_hex: filament.color_hex,
+      color_hex2: filament.color_hex2 || '',
       notes: filament.notes || '',
       remaining_grams: filament.remaining_grams
     });
@@ -156,12 +159,12 @@ export default function FilamentsPage() {
                   <Input
                     value={formData.color}
                     onChange={(e) => setFormData({...formData, color: e.target.value})}
-                    placeholder="Es. Nero"
+                    placeholder="Es. Rosso/Blu"
                     data-testid="color-input"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Anteprima Colore</Label>
+                  <Label>Colore 1</Label>
                   <div className="flex gap-2">
                     <Input
                       type="color"
@@ -176,6 +179,37 @@ export default function FilamentsPage() {
                       className="flex-1 font-mono"
                       placeholder="#FFFFFF"
                     />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Colore 2 (opzionale, per bicolore)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="color"
+                      value={formData.color_hex2 || '#FFFFFF'}
+                      onChange={(e) => setFormData({...formData, color_hex2: e.target.value})}
+                      className="w-12 h-9 p-1 cursor-pointer"
+                      data-testid="color-hex2-input"
+                    />
+                    <Input
+                      value={formData.color_hex2}
+                      onChange={(e) => setFormData({...formData, color_hex2: e.target.value})}
+                      className="flex-1 font-mono"
+                      placeholder="Lascia vuoto se monocolore"
+                    />
+                    {formData.color_hex2 && (
+                      <Button type="button" variant="ghost" size="sm" className="h-9 px-2 text-muted-foreground" onClick={() => setFormData({...formData, color_hex2: ''})}>✕</Button>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Anteprima</Label>
+                  <div className="flex items-center gap-2 h-9">
+                    <FilamentColorDot color={formData.color_hex} color2={formData.color_hex2} size="w-8 h-8" />
+                    <span className="text-xs text-muted-foreground">{formData.color_hex2 ? 'Bicolore' : 'Monocolore'}</span>
                   </div>
                 </div>
               </div>
@@ -299,10 +333,7 @@ export default function FilamentsPage() {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div 
-                        className="w-8 h-8 rounded-sm border border-border"
-                        style={{ backgroundColor: filament.color_hex }}
-                      />
+                      <FilamentColorDot color={filament.color_hex} color2={filament.color_hex2} size="w-8 h-8" />
                       <div>
                         <h3 className="font-heading font-semibold flex items-center gap-2">
                           {filament.material_type}

@@ -11,6 +11,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Switch } from '../components/ui/switch';
 import { Plus, Download, Trash2, ShoppingCart, Cylinder } from 'lucide-react';
 import { toast } from 'sonner';
+import { FilamentColorDot } from '../components/FilamentColorDot';
 
 const MATERIAL_TYPES = ['PLA', 'PETG', 'ABS', 'TPU', 'ASA', 'Nylon', 'PLA+', 'PETG-CF', 'Altro'];
 
@@ -20,6 +21,7 @@ const defaultPurchase = {
   brand: '',
   color: '',
   color_hex: '#000000',
+  color_hex2: '',
   quantity_spools: 1,
   price_total: 25,
   grams_total: 1000,
@@ -165,7 +167,7 @@ export default function PurchasesPage() {
 
                 <div className="grid grid-cols-4 gap-3">
                   <div className="space-y-2">
-                    <Label>Colore HEX</Label>
+                    <Label>Colore 1</Label>
                     <div className="flex gap-1">
                       <Input
                         type="color"
@@ -173,6 +175,20 @@ export default function PurchasesPage() {
                         onChange={(e) => setFormData({...formData, color_hex: e.target.value})}
                         className="w-10 h-9 p-1 cursor-pointer"
                       />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Colore 2</Label>
+                    <div className="flex gap-1 items-center">
+                      <Input
+                        type="color"
+                        value={formData.color_hex2 || '#FFFFFF'}
+                        onChange={(e) => setFormData({...formData, color_hex2: e.target.value})}
+                        className="w-10 h-9 p-1 cursor-pointer"
+                      />
+                      {formData.color_hex2 && (
+                        <button onClick={() => setFormData({...formData, color_hex2: ''})} className="text-xs text-muted-foreground hover:text-destructive">✕</button>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -193,6 +209,8 @@ export default function PurchasesPage() {
                       className="font-mono"
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-4 gap-3">
                   <div className="space-y-2">
                     <Label>Grammi</Label>
                     <Input
@@ -201,6 +219,10 @@ export default function PurchasesPage() {
                       onChange={(e) => setFormData({...formData, grams_total: parseFloat(e.target.value) || 0})}
                       className="font-mono"
                     />
+                  </div>
+                  <div className="col-span-3 flex items-end pb-2">
+                    <FilamentColorDot color={formData.color_hex} color2={formData.color_hex2} size="w-6 h-6" />
+                    <span className="ml-2 text-xs text-muted-foreground">{formData.color_hex2 ? 'Bicolore' : 'Monocolore'}</span>
                   </div>
                 </div>
 
@@ -221,7 +243,7 @@ export default function PurchasesPage() {
                     <div className="text-sm text-muted-foreground">
                       {matchingFilament ? (
                         <div className="flex items-center gap-2 text-emerald-500">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: matchingFilament.color_hex }} />
+                          <FilamentColorDot color={matchingFilament.color_hex} color2={matchingFilament.color_hex2} size="w-3 h-3" />
                           Filamento esistente trovato! Verranno aggiunti {formData.grams_total}g
                         </div>
                       ) : (
@@ -249,7 +271,7 @@ export default function PurchasesPage() {
                                 {filaments.map(f => (
                                   <SelectItem key={f.id} value={f.id}>
                                     <div className="flex items-center gap-2">
-                                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: f.color_hex }} />
+                                      <FilamentColorDot color={f.color_hex} color2={f.color_hex2} size="w-3 h-3" />
                                       {f.material_type} {f.color} ({f.brand}) - {Math.round(f.remaining_grams)}g
                                     </div>
                                   </SelectItem>
