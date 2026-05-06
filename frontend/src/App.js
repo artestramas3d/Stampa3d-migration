@@ -23,6 +23,7 @@ import ProfilePage from "./pages/ProfilePage";
 import BugReportPage from "./pages/BugReportPage";
 import PublicListinoPage from "./pages/PublicListinoPage";
 import LandingPage from "./pages/LandingPage";
+import GuidePage from "./pages/GuidePage";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -82,6 +83,7 @@ function AppRoutes() {
       {/* Public pages - no auth */}
       <Route path="/listino" element={<PublicListinoPage />} />
       <Route path="/landing" element={<LandingPage />} />
+      <Route path="/guide" element={<GuidePage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
