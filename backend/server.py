@@ -752,7 +752,7 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
     return {
         "material_cost": round(material_cost, 2),
         "filaments_details": filaments_details,
-        "total_grams": total_grams,
+        "total_grams": round(total_grams, 2),
         "electricity_cost": round(electricity_cost, 2),
         "depreciation_cost": round(depreciation_cost, 2),
         "accessories_cost": round(accessories_cost, 2),
