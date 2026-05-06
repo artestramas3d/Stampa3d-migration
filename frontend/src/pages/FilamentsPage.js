@@ -219,6 +219,7 @@ export default function FilamentsPage() {
                   <Label>Peso Bobina (g)</Label>
                   <Input
                     type="number"
+                    step="any"
                     value={formData.spool_weight_g}
                     onChange={(e) => setFormData({...formData, spool_weight_g: parseFloat(e.target.value) || 0})}
                     className="font-mono"
@@ -243,6 +244,7 @@ export default function FilamentsPage() {
                   <Label>Grammi Rimanenti</Label>
                   <Input
                     type="number"
+                    step="any"
                     value={formData.remaining_grams || 0}
                     onChange={(e) => setFormData({...formData, remaining_grams: parseFloat(e.target.value) || 0})}
                     className="font-mono"

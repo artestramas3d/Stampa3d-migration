@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Checkbox } from '../components/ui/checkbox';
 import { Badge } from '../components/ui/badge';
-import { Download, Trash2, Receipt, Search, CheckCircle, Clock } from 'lucide-react';
+import { Download, Trash2, Receipt, Search, CheckCircle, Clock, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function SalesPage() {
@@ -16,6 +16,7 @@ export default function SalesPage() {
   const [search, setSearch] = useState('');
   const [monthFilter, setMonthFilter] = useState('all');
   const [paidFilter, setPaidFilter] = useState('all'); // all, paid, unpaid
+  const [sortBy, setSortBy] = useState('date_desc'); // date_desc, date_asc, price_desc, price_asc, profit_desc, profit_asc, name_asc
 
   useEffect(() => {
     loadSales();
@@ -70,6 +71,17 @@ export default function SalesPage() {
       (paidFilter === 'paid' && s.paid) || 
       (paidFilter === 'unpaid' && !s.paid);
     return matchesSearch && matchesMonth && matchesPaid;
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case 'date_asc': return (a.date || '').localeCompare(b.date || '');
+      case 'date_desc': return (b.date || '').localeCompare(a.date || '');
+      case 'price_desc': return (b.sale_price || 0) - (a.sale_price || 0);
+      case 'price_asc': return (a.sale_price || 0) - (b.sale_price || 0);
+      case 'profit_desc': return (b.net_profit || 0) - (a.net_profit || 0);
+      case 'profit_asc': return (a.net_profit || 0) - (b.net_profit || 0);
+      case 'name_asc': return (a.product_name || '').localeCompare(b.product_name || '');
+      default: return 0;
+    }
   });
 
   // Calculate totals - separate paid and unpaid
@@ -173,6 +185,20 @@ export default function SalesPage() {
             <SelectItem value="all">Tutti</SelectItem>
             <SelectItem value="paid">Pagati</SelectItem>
             <SelectItem value="unpaid">Non Pagati</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-full sm:w-48" data-testid="sort-sales">
+            <ArrowUpDown className="w-3.5 h-3.5 mr-1.5" /><SelectValue placeholder="Ordina" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="date_desc">Data (recente)</SelectItem>
+            <SelectItem value="date_asc">Data (vecchio)</SelectItem>
+            <SelectItem value="price_desc">Prezzo (alto)</SelectItem>
+            <SelectItem value="price_asc">Prezzo (basso)</SelectItem>
+            <SelectItem value="profit_desc">Profitto (alto)</SelectItem>
+            <SelectItem value="profit_asc">Profitto (basso)</SelectItem>
+            <SelectItem value="name_asc">Nome (A-Z)</SelectItem>
           </SelectContent>
         </Select>
       </div>

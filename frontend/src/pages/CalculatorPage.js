@@ -449,6 +449,7 @@ export default function CalculatorPage() {
                       </Select>
                       <Input
                         type="number"
+                        step="any"
                         value={f.grams_used}
                         onChange={(e) => updateFilament(index, 'grams_used', parseFloat(e.target.value) || 0)}
                         className="w-16 h-7 font-mono text-xs"

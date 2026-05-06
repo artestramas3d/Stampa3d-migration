@@ -5,7 +5,8 @@ import {
   getSiteSettings, updateSiteSettings,
   getAdminBugReports, getAdminBugScreenshot, updateAdminBugReport,
   getLandingSettings, updateLandingSettings, getContactRequests,
-  getProducts, createProduct, updateProduct, deleteProduct
+  getProducts, createProduct, updateProduct, deleteProduct,
+  getAdminUserProfile
 } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -19,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import {
   Users, Mail, Send, Shield, ShieldCheck, Trash2, CheckCircle,
   XCircle, Newspaper, Copy, Settings2, Bug, Image, Calendar, Clock, Wrench, X, Globe, MessageSquare, Plus,
-  ShoppingBag, Pencil, ImagePlus, Eye, EyeOff, Package, ExternalLink
+  ShoppingBag, Pencil, ImagePlus, Eye, EyeOff, Package, ExternalLink, UserCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Switch } from '../components/ui/switch';
@@ -753,6 +754,22 @@ export default function AdminPanelPage() {
     } catch { toast.error("Errore nell'eliminazione"); }
   };
 
+  const [viewingUser, setViewingUser] = useState(null);
+  const [userProfileData, setUserProfileData] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+
+  const viewUserProfile = async (userId) => {
+    setProfileLoading(true);
+    setViewingUser(userId);
+    try {
+      const data = await getAdminUserProfile(userId);
+      setUserProfileData(data);
+    } catch { toast.error('Errore caricamento profilo'); }
+    finally { setProfileLoading(false); }
+  };
+
+  const closeProfile = () => { setViewingUser(null); setUserProfileData(null); };
+
   const copyLink = (link) => {
     navigator.clipboard.writeText(link);
     toast.success('Link copiato');
@@ -886,6 +903,9 @@ export default function AdminPanelPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => viewUserProfile(user.id)} data-testid={`view-profile-${user.id}`}>
+                              <UserCircle className="w-3 h-3 mr-1" />Profilo
+                            </Button>
                             {!user.email_verified && (
                               <Button size="sm" variant="ghost" className="h-7 text-xs text-emerald-500" onClick={() => handleVerify(user.id)} data-testid={`verify-user-${user.id}`}>
                                 <CheckCircle className="w-3 h-3 mr-1" />Verifica
@@ -906,6 +926,92 @@ export default function AdminPanelPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* User Profile Modal */}
+          {viewingUser && (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={closeProfile}>
+              <div className="bg-card rounded-xl border border-border/40 max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()} data-testid="user-profile-modal">
+                <div className="flex items-center justify-between p-4 border-b border-border/40">
+                  <h3 className="font-heading font-bold text-lg">Profilo Utente</h3>
+                  <button onClick={closeProfile} className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center"><X className="w-4 h-4" /></button>
+                </div>
+                {profileLoading ? (
+                  <div className="p-8 text-center text-muted-foreground">Caricamento...</div>
+                ) : userProfileData && (
+                  <div className="p-4 space-y-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <UserCircle className="w-7 h-7 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-lg">{userProfileData.user.name || 'Senza nome'}</p>
+                        <p className="text-sm text-muted-foreground">{userProfileData.user.email}</p>
+                        <div className="flex gap-2 mt-1">
+                          {userProfileData.user.email_verified && <Badge className="bg-emerald-500/20 text-emerald-500 text-[10px]">Verificato</Badge>}
+                          {userProfileData.user.is_admin && <Badge className="bg-primary/20 text-primary text-[10px]">Admin</Badge>}
+                          <Badge variant="outline" className="text-[10px]">Lingua: {userProfileData.user.language?.toUpperCase()}</Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-3">
+                      <div className="p-3 rounded-md bg-muted/30 text-center">
+                        <p className="text-lg font-bold font-mono">{userProfileData.stats.filaments}</p>
+                        <p className="text-[10px] text-muted-foreground">Filamenti</p>
+                      </div>
+                      <div className="p-3 rounded-md bg-muted/30 text-center">
+                        <p className="text-lg font-bold font-mono">{userProfileData.stats.sales}</p>
+                        <p className="text-[10px] text-muted-foreground">Vendite</p>
+                      </div>
+                      <div className="p-3 rounded-md bg-muted/30 text-center">
+                        <p className="text-lg font-bold font-mono">{userProfileData.stats.purchases}</p>
+                        <p className="text-[10px] text-muted-foreground">Acquisti</p>
+                      </div>
+                      <div className="p-3 rounded-md bg-muted/30 text-center">
+                        <p className="text-lg font-bold font-mono">{userProfileData.stats.printers}</p>
+                        <p className="text-[10px] text-muted-foreground">Stampanti</p>
+                      </div>
+                    </div>
+                    {userProfileData.recent_sales.length > 0 && (
+                      <div>
+                        <p className="text-sm font-semibold mb-2">Ultime Vendite</p>
+                        <div className="space-y-1">
+                          {userProfileData.recent_sales.map(s => (
+                            <div key={s.id} className="flex items-center justify-between text-xs p-2 rounded bg-muted/20">
+                              <span className="font-medium">{s.product_name}</span>
+                              <div className="flex items-center gap-3">
+                                <span className="font-mono">{s.sale_price?.toFixed(2)}</span>
+                                <span className="font-mono text-emerald-500">+{s.profit?.toFixed(2)}</span>
+                                {s.is_paid ? <CheckCircle className="w-3 h-3 text-emerald-500" /> : <Clock className="w-3 h-3 text-yellow-500" />}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {userProfileData.filaments.length > 0 && (
+                      <div>
+                        <p className="text-sm font-semibold mb-2">Filamenti ({userProfileData.filaments.length})</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {userProfileData.filaments.map(f => (
+                            <div key={f.id} className="flex items-center gap-2 p-2 rounded bg-muted/20 text-xs">
+                              <div className="w-4 h-4 rounded-full border border-border/60 shrink-0" style={{ background: f.color_hex2 ? `linear-gradient(135deg, ${f.color_hex} 50%, ${f.color_hex2} 50%)` : f.color_hex }} />
+                              <div className="min-w-0">
+                                <p className="font-medium truncate">{f.material_type} {f.color}</p>
+                                <p className="text-[10px] text-muted-foreground">{f.brand} - {Math.round(f.remaining_grams)}g</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-[10px] text-muted-foreground text-center pt-2">
+                      Registrato: {userProfileData.user.created_at ? new Date(userProfileData.user.created_at).toLocaleString('it-IT') : '-'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         {/* Products Tab */}

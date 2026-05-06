@@ -16,7 +16,7 @@ function BannerSlot({ banners, position }) {
   const filtered = banners.filter(b => b.position === position);
   if (filtered.length === 0) return null;
   return (
-    <div data-testid={`banner-slot-${position}`}>
+    <div data-testid={`banner-slot-${position}`} className="text-center">
       {filtered.map(b => (
         <div key={b.id} className="banner-slot" dangerouslySetInnerHTML={{ __html: b.html_code }} />
       ))}

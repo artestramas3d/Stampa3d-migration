@@ -1310,6 +1310,80 @@ async def admin_delete_user(user_id: str, current_user: dict = Depends(require_a
     await db.accessories.delete_many({"user_id": user_id})
     return {"message": "Utente e dati eliminati"}
 
+# Admin - View User Profile (all their data)
+@api_router.get("/admin/users/{user_id}/profile")
+async def admin_get_user_profile(user_id: str, current_user: dict = Depends(require_admin)):
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+
+    # Get user stats
+    filaments_count = await db.filaments.count_documents({"user_id": user_id})
+    sales_count = await db.sales.count_documents({"user_id": user_id})
+    purchases_count = await db.purchases.count_documents({"user_id": user_id})
+    printers_count = await db.printers.count_documents({"user_id": user_id})
+
+    # Recent sales
+    recent_sales = []
+    async for doc in db.sales.find({"user_id": user_id}).sort("created_at", -1).limit(10):
+        recent_sales.append({
+            "id": str(doc["_id"]),
+            "product_name": doc.get("product_name", ""),
+            "sale_price": doc.get("sale_price", 0),
+            "total_cost": doc.get("total_cost", 0),
+            "profit": doc.get("profit", 0),
+            "is_paid": doc.get("is_paid", False),
+            "created_at": doc.get("created_at", "")
+        })
+
+    # Recent purchases
+    recent_purchases = []
+    async for doc in db.purchases.find({"user_id": user_id}).sort("created_at", -1).limit(10):
+        recent_purchases.append({
+            "id": str(doc["_id"]),
+            "material_type": doc.get("material_type", ""),
+            "brand": doc.get("brand", ""),
+            "color": doc.get("color", ""),
+            "price_total": doc.get("price_total", 0),
+            "grams_total": doc.get("grams_total", 0),
+            "date": doc.get("date", "")
+        })
+
+    # Filaments
+    filaments = []
+    async for doc in db.filaments.find({"user_id": user_id}).sort("created_at", -1):
+        filaments.append({
+            "id": str(doc["_id"]),
+            "material_type": doc.get("material_type", ""),
+            "color": doc.get("color", ""),
+            "brand": doc.get("brand", ""),
+            "color_hex": doc.get("color_hex", "#FFFFFF"),
+            "color_hex2": doc.get("color_hex2", ""),
+            "remaining_grams": doc.get("remaining_grams", 0),
+            "spool_price": doc.get("spool_price", 0)
+        })
+
+    return {
+        "user": {
+            "id": str(user["_id"]),
+            "email": user.get("email", ""),
+            "name": user.get("name", ""),
+            "is_admin": user.get("is_admin", False),
+            "email_verified": user.get("email_verified", False),
+            "language": user.get("language", "it"),
+            "created_at": user.get("created_at", "")
+        },
+        "stats": {
+            "filaments": filaments_count,
+            "sales": sales_count,
+            "purchases": purchases_count,
+            "printers": printers_count
+        },
+        "recent_sales": recent_sales,
+        "recent_purchases": recent_purchases,
+        "filaments": filaments
+    }
+
 # Admin - Email Logs
 @api_router.get("/admin/email-logs")
 async def admin_get_email_logs(current_user: dict = Depends(require_admin)):

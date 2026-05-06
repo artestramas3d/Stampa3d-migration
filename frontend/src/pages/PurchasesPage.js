@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Textarea } from '../components/ui/textarea';
 import { Switch } from '../components/ui/switch';
-import { Plus, Download, Trash2, ShoppingCart, Cylinder } from 'lucide-react';
+import { Plus, Download, Trash2, ShoppingCart, Cylinder, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { FilamentColorDot } from '../components/FilamentColorDot';
 
@@ -37,6 +37,7 @@ export default function PurchasesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formData, setFormData] = useState(defaultPurchase);
   const [linkToExisting, setLinkToExisting] = useState(false);
+  const [sortBy, setSortBy] = useState('date_desc');
 
   useEffect(() => {
     loadData();
@@ -103,6 +104,21 @@ export default function PurchasesPage() {
   const totalGrams = purchases.reduce((sum, p) => sum + (p.grams_total || 0), 0);
   const avgCostPerGram = totalGrams > 0 ? totalSpent / totalGrams : 0;
 
+  // Sort purchases
+  const sortedPurchases = [...purchases].sort((a, b) => {
+    switch (sortBy) {
+      case 'date_asc': return (a.date || '').localeCompare(b.date || '');
+      case 'date_desc': return (b.date || '').localeCompare(a.date || '');
+      case 'price_desc': return (b.price_total || 0) - (a.price_total || 0);
+      case 'price_asc': return (a.price_total || 0) - (b.price_total || 0);
+      case 'grams_desc': return (b.grams_total || 0) - (a.grams_total || 0);
+      case 'grams_asc': return (a.grams_total || 0) - (b.grams_total || 0);
+      case 'material': return (a.material_type || '').localeCompare(b.material_type || '');
+      case 'brand': return (a.brand || '').localeCompare(b.brand || '');
+      default: return 0;
+    }
+  });
+
   return (
     <div className="space-y-6 animate-fadeIn" data-testid="purchases-page">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -111,6 +127,21 @@ export default function PurchasesPage() {
           <p className="text-muted-foreground mt-1">Registra acquisti e aggiorna automaticamente l'inventario</p>
         </div>
         <div className="flex gap-2">
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-40" data-testid="sort-purchases">
+              <ArrowUpDown className="w-3.5 h-3.5 mr-1.5" /><SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date_desc">Data (recente)</SelectItem>
+              <SelectItem value="date_asc">Data (vecchio)</SelectItem>
+              <SelectItem value="price_desc">Prezzo (alto)</SelectItem>
+              <SelectItem value="price_asc">Prezzo (basso)</SelectItem>
+              <SelectItem value="grams_desc">Grammi (alto)</SelectItem>
+              <SelectItem value="grams_asc">Grammi (basso)</SelectItem>
+              <SelectItem value="material">Materiale (A-Z)</SelectItem>
+              <SelectItem value="brand">Brand (A-Z)</SelectItem>
+            </SelectContent>
+          </Select>
           <Button onClick={handleExport} variant="outline" data-testid="export-purchases-btn">
             <Download className="w-4 h-4 mr-2" />
             CSV
@@ -215,6 +246,7 @@ export default function PurchasesPage() {
                     <Label>Grammi</Label>
                     <Input
                       type="number"
+                      step="any"
                       value={formData.grams_total}
                       onChange={(e) => setFormData({...formData, grams_total: parseFloat(e.target.value) || 0})}
                       className="font-mono"
@@ -359,7 +391,7 @@ export default function PurchasesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {purchases.map(purchase => (
+                  {sortedPurchases.map(purchase => (
                     <TableRow key={purchase.id}>
                       <TableCell className="font-mono text-muted-foreground">{purchase.date}</TableCell>
                       <TableCell className="font-semibold">{purchase.material_type}</TableCell>

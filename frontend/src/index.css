@@ -126,7 +126,7 @@
 
 /* Banner slots */
 .banner-slot {
-    @apply w-full overflow-hidden;
+    @apply w-full overflow-hidden flex justify-center items-center;
 }
 
 .banner-slot iframe {
@@ -136,6 +136,8 @@
 .banner-slot img {
     max-width: 100%;
     height: auto;
+    margin: 0 auto;
+    display: block;
 }
 
 .banner-preview iframe {

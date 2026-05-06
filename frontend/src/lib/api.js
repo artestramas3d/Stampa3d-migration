@@ -110,6 +110,7 @@ export const submitContactForm = (data) => api.post('/public/contact', data).the
 export const getLandingSettings = () => api.get('/admin/landing-settings').then(r => r.data);
 export const updateLandingSettings = (data) => api.put('/admin/landing-settings', data).then(r => r.data);
 export const getContactRequests = () => api.get('/admin/contact-requests').then(r => r.data);
+export const getAdminUserProfile = (id) => api.get(`/admin/users/${id}/profile`).then(r => r.data);
 
 // 3MF Import
 export const import3mf = (file) => {
