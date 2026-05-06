@@ -1403,6 +1403,8 @@ async def admin_get_email_logs(current_user: dict = Depends(require_admin)):
 class NewsletterCreate(BaseModel):
     subject: str
     body: str
+    is_html: bool = False
+    recipient_ids: Optional[list] = None  # None or [] = all verified users
     scheduled_at: Optional[str] = None  # ISO date string, None = send immediately
 
 @api_router.get("/admin/newsletters")
@@ -1424,12 +1426,35 @@ async def admin_get_newsletters(current_user: dict = Depends(require_admin)):
 @api_router.post("/admin/newsletters")
 async def admin_create_newsletter(newsletter: NewsletterCreate, current_user: dict = Depends(require_admin)):
     now = datetime.now(timezone.utc).isoformat()
-    
+
+    # Determine recipients
+    async def get_recipients():
+        if newsletter.recipient_ids and len(newsletter.recipient_ids) > 0:
+            # Targeted: specific users
+            users = []
+            for uid in newsletter.recipient_ids:
+                try:
+                    u = await db.users.find_one({"_id": ObjectId(uid)})
+                    if u:
+                        users.append(u["email"])
+                except Exception:
+                    pass
+            return users
+        else:
+            # All verified users
+            emails = []
+            async for u in db.users.find({"email_verified": True}):
+                emails.append(u["email"])
+            async for u in db.users.find({"email_verified": {"$exists": False}}):
+                emails.append(u["email"])
+            return emails
+
     if newsletter.scheduled_at:
-        # Schedule for later
         doc = {
             "subject": newsletter.subject,
             "body": newsletter.body,
+            "is_html": newsletter.is_html,
+            "recipient_ids": newsletter.recipient_ids or [],
             "status": "scheduled",
             "scheduled_at": newsletter.scheduled_at,
             "recipients_count": 0,
@@ -1441,21 +1466,19 @@ async def admin_create_newsletter(newsletter: NewsletterCreate, current_user: di
         doc.pop("_id", None)
         return doc
     else:
-        # Send immediately
-        users = []
-        async for u in db.users.find({"email_verified": True}):
-            users.append(u)
-        async for u in db.users.find({"email_verified": {"$exists": False}}):
-            users.append(u)
-        
-        recipients = [u["email"] for u in users]
-        
+        recipients = await get_recipients()
+
         for email in recipients:
-            send_email(to_email=email, subject=newsletter.subject, body=newsletter.body)
-        
+            if newsletter.is_html:
+                send_html_email(to_email=email, subject=newsletter.subject, html_content=newsletter.body)
+            else:
+                send_email(to_email=email, subject=newsletter.subject, body=newsletter.body)
+
         doc = {
             "subject": newsletter.subject,
             "body": newsletter.body,
+            "is_html": newsletter.is_html,
+            "recipient_ids": newsletter.recipient_ids or [],
             "status": "sent",
             "recipients_count": len(recipients),
             "recipients": recipients,
@@ -1782,119 +1805,267 @@ async def get_contact_requests(current_user: dict = Depends(require_admin)):
 
 # ========== BAMBU STUDIO .3MF IMPORT ==========
 
+def _parse_time_string(time_str):
+    """Parse time strings like '2h 36m 25s', '1h 30m', etc. Returns seconds."""
+    secs = 0
+    h = re.search(r'(\d+)\s*h', time_str)
+    m = re.search(r'(\d+)\s*m', time_str)
+    s = re.search(r'(\d+)\s*s', time_str)
+    if h: secs += int(h.group(1)) * 3600
+    if m: secs += int(m.group(1)) * 60
+    if s: secs += int(s.group(1))
+    return secs
+
+def _parse_3mf_zip(zf):
+    """Multi-slicer 3MF parser: Bambu Studio, OrcaSlicer, Creality Print, PrusaSlicer, Cura"""
+    result = {"plates": [], "total_time_seconds": 0, "total_filament_grams": 0}
+    file_list = zf.namelist()
+    logger.info(f"3MF files: {file_list}")
+
+    # === Strategy 1: Bambu/Orca plate JSON (Metadata/plate_*.json) ===
+    for name in file_list:
+        if name.startswith('Metadata/plate_') and name.endswith('.json'):
+            try:
+                plate_data = json.loads(zf.read(name).decode('utf-8'))
+                plate_info = {"plate": name, "print_time_seconds": 0, "filament_grams": 0, "filament_details": []}
+
+                raw_time = plate_data.get("prediction", plate_data.get("print_time", 0))
+                if isinstance(raw_time, (int, float)):
+                    plate_info["print_time_seconds"] = int(raw_time)
+                elif isinstance(raw_time, str):
+                    plate_info["print_time_seconds"] = _parse_time_string(raw_time)
+
+                filament_data = plate_data.get("filament", [])
+                total_grams = 0
+                items = filament_data if isinstance(filament_data, list) else (filament_data.values() if isinstance(filament_data, dict) else [])
+                for f in items:
+                    if not isinstance(f, dict):
+                        continue
+                    g = float(f.get("used_g", f.get("g", 0)) or 0)
+                    # If grams is 0 but we have length in mm, calculate grams (density * volume)
+                    if g == 0:
+                        used_m = float(f.get("used_m", 0) or 0)
+                        if used_m > 0:
+                            diameter = float(f.get("diameter", 1.75) or 1.75)
+                            density = float(f.get("density", 1.24) or 1.24)
+                            radius_cm = (diameter / 2) / 10
+                            length_cm = used_m / 10
+                            volume_cm3 = 3.14159 * radius_cm * radius_cm * length_cm
+                            g = volume_cm3 * density
+                    total_grams += g
+                    plate_info["filament_details"].append({
+                        "type": f.get("type", f.get("filament_type", "")),
+                        "color": f.get("color", ""),
+                        "grams": round(g, 1)
+                    })
+
+                if total_grams == 0:
+                    weight = plate_data.get("weight", 0)
+                    if weight:
+                        total_grams = float(weight)
+
+                plate_info["filament_grams"] = round(total_grams, 1)
+                plate_info["print_time_hours"] = round(plate_info["print_time_seconds"] / 3600, 2)
+                result["plates"].append(plate_info)
+                result["total_time_seconds"] += plate_info["print_time_seconds"]
+                result["total_filament_grams"] += total_grams
+            except Exception as e:
+                logger.warning(f"Errore parsing plate {name}: {e}")
+
+    if result["total_time_seconds"] > 0 or result["total_filament_grams"] > 0:
+        return result
+
+    # === Strategy 2: Bambu/Orca slice_info.config (comment-style metadata) ===
+    for name in file_list:
+        if 'slice_info' in name.lower():
+            try:
+                content = zf.read(name).decode('utf-8', errors='ignore')
+                time_match = re.search(r'estimated printing time.*?=\s*(.+)', content)
+                weight_match = re.search(r'total filament used \[g\]\s*=\s*([\d.]+)', content)
+                length_match = re.search(r'filament used \[mm\]\s*=\s*([\d.]+)', content)
+                if time_match:
+                    result["total_time_seconds"] = _parse_time_string(time_match.group(1))
+                if weight_match:
+                    g = float(weight_match.group(1))
+                    if g > 0:
+                        result["total_filament_grams"] = g
+                if result["total_filament_grams"] == 0 and length_match:
+                    length_mm = float(length_match.group(1))
+                    radius_cm = (1.75 / 2) / 10
+                    length_cm = length_mm / 10
+                    result["total_filament_grams"] = round(3.14159 * radius_cm * radius_cm * length_cm * 1.24, 1)
+                if result["total_time_seconds"] > 0 or result["total_filament_grams"] > 0:
+                    result["plates"].append({
+                        "plate": name,
+                        "print_time_seconds": result["total_time_seconds"],
+                        "print_time_hours": round(result["total_time_seconds"] / 3600, 2),
+                        "filament_grams": result["total_filament_grams"],
+                        "filament_details": []
+                    })
+                    return result
+            except Exception as e:
+                logger.warning(f"Errore parsing slice_info {name}: {e}")
+
+    # === Strategy 3: Creality Print PrintTicket.xml ===
+    for name in file_list:
+        if 'printticket' in name.lower() or name == '3D/PrintTicket.xml':
+            try:
+                import xml.etree.ElementTree as ET
+                xml_content = zf.read(name).decode('utf-8', errors='ignore')
+                root = ET.fromstring(xml_content)
+                # Search recursively for filament and time data
+                for elem in root.iter():
+                    tag = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+                    if tag == 'Weight' and elem.text:
+                        try:
+                            result["total_filament_grams"] = round(float(elem.text), 1)
+                        except ValueError:
+                            pass
+                    if tag == 'EstimatedPrintTime' and elem.text:
+                        try:
+                            result["total_time_seconds"] = int(float(elem.text))
+                        except ValueError:
+                            pass
+                if result["total_time_seconds"] > 0 or result["total_filament_grams"] > 0:
+                    result["plates"].append({
+                        "plate": name,
+                        "print_time_seconds": result["total_time_seconds"],
+                        "print_time_hours": round(result["total_time_seconds"] / 3600, 2),
+                        "filament_grams": result["total_filament_grams"],
+                        "filament_details": []
+                    })
+                    return result
+            except Exception as e:
+                logger.warning(f"Errore parsing PrintTicket {name}: {e}")
+
+    # === Strategy 4: Creality Print XML model metadata ===
+    for name in file_list:
+        if name.endswith('.model') or (name.endswith('.xml') and '3d' in name.lower()):
+            try:
+                import xml.etree.ElementTree as ET
+                xml_content = zf.read(name).decode('utf-8', errors='ignore')
+                root = ET.fromstring(xml_content)
+                for elem in root.iter():
+                    tag = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+                    if tag == 'metadata' or tag == 'meta':
+                        attr_name = elem.get('name', '').lower()
+                        val = elem.text or elem.get('value', '')
+                        if not val:
+                            continue
+                        if 'weight' in attr_name and 'filament' in attr_name:
+                            try:
+                                result["total_filament_grams"] = round(float(val), 1)
+                            except ValueError:
+                                pass
+                        if 'time' in attr_name and ('print' in attr_name or 'estimated' in attr_name):
+                            try:
+                                result["total_time_seconds"] = int(float(val))
+                            except ValueError:
+                                result["total_time_seconds"] = _parse_time_string(val)
+            except Exception:
+                pass
+
+    if result["total_time_seconds"] > 0 or result["total_filament_grams"] > 0:
+        result["plates"].append({
+            "plate": "xml_metadata",
+            "print_time_seconds": result["total_time_seconds"],
+            "print_time_hours": round(result["total_time_seconds"] / 3600, 2),
+            "filament_grams": result["total_filament_grams"],
+            "filament_details": []
+        })
+        return result
+
+    # === Strategy 5: GCode comments (all slicers) ===
+    for name in file_list:
+        if name.endswith('.gcode'):
+            try:
+                gcode = zf.read(name).decode('utf-8', errors='ignore')[:50000]  # Read first 50KB
+                time_secs = 0
+                weight_g = 0.0
+
+                # Bambu/Orca: "; estimated printing time (normal mode) = 2h 36m 25s"
+                t1 = re.search(r'; estimated printing time.*?=\s*(.+)', gcode)
+                if t1:
+                    time_secs = _parse_time_string(t1.group(1))
+
+                # Creality: ";TIME:9185" or ";TIME:<9185.19>"
+                if time_secs == 0:
+                    t2 = re.search(r';TIME:<?(\d+\.?\d*)>?', gcode)
+                    if t2:
+                        time_secs = int(float(t2.group(1)))
+
+                # Cura/PrusaSlicer: ";TIME_ELAPSED:9185"
+                if time_secs == 0:
+                    t3 = re.search(r';TIME_ELAPSED:([\d.]+)', gcode)
+                    if t3:
+                        time_secs = int(float(t3.group(1)))
+
+                # PrusaSlicer: "; estimated printing time = 2h 36m 25s"
+                if time_secs == 0:
+                    t4 = re.search(r'; estimated printing time\s*=\s*(.+)', gcode)
+                    if t4:
+                        time_secs = _parse_time_string(t4.group(1))
+
+                # Bambu: "; total filament used [g] = 43.85"
+                w1 = re.search(r'; total filament used \[g\]\s*=\s*([\d.]+)', gcode)
+                if w1:
+                    weight_g = float(w1.group(1))
+
+                # Creality: ";Filament Weight:25.58"
+                if weight_g == 0:
+                    w2 = re.search(r';Filament Weight:([\d.]+)', gcode)
+                    if w2:
+                        weight_g = float(w2.group(1))
+
+                # Fallback: ";Filament used: 8.57m" or "; filament used [mm] = 14664"
+                if weight_g == 0:
+                    w3 = re.search(r';Filament used:([\d.]+)m', gcode)
+                    w4 = re.search(r'; filament used \[mm\]\s*=\s*([\d.]+)', gcode)
+                    length_mm = 0
+                    if w3:
+                        length_mm = float(w3.group(1)) * 1000
+                    elif w4:
+                        length_mm = float(w4.group(1))
+                    if length_mm > 0:
+                        radius_cm = (1.75 / 2) / 10
+                        length_cm = length_mm / 10
+                        weight_g = round(3.14159 * radius_cm * radius_cm * length_cm * 1.24, 1)
+
+                if time_secs > 0 or weight_g > 0:
+                    result["total_time_seconds"] = time_secs
+                    result["total_filament_grams"] = round(weight_g, 1)
+                    result["plates"].append({
+                        "plate": name,
+                        "print_time_seconds": time_secs,
+                        "print_time_hours": round(time_secs / 3600, 2),
+                        "filament_grams": round(weight_g, 1),
+                        "filament_details": []
+                    })
+                    return result
+            except Exception:
+                pass
+
+    return result
+
 @api_router.post("/import/3mf")
 async def import_3mf(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
-    """Parse a Bambu Studio .3mf file and extract print time + filament usage"""
+    """Parse .3mf file from Bambu Studio, OrcaSlicer, Creality Print, PrusaSlicer, Cura"""
     if not file.filename.endswith('.3mf'):
         raise HTTPException(status_code=400, detail="Il file deve essere in formato .3mf")
 
     content = await file.read()
-    if len(content) > 50 * 1024 * 1024:  # 50MB limit
+    if len(content) > 50 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File troppo grande (max 50MB)")
 
     try:
-        result = {"plates": [], "total_time_seconds": 0, "total_filament_grams": 0}
         with zipfile.ZipFile(io.BytesIO(content), 'r') as zf:
-            # Look for plate JSON files
-            for name in zf.namelist():
-                if name.startswith('Metadata/plate_') and name.endswith('.json'):
-                    try:
-                        plate_data = json.loads(zf.read(name).decode('utf-8'))
-                        plate_info = {"plate": name}
-
-                        # Extract print time (can be seconds or string like "1h 30m")
-                        raw_time = plate_data.get("prediction", plate_data.get("print_time", 0))
-                        if isinstance(raw_time, (int, float)):
-                            plate_info["print_time_seconds"] = int(raw_time)
-                        elif isinstance(raw_time, str):
-                            # Parse "Xh Ym Zs" format
-                            secs = 0
-                            h = re.search(r'(\d+)h', raw_time)
-                            m = re.search(r'(\d+)m', raw_time)
-                            s = re.search(r'(\d+)s', raw_time)
-                            if h: secs += int(h.group(1)) * 3600
-                            if m: secs += int(m.group(1)) * 60
-                            if s: secs += int(s.group(1))
-                            plate_info["print_time_seconds"] = secs
-                        else:
-                            plate_info["print_time_seconds"] = 0
-
-                        # Extract filament usage
-                        filament_data = plate_data.get("filament", [])
-                        total_grams = 0
-                        filament_details = []
-                        if isinstance(filament_data, list):
-                            for f in filament_data:
-                                if isinstance(f, dict):
-                                    g = f.get("used_g", f.get("g", 0))
-                                    total_grams += float(g) if g else 0
-                                    filament_details.append({
-                                        "type": f.get("type", f.get("filament_type", "")),
-                                        "color": f.get("color", ""),
-                                        "grams": round(float(g) if g else 0, 1)
-                                    })
-                        elif isinstance(filament_data, dict):
-                            for key, f in filament_data.items():
-                                if isinstance(f, dict):
-                                    g = f.get("used_g", f.get("g", 0))
-                                    total_grams += float(g) if g else 0
-                                    filament_details.append({
-                                        "type": f.get("type", ""),
-                                        "color": f.get("color", ""),
-                                        "grams": round(float(g) if g else 0, 1)
-                                    })
-
-                        # Also check weight field
-                        if total_grams == 0:
-                            weight = plate_data.get("weight", 0)
-                            if weight:
-                                total_grams = float(weight)
-
-                        plate_info["filament_grams"] = round(total_grams, 1)
-                        plate_info["filament_details"] = filament_details
-
-                        hours = plate_info["print_time_seconds"] / 3600
-                        plate_info["print_time_hours"] = round(hours, 2)
-
-                        result["plates"].append(plate_info)
-                        result["total_time_seconds"] += plate_info["print_time_seconds"]
-                        result["total_filament_grams"] += total_grams
-                    except Exception as e:
-                        logger.warning(f"Errore parsing plate {name}: {e}")
-
-            # Also try to extract from gcode comments if no plate JSON found
-            if not result["plates"]:
-                for name in zf.namelist():
-                    if name.endswith('.gcode'):
-                        try:
-                            gcode = zf.read(name).decode('utf-8', errors='ignore')
-                            # Look for Bambu Studio comments
-                            time_match = re.search(r'; estimated printing time.*?=\s*(\d+)h?\s*(\d+)m?\s*(\d+)?s?', gcode)
-                            weight_match = re.search(r'; total filament used \[g\]\s*=\s*([\d.]+)', gcode)
-                            if time_match:
-                                h = int(time_match.group(1) or 0)
-                                m = int(time_match.group(2) or 0)
-                                s = int(time_match.group(3) or 0)
-                                total_secs = h * 3600 + m * 60 + s
-                                result["total_time_seconds"] = total_secs
-                            if weight_match:
-                                result["total_filament_grams"] = round(float(weight_match.group(1)), 1)
-                            if time_match or weight_match:
-                                result["plates"].append({
-                                    "plate": name,
-                                    "print_time_seconds": result["total_time_seconds"],
-                                    "print_time_hours": round(result["total_time_seconds"] / 3600, 2),
-                                    "filament_grams": result["total_filament_grams"],
-                                    "filament_details": []
-                                })
-                        except Exception:
-                            pass
+            result = _parse_3mf_zip(zf)
 
         result["total_time_hours"] = round(result["total_time_seconds"] / 3600, 2)
         result["total_filament_grams"] = round(result["total_filament_grams"], 1)
 
         if not result["plates"]:
-            raise HTTPException(status_code=400, detail="Nessun dato di stampa trovato nel file .3mf. Assicurati di aver eseguito lo slicing in Bambu Studio prima di esportare.")
+            raise HTTPException(status_code=400, detail="Nessun dato di stampa trovato nel file .3mf. Assicurati di aver eseguito lo slicing prima di esportare il file.")
 
         return result
     except zipfile.BadZipFile:
@@ -1949,14 +2120,32 @@ async def newsletter_scheduler():
             now = datetime.now(timezone.utc).isoformat()
             scheduled = await db.newsletters.find({"status": "scheduled", "scheduled_at": {"$lte": now}}).to_list(100)
             for nl in scheduled:
-                users = []
-                async for u in db.users.find({"email_verified": True}):
-                    users.append(u)
-                async for u in db.users.find({"email_verified": {"$exists": False}}):
-                    users.append(u)
-                recipients = [u["email"] for u in users]
+                # Check if targeted or all users
+                recipient_ids = nl.get("recipient_ids", [])
+                if recipient_ids and len(recipient_ids) > 0:
+                    emails = []
+                    for uid in recipient_ids:
+                        try:
+                            u = await db.users.find_one({"_id": ObjectId(uid)})
+                            if u:
+                                emails.append(u["email"])
+                        except Exception:
+                            pass
+                    recipients = emails
+                else:
+                    users = []
+                    async for u in db.users.find({"email_verified": True}):
+                        users.append(u)
+                    async for u in db.users.find({"email_verified": {"$exists": False}}):
+                        users.append(u)
+                    recipients = [u["email"] for u in users]
+
+                is_html = nl.get("is_html", False)
                 for email in recipients:
-                    send_email(to_email=email, subject=nl["subject"], body=nl["body"])
+                    if is_html:
+                        send_html_email(to_email=email, subject=nl["subject"], html_content=nl["body"])
+                    else:
+                        send_email(to_email=email, subject=nl["subject"], body=nl["body"])
                 await db.newsletters.update_one(
                     {"_id": nl["_id"]},
                     {"$set": {"status": "sent", "recipients_count": len(recipients), "recipients": recipients, "sent_at": now}}
@@ -1964,7 +2153,7 @@ async def newsletter_scheduler():
                 logger.info(f"Newsletter programmata inviata: {nl['subject']} a {len(recipients)} destinatari")
         except Exception as e:
             logger.error(f"Errore scheduler newsletter: {e}")
-        await asyncio.sleep(60)  # Check every 60 seconds
+        await asyncio.sleep(60)
 
 @app.on_event("startup")
 async def startup():

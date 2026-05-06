@@ -116,32 +116,56 @@ function SiteSettingsTab() {
   );
 }
 
-function NewsletterTab({ newsletters, onReload }) {
+function NewsletterTab({ newsletters, onReload, users }) {
   const [nlSubject, setNlSubject] = useState('');
   const [nlBody, setNlBody] = useState('');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('09:00');
   const [isScheduled, setIsScheduled] = useState(false);
   const [sending, setSending] = useState(false);
+  const [isHtml, setIsHtml] = useState(true);
+  const [recipientMode, setRecipientMode] = useState('all'); // 'all' or 'selected'
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [showPreview, setShowPreview] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
+  const editorRef = useRef(null);
+
+  const execCmd = (cmd, val = null) => {
+    editorRef.current?.focus();
+    document.execCommand(cmd, false, val);
+  };
+
+  const getEditorHtml = () => editorRef.current?.innerHTML || '';
 
   const handleSend = async () => {
-    if (!nlSubject || !nlBody) { toast.error('Compila oggetto e testo'); return; }
+    const body = isHtml ? getEditorHtml() : nlBody;
+    if (!nlSubject || !body) { toast.error('Compila oggetto e contenuto'); return; }
     setSending(true);
     try {
       let scheduled_at = null;
       if (isScheduled && scheduledDate) {
         scheduled_at = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString();
       }
-      const res = await sendAdminNewsletter({ subject: nlSubject, body: nlBody, scheduled_at });
+      const payload = {
+        subject: nlSubject,
+        body: body,
+        is_html: isHtml,
+        recipient_ids: recipientMode === 'selected' ? selectedUserIds : [],
+        scheduled_at
+      };
+      const res = await sendAdminNewsletter(payload);
       if (res.status === 'scheduled') {
         toast.success('Newsletter programmata!');
       } else {
-        toast.success(`Newsletter inviata a ${res.recipients_count} utenti`);
+        toast.success(`Newsletter inviata a ${res.recipients_count} destinatari`);
       }
       setNlSubject('');
       setNlBody('');
+      if (editorRef.current) editorRef.current.innerHTML = '';
       setScheduledDate('');
       setIsScheduled(false);
+      setSelectedUserIds([]);
+      setRecipientMode('all');
       onReload();
     } catch { toast.error("Errore nell'invio"); }
     finally { setSending(false); }
@@ -156,6 +180,25 @@ function NewsletterTab({ newsletters, onReload }) {
     } catch { toast.error('Errore'); }
   };
 
+  const toggleUser = (userId) => {
+    setSelectedUserIds(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
+  };
+
+  const selectAllUsers = () => {
+    if (selectedUserIds.length === users.length) {
+      setSelectedUserIds([]);
+    } else {
+      setSelectedUserIds(users.map(u => u.id));
+    }
+  };
+
+  const filteredUsers = users.filter(u =>
+    u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
+    (u.name || '').toLowerCase().includes(userSearch.toLowerCase())
+  );
+
+  const recipientCount = recipientMode === 'all' ? users.length : selectedUserIds.length;
+
   return (
     <div className="space-y-4">
       <Card className="border-border/40">
@@ -165,17 +208,180 @@ function NewsletterTab({ newsletters, onReload }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-xs text-muted-foreground">
-            La newsletter verrà inviata a tutti gli utenti con email verificata via SMTP.
-          </p>
+          {/* Subject */}
           <div className="space-y-1">
             <Label className="text-xs">Oggetto</Label>
             <Input value={nlSubject} onChange={e => setNlSubject(e.target.value)} placeholder="Es. Novità del mese!" className="h-9" data-testid="newsletter-subject" />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Testo</Label>
-            <Textarea value={nlBody} onChange={e => setNlBody(e.target.value)} placeholder="Scrivi il contenuto della newsletter..." rows={6} data-testid="newsletter-body" />
+
+          {/* Recipients */}
+          <div className="space-y-2">
+            <Label className="text-xs flex items-center gap-2">
+              <Users className="w-3 h-3" /> Destinatari
+            </Label>
+            <div className="flex gap-2">
+              <Button
+                variant={recipientMode === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setRecipientMode('all')}
+                data-testid="recipients-all-btn"
+              >
+                <Users className="w-3 h-3 mr-1" /> Tutti ({users.length})
+              </Button>
+              <Button
+                variant={recipientMode === 'selected' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setRecipientMode('selected')}
+                data-testid="recipients-selected-btn"
+              >
+                <UserCircle className="w-3 h-3 mr-1" /> Seleziona
+              </Button>
+            </div>
+            {recipientMode === 'selected' && (
+              <div className="p-3 rounded-md bg-muted/30 border border-border/40 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Cerca utente..."
+                    value={userSearch}
+                    onChange={e => setUserSearch(e.target.value)}
+                    className="h-7 text-xs flex-1"
+                    data-testid="recipient-search"
+                  />
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={selectAllUsers}>
+                    {selectedUserIds.length === users.length ? 'Deseleziona' : 'Seleziona'} tutti
+                  </Button>
+                </div>
+                <div className="max-h-36 overflow-y-auto space-y-0.5">
+                  {filteredUsers.map(u => (
+                    <label key={u.id} className="flex items-center gap-2 p-1.5 rounded-sm hover:bg-muted/50 cursor-pointer text-xs" data-testid={`recipient-user-${u.id}`}>
+                      <input
+                        type="checkbox"
+                        checked={selectedUserIds.includes(u.id)}
+                        onChange={() => toggleUser(u.id)}
+                        className="rounded"
+                      />
+                      <span className="font-medium">{u.name || 'N/A'}</span>
+                      <span className="text-muted-foreground font-mono">{u.email}</span>
+                      {u.email_verified && <CheckCircle className="w-3 h-3 text-emerald-500 shrink-0" />}
+                    </label>
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  {selectedUserIds.length} utente/i selezionato/i
+                </p>
+              </div>
+            )}
           </div>
+
+          {/* Editor mode toggle */}
+          <div className="flex items-center gap-3">
+            <Label className="text-xs">Modalità:</Label>
+            <div className="flex gap-1">
+              <Button
+                variant={isHtml ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setIsHtml(true)}
+                data-testid="mode-html-btn"
+              >
+                Formattato
+              </Button>
+              <Button
+                variant={!isHtml ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setIsHtml(false)}
+                data-testid="mode-text-btn"
+              >
+                Testo Semplice
+              </Button>
+            </div>
+          </div>
+
+          {/* Content editor */}
+          {isHtml ? (
+            <div className="space-y-1">
+              <Label className="text-xs">Contenuto</Label>
+              {/* Toolbar */}
+              <div className="flex flex-wrap gap-1 p-1.5 rounded-t-md border border-border/40 bg-muted/20" data-testid="editor-toolbar">
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => execCmd('bold')} title="Grassetto">
+                  <span className="font-bold text-xs">B</span>
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => execCmd('italic')} title="Corsivo">
+                  <span className="italic text-xs">I</span>
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => execCmd('underline')} title="Sottolineato">
+                  <span className="underline text-xs">U</span>
+                </Button>
+                <div className="w-px h-5 bg-border/40 self-center mx-0.5" />
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => execCmd('formatBlock', 'h2')} title="Titolo">
+                  <span className="font-bold text-[10px]">H2</span>
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => execCmd('formatBlock', 'h3')} title="Sottotitolo">
+                  <span className="font-bold text-[10px]">H3</span>
+                </Button>
+                <div className="w-px h-5 bg-border/40 self-center mx-0.5" />
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => execCmd('insertUnorderedList')} title="Elenco puntato">
+                  <span className="text-xs">&#8226;</span>
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => execCmd('insertOrderedList')} title="Elenco numerato">
+                  <span className="text-xs">1.</span>
+                </Button>
+                <div className="w-px h-5 bg-border/40 self-center mx-0.5" />
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                  const url = prompt('URL del link:');
+                  if (url) execCmd('createLink', url);
+                }} title="Inserisci link">
+                  <ExternalLink className="w-3 h-3" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => execCmd('removeFormat')} title="Rimuovi formattazione">
+                  <X className="w-3 h-3" />
+                </Button>
+                <div className="w-px h-5 bg-border/40 self-center mx-0.5" />
+                <label className="flex items-center gap-1 cursor-pointer" title="Colore testo">
+                  <span className="text-xs">A</span>
+                  <input type="color" className="w-5 h-5 cursor-pointer border-0 p-0 bg-transparent" defaultValue="#f97316" onChange={(e) => execCmd('foreColor', e.target.value)} />
+                </label>
+              </div>
+              {/* Editable area */}
+              <div
+                ref={editorRef}
+                contentEditable
+                data-testid="newsletter-editor"
+                className="min-h-[180px] max-h-[350px] overflow-y-auto p-3 rounded-b-md border border-t-0 border-border/40 bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+                style={{ lineHeight: '1.6' }}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  const text = e.clipboardData.getData('text/html') || e.clipboardData.getData('text/plain');
+                  document.execCommand('insertHTML', false, text);
+                }}
+              />
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <Label className="text-xs">Testo</Label>
+              <Textarea value={nlBody} onChange={e => setNlBody(e.target.value)} placeholder="Scrivi il contenuto della newsletter..." rows={8} data-testid="newsletter-body" />
+            </div>
+          )}
+
+          {/* Preview button */}
+          {isHtml && (
+            <Button variant="outline" size="sm" onClick={() => setShowPreview(!showPreview)} data-testid="preview-btn">
+              <Eye className="w-3.5 h-3.5 mr-1.5" />
+              {showPreview ? 'Nascondi' : 'Mostra'} Anteprima
+            </Button>
+          )}
+          {showPreview && isHtml && (
+            <div className="p-4 rounded-md border border-border/40 bg-white text-black">
+              <p className="text-xs text-gray-400 mb-2">Anteprima Email:</p>
+              <div
+                className="prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: getEditorHtml() }}
+              />
+            </div>
+          )}
+
+          {/* Schedule */}
           <div className="flex items-center gap-3">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={isScheduled} onChange={e => setIsScheduled(e.target.checked)} className="rounded" data-testid="newsletter-schedule-toggle" />
@@ -194,17 +400,25 @@ function NewsletterTab({ newsletters, onReload }) {
               </div>
             </div>
           )}
-          <Button onClick={handleSend} disabled={sending || !nlSubject || !nlBody || (isScheduled && !scheduledDate)} data-testid="send-newsletter-btn">
-            <Send className="w-4 h-4 mr-2" />
-            {sending ? 'Invio...' : isScheduled ? 'Programma Newsletter' : 'Invia Subito'}
-          </Button>
+
+          {/* Send button */}
+          <div className="flex items-center gap-3">
+            <Button onClick={handleSend} disabled={sending || !nlSubject || (isHtml ? false : !nlBody) || (isScheduled && !scheduledDate) || (recipientMode === 'selected' && selectedUserIds.length === 0)} data-testid="send-newsletter-btn">
+              <Send className="w-4 h-4 mr-2" />
+              {sending ? 'Invio...' : isScheduled ? 'Programma Newsletter' : `Invia a ${recipientCount} destinatari`}
+            </Button>
+            {recipientMode === 'selected' && selectedUserIds.length === 0 && (
+              <p className="text-xs text-destructive">Seleziona almeno un destinatario</p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
+      {/* Newsletter History */}
       <Card className="border-border/40">
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-heading flex items-center gap-2">
-            <Send className="w-4 h-4" /> Newsletter ({newsletters.length})
+            <Send className="w-4 h-4" /> Storico Newsletter ({newsletters.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -231,7 +445,7 @@ function NewsletterTab({ newsletters, onReload }) {
                           <Badge variant="outline" className="text-[10px]">{nl.recipients_count} destinatari</Badge>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap line-clamp-2">{nl.body}</p>
+                      <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap line-clamp-2">{nl.body?.replace(/<[^>]*>/g, '').substring(0, 120)}</p>
                       {nl.scheduled_at && nl.status === 'scheduled' && (
                         <p className="text-xs text-yellow-500 mt-1">
                           <Calendar className="w-3 h-3 inline mr-1" />
@@ -1031,7 +1245,7 @@ export default function AdminPanelPage() {
 
         {/* Newsletter Tab */}
         <TabsContent value="newsletter">
-          <NewsletterTab newsletters={newsletters} onReload={loadAll} />
+          <NewsletterTab newsletters={newsletters} onReload={loadAll} users={users} />
         </TabsContent>
 
         {/* Bug Reports Tab */}
