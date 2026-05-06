@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { LanguageSelector } from '../components/LanguageSelector';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -35,6 +36,9 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-heading font-bold tracking-tight">Artes&Tramas</h1>
           <p className="text-muted-foreground text-sm mt-1">Calcolatore</p>
+          <div className="flex justify-center mt-3">
+            <LanguageSelector />
+          </div>
         </div>
 
         <Card className="border-border/40">

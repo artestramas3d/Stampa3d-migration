@@ -37,6 +37,7 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
 29. **Ordinamento Frontend** (06/04/2026): Sorting per Vendite e Acquisti
 30. **Guida Utente PDF** (06/04/2026): Pagina /guide stampabile multilingua (IT, EN, DE, FR)
 31. **Fix Input Decimali** (06/05/2026): Componente DecimalInput riutilizzabile per gestire correttamente numeri decimali in tutti gli input (Calcolatore, Filamenti, Acquisti). Supporta separatore punto e virgola.
+32. **Selettore Lingua pre-login** (06/05/2026): Componente LanguageSelector (IT/EN/ES/FR) aggiunto a Login, Registrazione e Password Dimenticata. Scelta salvata in localStorage.
 
 ## Note Importanti
 - SMTP REALE: smtps.aruba.it, preventivi a info@artestramas3d.it

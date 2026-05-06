@@ -7,6 +7,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { ArrowLeft, Mail } from 'lucide-react';
+import { LanguageSelector } from '../components/LanguageSelector';
 
 export default function ForgotPasswordPage() {
   const { t } = useLang();
@@ -34,6 +35,9 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-heading font-bold tracking-tight">Artes&Tramas</h1>
+          <div className="flex justify-center mt-3">
+            <LanguageSelector />
+          </div>
         </div>
 
         <Card className="border-border/40">
