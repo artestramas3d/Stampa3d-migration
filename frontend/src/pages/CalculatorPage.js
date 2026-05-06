@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { FilamentColorDot } from '../components/FilamentColorDot';
+import { DecimalInput } from '../components/DecimalInput';
 
 // Helper functions for time conversion
 const hoursToHM = (hours) => {
@@ -447,12 +448,11 @@ export default function CalculatorPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Input
-                        type="number"
-                        step="any"
+                      <DecimalInput
                         value={f.grams_used}
-                        onChange={(e) => updateFilament(index, 'grams_used', parseFloat(e.target.value) || 0)}
+                        onChange={(num) => updateFilament(index, 'grams_used', num)}
                         className="w-16 h-7 font-mono text-xs"
+                        data-testid={`grams-input-${index}`}
                       />
                       <span className="text-[10px] text-muted-foreground">g</span>
                       {formData.filaments.length > 1 && (
@@ -583,10 +583,9 @@ export default function CalculatorPage() {
               {useManualPrice ? (
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Prezzo per unità (€)</Label>
-                  <Input
-                    type="number" step="0.01"
+                  <DecimalInput
                     value={formData.manual_price || ''}
-                    onChange={(e) => setFormData({...formData, manual_price: parseFloat(e.target.value) || null})}
+                    onChange={(num) => setFormData(prev => ({...prev, manual_price: num > 0 ? num : null}))}
                     placeholder="Es. 15.00"
                     className="h-8 font-mono text-xs"
                     data-testid="manual-price-input"

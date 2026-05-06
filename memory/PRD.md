@@ -33,6 +33,10 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
 25. **Import Bambu Studio .3mf** (06/04/2026): Upload file .3mf nel calcolatore, estrae tempo stampa e grammi filamento dal metadata. Disponibile a tutti gli utenti.
 26. **Admin Landing Settings**: Configura hero, about, servizi, contatti e social dal Pannello Admin
 27. **Admin Preventivi**: Visualizza richieste preventivo dal form pubblico
+28. **Filamenti Bicolore** (06/04/2026): Supporto dual-color con split diagonale UI (color_hex2) in Inventario, Calcolatore, Acquisti, Vendite
+29. **Ordinamento Frontend** (06/04/2026): Sorting per Vendite e Acquisti
+30. **Guida Utente PDF** (06/04/2026): Pagina /guide stampabile multilingua (IT, EN, DE, FR)
+31. **Fix Input Decimali** (06/05/2026): Componente DecimalInput riutilizzabile per gestire correttamente numeri decimali in tutti gli input (Calcolatore, Filamenti, Acquisti). Supporta separatore punto e virgola.
 
 ## Note Importanti
 - SMTP REALE: smtps.aruba.it, preventivi a info@artestramas3d.it

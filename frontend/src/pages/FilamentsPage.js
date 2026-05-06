@@ -12,6 +12,7 @@ import { Progress } from '../components/ui/progress';
 import { Plus, Pencil, Trash2, Cylinder, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { FilamentColorDot } from '../components/FilamentColorDot';
+import { DecimalInput } from '../components/DecimalInput';
 
 const MATERIAL_TYPES = ['PLA', 'PETG', 'ABS', 'TPU', 'ASA', 'Nylon', 'PLA+', 'PETG-CF', 'Altro'];
 const LOW_STOCK_THRESHOLD = 200; // grams
@@ -217,22 +218,18 @@ export default function FilamentsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Peso Bobina (g)</Label>
-                  <Input
-                    type="number"
-                    step="any"
+                  <DecimalInput
                     value={formData.spool_weight_g}
-                    onChange={(e) => setFormData({...formData, spool_weight_g: parseFloat(e.target.value) || 0})}
+                    onChange={(num) => setFormData({...formData, spool_weight_g: num})}
                     className="font-mono"
                     data-testid="weight-input"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Prezzo Bobina (€)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
+                  <DecimalInput
                     value={formData.spool_price}
-                    onChange={(e) => setFormData({...formData, spool_price: parseFloat(e.target.value) || 0})}
+                    onChange={(num) => setFormData({...formData, spool_price: num})}
                     className="font-mono"
                     data-testid="price-input"
                   />
@@ -242,11 +239,9 @@ export default function FilamentsPage() {
               {editingFilament && (
                 <div className="space-y-2">
                   <Label>Grammi Rimanenti</Label>
-                  <Input
-                    type="number"
-                    step="any"
+                  <DecimalInput
                     value={formData.remaining_grams || 0}
-                    onChange={(e) => setFormData({...formData, remaining_grams: parseFloat(e.target.value) || 0})}
+                    onChange={(num) => setFormData({...formData, remaining_grams: num})}
                     className="font-mono"
                     data-testid="remaining-input"
                   />

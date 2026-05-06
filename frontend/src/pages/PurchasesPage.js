@@ -12,6 +12,7 @@ import { Switch } from '../components/ui/switch';
 import { Plus, Download, Trash2, ShoppingCart, Cylinder, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { FilamentColorDot } from '../components/FilamentColorDot';
+import { DecimalInput } from '../components/DecimalInput';
 
 const MATERIAL_TYPES = ['PLA', 'PETG', 'ABS', 'TPU', 'ASA', 'Nylon', 'PLA+', 'PETG-CF', 'Altro'];
 
@@ -233,10 +234,9 @@ export default function PurchasesPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Totale €</Label>
-                    <Input
-                      type="number" step="0.01"
+                    <DecimalInput
                       value={formData.price_total}
-                      onChange={(e) => setFormData({...formData, price_total: parseFloat(e.target.value) || 0})}
+                      onChange={(num) => setFormData({...formData, price_total: num})}
                       className="font-mono"
                     />
                   </div>
@@ -244,11 +244,9 @@ export default function PurchasesPage() {
                 <div className="grid grid-cols-4 gap-3">
                   <div className="space-y-2">
                     <Label>Grammi</Label>
-                    <Input
-                      type="number"
-                      step="any"
+                    <DecimalInput
                       value={formData.grams_total}
-                      onChange={(e) => setFormData({...formData, grams_total: parseFloat(e.target.value) || 0})}
+                      onChange={(num) => setFormData({...formData, grams_total: num})}
                       className="font-mono"
                     />
                   </div>
