@@ -92,8 +92,9 @@ def send_html_email(to_email: str, subject: str, html_content: str):
         logger.error(f"Errore invio email HTML a {to_email}: {e}")
 
 def send_welcome_email(to_email: str, user_name: str):
-    """Send welcome email explaining all app features."""
+    """Send welcome email explaining all app features with guide link."""
     name = user_name or "Utente"
+    guide_url = f"{FRONTEND_URL}/guide"
     html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 0; background: #f9f9f9;">
       <div style="background: linear-gradient(135deg, #f97316, #ea580c); padding: 30px 24px; text-align: center;">
@@ -122,6 +123,9 @@ def send_welcome_email(to_email: str, user_name: str):
             <strong style="color: #333;">Calcolatore Costi</strong> — Il cuore dell'app! Calcola il costo esatto di ogni stampa considerando: filamento (anche multicolore), elettricità, ammortamento stampante, accessori, tempo di design e margine di profitto. Imposta un prezzo manuale o lascia calcolare al sistema.
           </p>
           <p style="color: #555; font-size: 14px; margin: 8px 0; line-height: 1.5;">
+            <strong style="color: #333;">Importa .3mf</strong> — Importa direttamente i file .3mf da Bambu Studio, OrcaSlicer o Creality Print per compilare automaticamente tempo e grammi di filamento.
+          </p>
+          <p style="color: #555; font-size: 14px; margin: 8px 0; line-height: 1.5;">
             <strong style="color: #333;">Registro Vendite</strong> — Salva ogni vendita con tutti i dettagli. Segna se è stata pagata o meno. Esporta tutto in CSV.
           </p>
           <p style="color: #555; font-size: 14px; margin: 8px 0; line-height: 1.5;">
@@ -133,18 +137,26 @@ def send_welcome_email(to_email: str, user_name: str):
           <p style="color: #555; font-size: 14px; margin: 8px 0; line-height: 1.5;">
             <strong style="color: #333;">Profilo</strong> — Cambia nome, lingua (IT/EN/ES/FR) e password.
           </p>
-          <p style="color: #555; font-size: 14px; margin: 8px 0; line-height: 1.5;">
-            <strong style="color: #333;">Segnala Problema</strong> — Hai trovato un bug? Segnalalo con screenshot e lo risolveremo!
+        </div>
+
+        <!-- Guide section -->
+        <div style="margin: 20px 0; padding: 16px; background: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 4px;">
+          <h3 style="color: #16a34a; margin: 0 0 8px; font-size: 16px;">Guida Completa</h3>
+          <p style="color: #555; font-size: 14px; line-height: 1.5; margin: 0 0 12px;">
+            Abbiamo preparato una guida dettagliata con istruzioni passo-passo per ogni funzionalità. Puoi anche stamparla!
           </p>
+          <a href="{guide_url}" style="background-color: #22c55e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block; font-size: 14px; font-weight: bold;">Leggi la Guida</a>
         </div>
 
         <div style="text-align: center; margin: 24px 0;">
           <a href="{FRONTEND_URL}" style="background-color: #f97316; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">Inizia ad usare il Calcolatore</a>
         </div>
 
-        <p style="color: #555; font-size: 14px; line-height: 1.6;">
-          <strong>Consiglio per iniziare:</strong> Aggiungi prima le tue stampanti nelle Impostazioni, poi i filamenti che hai in magazzino. Dopo potrai usare il Calcolatore per avere il costo preciso di ogni stampa!
-        </p>
+        <div style="margin: 20px 0; padding: 12px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;">
+          <p style="color: #555; font-size: 13px; line-height: 1.5; margin: 0;">
+            <strong>Consiglio per iniziare:</strong> Aggiungi prima le tue stampanti nelle Impostazioni, poi i filamenti che hai in magazzino. Dopo potrai usare il Calcolatore per avere il costo preciso di ogni stampa!
+          </p>
+        </div>
       </div>
       <div style="padding: 16px 24px; background: #f3f4f6; text-align: center;">
         <p style="color: #999; font-size: 11px; margin: 0;">Artes&Tramas 3D — Email automatica, non rispondere.</p>
