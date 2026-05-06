@@ -111,8 +111,11 @@ export default function PublicListinoPage() {
       </div>
 
       {/* Footer */}
-      <footer className="text-center py-6 text-sm text-gray-400 border-t border-gray-100 mt-6">
-        {data.brand_name} &mdash; Listino aggiornato
+      <footer className="text-center py-6 text-sm text-gray-400 border-t border-gray-100 mt-6 space-y-1">
+        <p>{data.brand_name} &mdash; Listino aggiornato</p>
+        <p>
+          <a href="/cookie-policy" className="hover:text-gray-600 underline underline-offset-2">Cookie Policy</a>
+        </p>
       </footer>
     </div>
   );

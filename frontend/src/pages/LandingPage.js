@@ -213,8 +213,11 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-6 px-6 text-center text-sm text-gray-400 border-t border-gray-100">
-        {brand} &mdash; Creazioni in Stampa 3D
+      <footer className="py-6 px-6 text-center text-sm text-gray-400 border-t border-gray-100 space-y-1">
+        <p>{brand} &mdash; Creazioni in Stampa 3D</p>
+        <p>
+          <a href="/cookie-policy" className="hover:text-gray-600 underline underline-offset-2">Cookie Policy</a>
+        </p>
       </footer>
     </div>
   );

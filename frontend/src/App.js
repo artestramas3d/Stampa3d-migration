@@ -24,6 +24,8 @@ import BugReportPage from "./pages/BugReportPage";
 import PublicListinoPage from "./pages/PublicListinoPage";
 import LandingPage from "./pages/LandingPage";
 import GuidePage from "./pages/GuidePage";
+import CookiePolicyPage from "./pages/CookiePolicyPage";
+import { CookieBanner } from "./components/CookieBanner";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -84,6 +86,7 @@ function AppRoutes() {
       <Route path="/listino" element={<PublicListinoPage />} />
       <Route path="/landing" element={<LandingPage />} />
       <Route path="/guide" element={<GuidePage />} />
+      <Route path="/cookie-policy" element={<CookiePolicyPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -96,6 +99,7 @@ function App() {
         <AuthProvider>
           <BrowserRouter>
             <AppRoutes />
+            <CookieBanner />
             <Toaster position="top-right" richColors />
           </BrowserRouter>
         </AuthProvider>
