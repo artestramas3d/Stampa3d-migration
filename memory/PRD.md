@@ -41,6 +41,11 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
 33. **Newsletter Migliorata** (06/05/2026): Editor HTML con toolbar (grassetto, corsivo, sottolineato, H2/H3, elenchi, link, colore testo), selezione destinatari (tutti o utenti specifici con ricerca/checkbox), toggle formattato/testo semplice, anteprima email, supporto invio HTML via SMTP
 34. **Fix Parser .3mf Multi-Slicer** (06/05/2026): Riscritto parser con 5 strategie di fallback: plate JSON (Bambu/Orca), slice_info.config, PrintTicket.xml (Creality Print), XML model metadata, gcode comments (formato Bambu, Creality, Cura, PrusaSlicer). Calcolo grammi da lunghezza filamento quando peso = 0.
 35. **Cookie Banner + Cookie Policy** (06/05/2026): Banner GDPR-compliant con consenso granulare (Tecnici sempre attivi, Analitici e Marketing opzionali). Pagina /cookie-policy con tabella cookie, diritti utente, gestione preferenze. Link nel footer di Landing e Listino.
+36. **Email Benvenuto con Guida** (06/05/2026): Aggiunta sezione "Guida Completa" con link a /guide nella welcome email.
+37. **v0.4 - Ristampa dalle Vendite** (08/05/2026): Pulsante stampante nelle vendite che naviga al calcolatore pre-compilando filamenti, stampante, tempo, accessori e nome prodotto.
+38. **v0.4 - Quantità Singole nelle Vendite** (08/05/2026): Quando qty > 1, crea righe individuali (batch_id, batch_index/batch_total). Ogni pezzo può essere pagato/non pagato e con prezzo modificabile indipendentemente.
+39. **v0.4 - Modifica Prezzo Vendita** (08/05/2026): Dialog modifica per nome prodotto e prezzo di vendita con ricalcolo automatico profitto.
+40. **v0.4 - Fix 3MF Unsliced** (08/05/2026): Messaggio errore chiaro quando file .3mf non è stato slicato (solo modello 3D, nessun gcode).
 
 ## Note Importanti
 - SMTP REALE: smtps.aruba.it, preventivi a info@artestramas3d.it
