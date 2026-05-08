@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getSales, deleteSale, updateSalePaid, exportSalesCSV } from '../lib/api';
+import { useNavigate } from 'react-router-dom';
+import { getSales, deleteSale, updateSalePaid, updateSale, exportSalesCSV } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -7,16 +8,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Checkbox } from '../components/ui/checkbox';
 import { Badge } from '../components/ui/badge';
-import { Download, Trash2, Receipt, Search, CheckCircle, Clock, ArrowUpDown } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { Label } from '../components/ui/label';
+import { Download, Trash2, Receipt, Search, CheckCircle, Clock, ArrowUpDown, Printer, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
+import { DecimalInput } from '../components/DecimalInput';
 
 export default function SalesPage() {
+  const navigate = useNavigate();
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [monthFilter, setMonthFilter] = useState('all');
-  const [paidFilter, setPaidFilter] = useState('all'); // all, paid, unpaid
-  const [sortBy, setSortBy] = useState('date_desc'); // date_desc, date_asc, price_desc, price_asc, profit_desc, profit_asc, name_asc
+  const [paidFilter, setPaidFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('date_desc');
+  const [editingSale, setEditingSale] = useState(null);
+  const [editPrice, setEditPrice] = useState(0);
+  const [editName, setEditName] = useState('');
 
   useEffect(() => {
     loadSales();
@@ -58,6 +66,42 @@ export default function SalesPage() {
 
   const handleExport = () => {
     window.open(exportSalesCSV(), '_blank');
+  };
+
+  const handleReprint = (sale) => {
+    const params = new URLSearchParams();
+    params.set('reprint', JSON.stringify({
+      filaments: sale.filaments || [],
+      printer_id: sale.printer_id || '',
+      print_time_hours: sale.print_time_hours || 2,
+      design_hours: sale.design_hours || 0,
+      accessories: sale.accessories || [],
+      product_name: sale.product_name || ''
+    }));
+    navigate(`/calculator?${params.toString()}`);
+  };
+
+  const handleEditSale = (sale) => {
+    setEditingSale(sale);
+    setEditPrice(sale.sale_price || 0);
+    setEditName(sale.product_name || '');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingSale) return;
+    try {
+      await updateSale(editingSale.id, { sale_price: editPrice, product_name: editName });
+      setSales(prev => prev.map(s => s.id === editingSale.id ? {
+        ...s,
+        sale_price: editPrice,
+        product_name: editName,
+        net_profit: parseFloat((editPrice - (s.total_cost || 0)).toFixed(2))
+      } : s));
+      setEditingSale(null);
+      toast.success('Vendita aggiornata');
+    } catch {
+      toast.error('Errore aggiornamento');
+    }
   };
 
   // Get unique months
@@ -227,7 +271,7 @@ export default function SalesPage() {
                     <TableHead className="text-right">Costo</TableHead>
                     <TableHead className="text-right">Vendita</TableHead>
                     <TableHead className="text-right">Profitto</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead className="text-right">Azioni</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -244,6 +288,11 @@ export default function SalesPage() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span className="font-semibold">{sale.product_name}</span>
+                          {sale.batch_total > 1 && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {sale.batch_index}/{sale.batch_total}
+                            </Badge>
+                          )}
                           {sale.paid ? (
                             <Badge variant="outline" className="text-emerald-500 border-emerald-500/50 text-[10px]">
                               <CheckCircle className="w-2.5 h-2.5 mr-1" />
@@ -266,16 +315,38 @@ export default function SalesPage() {
                           €{sale.net_profit?.toFixed(2)}
                         </span>
                       </TableCell>
-                      <TableCell>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-destructive"
-                          onClick={() => handleDelete(sale.id)}
-                          data-testid={`delete-sale-${sale.id}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-primary"
+                            onClick={() => handleReprint(sale)}
+                            title="Ristampa"
+                            data-testid={`reprint-sale-${sale.id}`}
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={() => handleEditSale(sale)}
+                            title="Modifica"
+                            data-testid={`edit-sale-${sale.id}`}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-destructive"
+                            onClick={() => handleDelete(sale.id)}
+                            data-testid={`delete-sale-${sale.id}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -285,6 +356,45 @@ export default function SalesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Sale Dialog */}
+      <Dialog open={!!editingSale} onOpenChange={(open) => !open && setEditingSale(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifica Vendita</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Nome Prodotto</Label>
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                data-testid="edit-sale-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Prezzo di Vendita (€)</Label>
+              <DecimalInput
+                value={editPrice}
+                onChange={(num) => setEditPrice(num)}
+                className="font-mono"
+                data-testid="edit-sale-price"
+              />
+            </div>
+            {editingSale && (
+              <div className="text-xs text-muted-foreground space-y-1 p-3 rounded-md bg-muted/30">
+                <p>Costo: <span className="font-mono">€{editingSale.total_cost?.toFixed(2)}</span></p>
+                <p>Profitto stimato: <span className={`font-mono font-semibold ${(editPrice - (editingSale.total_cost || 0)) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                  €{(editPrice - (editingSale.total_cost || 0)).toFixed(2)}
+                </span></p>
+              </div>
+            )}
+            <Button onClick={handleSaveEdit} className="w-full" data-testid="save-edit-sale">
+              Salva Modifiche
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

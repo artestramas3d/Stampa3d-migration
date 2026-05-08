@@ -1,0 +1,59 @@
+{
+  "summary": "Tested V0.4 features: Sales batch creation (qty>1 -> N rows), Reprint navigation to Calculator with pre-fill, Edit-sale dialog (PATCH /api/sales/{id}), 3MF unsliced detection. Backend: 8/8 pytest tests passed. Frontend: reprint navigation/pre-fill verified, edit dialog verified, batch badges verified after fixing a serialization bug. Found and fixed 1 bug.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "POST /api/sales quantity=1 -> {count:1, items:[1], batch_total:1, batch_index:1}",
+    "POST /api/sales quantity=4 -> 4 rows, shared batch_id, batch_index 1..4, sale_price split 100->25/each, grams split 40->10/each, batch_total=4",
+    "PATCH /api/sales/{id}/paid on one batch row leaves siblings unpaid (independent payment status)",
+    "PATCH /api/sales/{id} {sale_price, product_name} updates fields and recalculates net_profit = sale_price - total_cost",
+    "PATCH /api/sales/{id} with only product_name preserves sale_price",
+    "PATCH /api/sales/{id} with non-existing id -> 404",
+    "POST /api/import/3mf with unsliced .3mf (only 3D/3dmodel.model, no gcode/plate JSON) -> 400 with message containing 'slicing'",
+    "POST /api/import/3mf with empty .3mf -> 400 (generic 'no print data' message)",
+    "Frontend Sales: reprint button (data-testid=reprint-sale-{id}) navigates to /calculator?reprint=<json>",
+    "Frontend Calculator: useSearchParams reads ?reprint= JSON, pre-fills product_name, filaments, printer_id, print_time, design, accessories; toast 'Ristampa caricata'; URL cleaned of ?reprint= afterwards",
+    "Frontend Sales: edit button opens dialog with data-testid edit-sale-name + edit-sale-price + save-edit-sale; values pre-populated from row; save triggers PATCH and updates row in place",
+    "Frontend Sales: batch index badges (1/3, 2/3, 3/3) render next to product name when batch_total > 1 (verified after backend fix below)"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_v04_sales_features.py",
+    "/app/test_reports/pytest/pytest_results_v04.xml"
+  ],
+  "action_items": [
+    "Bug fixed in this iteration (no main agent action required for it). Verify the GET /api/sales serialization fix is acceptable and consider adding the same batch_id/batch_index/batch_total fields to GET /api/sales/recent (used by Calculator 'Stampe Recenti') if you want recent prints to also show their batch grouping.",
+    "(Optional polish) When a user reprints a batched sale (e.g. 3/3), the quantity field on the Calculator is NOT pre-filled because handleReprint() does not pass quantity in the JSON. Consider passing rp.quantity = sale.batch_total when sale.batch_index === 1 (or always 1) so a re-print of a batch row defaults sensibly.",
+    "(Optional polish) PATCH /api/sales/{id} returns only {message}; consider returning the updated document so frontend doesn't need to recompute net_profit locally."
+  ],
+  "critical_code_review_comments": [
+    "BUG (FIXED HERE): GET /api/sales did not include batch_id, batch_index, batch_total in the response. Frontend SalesPage uses sale.batch_total > 1 to gate rendering of the index badge, so badges never appeared on real saved batches even though the data was persisted correctly. Patched server.py around line 800 to include the 3 fields. Verified 1/3, 2/3, 3/3 badges now visible.",
+    "PATCH /api/sales/{id} (server.py ~826) updates sale_price and recomputes net_profit but does NOT recompute related fields like total_cost or filament_cost — acceptable today (cost is fixed at print time), but if filament prices change in future this means edits won't reflect new costs. Document this assumption.",
+    "POST /api/sales batch logic (server.py ~931) generates batch_id from datetime.now+ObjectId[:6]. If two simultaneous batches are created in the same second by the same user the batch_id collides on the timestamp prefix; uniqueness still holds due to the ObjectId suffix, but switch to a pure str(ObjectId()) for clarity.",
+    "3MF unsliced detection (server.py ~2123) re-opens the zip a second time to inspect file_list. Refactor to capture namelist() once at the start of import_3mf and reuse — minor perf/code-quality nit.",
+    "server.py is now ~2240 lines — past the 700-line guideline. Splitting into routers (auth, sales, calculator, import, admin) is overdue."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_v04_sales_features.py",
+    "/app/backend/server.py (added batch_id/batch_index/batch_total to GET /api/sales response)"
+  ],
+  "success_rate": {
+    "backend": "100% (8/8 tests passed)",
+    "frontend": "100% (reprint, edit dialog, batch badges all verified after fix)"
+  },
+  "test_credentials": {
+    "admin_email": "testuser@example.com",
+    "admin_password": "password123"
+  },
+  "seed_data_creation": "All TEST_v04_*, TEST_BATCH_* sales created during testing were deleted in fixture teardown / via /api/sales DELETE in browser cleanup. No residual seed data left.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "V0.4 Sales+Calculator+3MF features all working. Key files: SalesPage.js (reprint=Printer icon, edit=Pencil icon, save dialog), CalculatorPage.js (useSearchParams 'reprint' param effect ~line 115 inside loadData). Backend POST /api/sales returns {items, count, batch_id} - frontend should not assume single object. PATCH /api/sales/{id} accepts {sale_price?, product_name?} only. The fix in server.py GET /sales is shipped; remember to also add batch fields to /api/sales/recent if main agent wants 'Stampe Recenti' to show batch context.",
+  "rca of the issue": "Symptom: After saving a print with quantity=3 from Calculator, Sales page showed 3 separate rows (correct) but no '1/3, 2/3, 3/3' badge. Reproduction: POST /api/sales with quantity=3, then GET /api/sales -> response items missing batch_total/batch_index. Frontend conditional `{sale.batch_total > 1 && <Badge>...}` therefore never rendered. Root cause: GET /api/sales explicit field whitelist (server.py ~781) was not updated when batch fields were added to the documents in POST /api/sales. Mitigation: added 3 fields to the projected response. Verified end-to-end with browser screenshot showing the badges 1/3, 2/3, 3/3 next to TEST_BATCH_BADGE_FIX rows."
+}

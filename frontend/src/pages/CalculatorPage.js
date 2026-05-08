@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { getFilaments, getPrinters, getAccessories, getRecentSales, calculatePrint, createSale, import3mf } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -37,6 +38,7 @@ const formatTime = (hours) => {
 };
 
 export default function CalculatorPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [filaments, setFilaments] = useState([]);
   const [printers, setPrinters] = useState([]);
   const [accessories, setAccessories] = useState([]);
@@ -108,6 +110,44 @@ export default function CalculatorPage() {
           ...prev, 
           filaments: [{ filament_id: filamentsData[0].id, grams_used: 50 }]
         }));
+      }
+      
+      // Handle reprint from Sales page
+      const reprintParam = searchParams.get('reprint');
+      if (reprintParam) {
+        try {
+          const rp = JSON.parse(reprintParam);
+          skipTimeEffect.current = true;
+          
+          const validFilaments = (rp.filaments || []).filter(f => 
+            filamentsData.some(fd => fd.id === f.filament_id)
+          );
+          const validPrinter = printersData.some(p => p.id === rp.printer_id);
+          const validAccessories = (rp.accessories || []).filter(a =>
+            accessoriesData.some(acc => acc.id === a.accessory_id)
+          );
+          
+          const printTime = hoursToHM(rp.print_time_hours || 2);
+          setPrintTimeH(printTime.hours);
+          setPrintTimeM(printTime.minutes);
+          const designTime = hoursToHM(rp.design_hours || 0);
+          setDesignTimeH(designTime.hours);
+          setDesignTimeM(designTime.minutes);
+          
+          setFormData(prev => ({
+            ...prev,
+            filaments: validFilaments.length > 0 ? validFilaments : prev.filaments,
+            printer_id: validPrinter ? rp.printer_id : prev.printer_id,
+            print_time_hours: rp.print_time_hours || 2,
+            design_hours: rp.design_hours || 0,
+            accessories: validAccessories,
+            product_name: rp.product_name || '',
+          }));
+          
+          // Clean URL
+          setSearchParams({});
+          toast.success(`Ristampa "${rp.product_name}" caricata`);
+        } catch (e) { /* ignore parse errors */ }
       }
     } catch (err) {
       toast.error('Errore nel caricamento dati');
@@ -294,7 +334,7 @@ export default function CalculatorPage() {
 
     setSaving(true);
     try {
-      await createSale({
+      const res = await createSale({
         date: new Date().toISOString().split('T')[0],
         product_name: formData.product_name,
         filaments: formData.filaments,
@@ -306,7 +346,8 @@ export default function CalculatorPage() {
         sale_price: result.sale_price_total,
         accessories: formData.accessories
       });
-      toast.success('Vendita registrata!');
+      const count = res.count || 1;
+      toast.success(count > 1 ? `${count} vendite registrate!` : 'Vendita registrata!');
       setFormData(prev => ({ ...prev, product_name: '' }));
       loadData();
     } catch (err) {

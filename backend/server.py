@@ -797,7 +797,10 @@ async def get_sales(current_user: dict = Depends(get_current_user)):
             "accessories": doc.get("accessories", []),
             "labor_hours": doc.get("labor_hours", 0),
             "design_hours": doc.get("design_hours", 0),
-            "paid": doc.get("paid", False)
+            "paid": doc.get("paid", False),
+            "batch_id": doc.get("batch_id"),
+            "batch_index": doc.get("batch_index"),
+            "batch_total": doc.get("batch_total")
         })
     return result
 
@@ -817,6 +820,31 @@ async def update_sale_paid(sale_id: str, request: UpdatePaidRequest, current_use
         {"$set": {"paid": request.paid}}
     )
     return {"message": "Stato pagamento aggiornato", "paid": request.paid}
+
+# Update sale price/details
+class UpdateSaleRequest(BaseModel):
+    sale_price: Optional[float] = None
+    product_name: Optional[str] = None
+
+@api_router.patch("/sales/{sale_id}")
+async def update_sale(sale_id: str, request: UpdateSaleRequest, current_user: dict = Depends(get_current_user)):
+    sale = await db.sales.find_one({"_id": ObjectId(sale_id), "user_id": current_user["id"]})
+    if not sale:
+        raise HTTPException(status_code=404, detail="Vendita non trovata")
+    
+    update_fields = {}
+    if request.sale_price is not None:
+        update_fields["sale_price"] = request.sale_price
+        update_fields["net_profit"] = round(request.sale_price - sale.get("total_cost", 0), 2)
+    if request.product_name is not None:
+        update_fields["product_name"] = request.product_name
+    
+    if update_fields:
+        await db.sales.update_one(
+            {"_id": ObjectId(sale_id), "user_id": current_user["id"]},
+            {"$set": update_fields}
+        )
+    return {"message": "Vendita aggiornata"}
 
 # Get recent sales for copy feature
 @api_router.get("/sales/recent")
@@ -889,38 +917,57 @@ async def create_sale(sale: SaleCreate, current_user: dict = Depends(get_current
             )
     
     total_cost = material_cost + electricity_cost + depreciation_cost + labor_cost + design_cost + accessories_cost
-    net_profit = sale.sale_price - total_cost
     
     # Store filaments data for copy feature
     filaments_data = [{"filament_id": f.filament_id, "grams_used": f.grams_used} for f in filament_list]
     accessories_data = [{"accessory_id": a.accessory_id, "quantity": a.quantity} for a in sale.accessories]
     
-    doc = {
-        "user_id": current_user["id"],
-        "date": sale.date,
-        "product_name": sale.product_name,
-        "material_type": " + ".join(material_types) if material_types else "",
-        "grams_used": total_grams,
-        "print_time_hours": sale.print_time_hours,
-        "printer_id": sale.printer_id,
-        "filaments": filaments_data,
-        "accessories": accessories_data,
-        "labor_hours": sale.labor_hours,
-        "design_hours": sale.design_hours,
-        "quantity": sale.quantity,
-        "filament_cost": round(material_cost, 2),
-        "electricity_cost": round(electricity_cost, 2),
-        "depreciation_cost": round(depreciation_cost, 2),
-        "accessories_cost": round(accessories_cost, 2),
-        "total_cost": round(total_cost, 2),
-        "sale_price": sale.sale_price,
-        "net_profit": round(net_profit, 2),
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    result = await db.sales.insert_one(doc)
-    doc["id"] = str(result.inserted_id)
-    doc.pop("_id", None)
-    return doc
+    quantity = max(1, sale.quantity)
+    
+    # Per-unit costs
+    cost_per_unit = round(total_cost / quantity, 2)
+    price_per_unit = round(sale.sale_price / quantity, 2)
+    profit_per_unit = round(price_per_unit - cost_per_unit, 2)
+    grams_per_unit = round(total_grams / quantity, 2)
+    
+    # Generate a batch_id to group items from the same print run
+    batch_id = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S") + "_" + str(ObjectId())[:6]
+    
+    # Create individual rows for each unit
+    created_docs = []
+    for i in range(quantity):
+        doc = {
+            "user_id": current_user["id"],
+            "date": sale.date,
+            "product_name": sale.product_name,
+            "material_type": " + ".join(material_types) if material_types else "",
+            "grams_used": grams_per_unit,
+            "print_time_hours": sale.print_time_hours,
+            "printer_id": sale.printer_id,
+            "filaments": filaments_data,
+            "accessories": accessories_data,
+            "labor_hours": sale.labor_hours,
+            "design_hours": sale.design_hours,
+            "quantity": 1,
+            "batch_id": batch_id,
+            "batch_total": quantity,
+            "batch_index": i + 1,
+            "filament_cost": round(material_cost / quantity, 2),
+            "electricity_cost": round(electricity_cost / quantity, 2),
+            "depreciation_cost": round(depreciation_cost / quantity, 2),
+            "accessories_cost": round(accessories_cost / quantity, 2),
+            "total_cost": cost_per_unit,
+            "sale_price": price_per_unit,
+            "net_profit": profit_per_unit,
+            "paid": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        result = await db.sales.insert_one(doc)
+        doc["id"] = str(result.inserted_id)
+        doc.pop("_id", None)
+        created_docs.append(doc)
+    
+    return {"items": created_docs, "count": quantity, "batch_id": batch_id}
 
 @api_router.delete("/sales/{sale_id}")
 async def delete_sale(sale_id: str, current_user: dict = Depends(get_current_user)):
@@ -2077,7 +2124,18 @@ async def import_3mf(file: UploadFile = File(...), current_user: dict = Depends(
         result["total_filament_grams"] = round(result["total_filament_grams"], 1)
 
         if not result["plates"]:
-            raise HTTPException(status_code=400, detail="Nessun dato di stampa trovato nel file .3mf. Assicurati di aver eseguito lo slicing prima di esportare il file.")
+            # Detect unsliced Bambu/Orca files
+            file_list = []
+            with zipfile.ZipFile(io.BytesIO(content), 'r') as zf:
+                file_list = zf.namelist()
+            has_gcode = any(n.endswith('.gcode') for n in file_list)
+            has_plate_json = any(n.startswith('Metadata/plate_') and n.endswith('.json') for n in file_list)
+            has_model = any(n.endswith('.model') for n in file_list)
+            
+            if has_model and not has_gcode and not has_plate_json:
+                raise HTTPException(status_code=400, detail="Il file .3mf contiene solo il modello 3D ma non i dati di stampa. Devi prima eseguire lo SLICING nel tuo slicer (Bambu Studio, OrcaSlicer, Creality Print) e poi esportare il file .3mf.")
+            else:
+                raise HTTPException(status_code=400, detail="Nessun dato di stampa trovato nel file .3mf. Assicurati di aver eseguito lo slicing prima di esportare il file.")
 
         return result
     except zipfile.BadZipFile:
