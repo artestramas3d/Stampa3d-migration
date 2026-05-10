@@ -51,6 +51,7 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
 43. **Fase 1 - Preventivi PDF** (10/05/2026): Generazione preventivi con prodotti/prezzi (senza costi interni), selezione cliente, anteprima e stampa PDF.
 44. **Fase 1 - Export CSV** (10/05/2026): Export CSV per filamenti e clienti.
 45. **Fase 1 - Guida Backup** (10/05/2026): GUIDA_BACKUP.md con backup/ripristino database MongoDB.
+46. **Calcolatore - Cliente e Preventivo** (10/05/2026): Selezione cliente nel calcolatore, associazione cliente alla vendita, bottone "Genera Preventivo PDF" diretto dal calcolatore con anteprima e stampa.
 
 ## Note Importanti
 - SMTP REALE: smtps.aruba.it, preventivi a info@artestramas3d.it

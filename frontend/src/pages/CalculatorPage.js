@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { getFilaments, getPrinters, getAccessories, getRecentSales, calculatePrint, createSale, import3mf } from '../lib/api';
+import { getFilaments, getPrinters, getAccessories, getRecentSales, calculatePrint, createSale, import3mf, getClients, generateQuotePdf } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -11,9 +11,10 @@ import { Separator } from '../components/ui/separator';
 import { Checkbox } from '../components/ui/checkbox';
 import { Switch } from '../components/ui/switch';
 import { ScrollArea } from '../components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { 
   Calculator, Receipt, Save, AlertCircle, Package, Plus, Minus, Trash2, 
-  Palette, Copy, History, Euro, Percent, Clock, Upload
+  Palette, Copy, History, Euro, Percent, Clock, Upload, FileText, Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { FilamentColorDot } from '../components/FilamentColorDot';
@@ -47,6 +48,11 @@ export default function CalculatorPage() {
   const [calculating, setCalculating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [useManualPrice, setUseManualPrice] = useState(false);
+  const [clients, setClientsList] = useState([]);
+  const [selectedClientId, setSelectedClientId] = useState('');
+  const [quotePreview, setQuotePreview] = useState('');
+  const [showQuotePreview, setShowQuotePreview] = useState(false);
+  const [generatingQuote, setGeneratingQuote] = useState(false);
 
   // Separate state for hours and minutes
   const [printTimeH, setPrintTimeH] = useState(2);
@@ -91,16 +97,18 @@ export default function CalculatorPage() {
 
   const loadData = async () => {
     try {
-      const [filamentsData, printersData, accessoriesData, recentData] = await Promise.all([
+      const [filamentsData, printersData, accessoriesData, recentData, clientsData] = await Promise.all([
         getFilaments(),
         getPrinters(),
         getAccessories(),
-        getRecentSales(10)
+        getRecentSales(10),
+        getClients()
       ]);
       setFilaments(filamentsData);
       setPrinters(printersData);
       setAccessories(accessoriesData);
       setRecentSales(recentData);
+      setClientsList(clientsData);
       
       if (printersData.length > 0) {
         setFormData(prev => ({ ...prev, printer_id: printersData[0].id }));
@@ -384,7 +392,8 @@ export default function CalculatorPage() {
         design_hours: formData.design_hours,
         quantity: formData.quantity,
         sale_price: result.sale_price_total,
-        accessories: formData.accessories
+        accessories: formData.accessories,
+        client_id: selectedClientId && selectedClientId !== 'none' ? selectedClientId : null
       });
       const count = res.count || 1;
       toast.success(count > 1 ? `${count} vendite registrate!` : 'Vendita registrata!');
@@ -398,6 +407,41 @@ export default function CalculatorPage() {
   };
 
   const selectedPrinter = printers.find(p => p.id === formData.printer_id);
+
+  const handleGenerateQuote = async () => {
+    if (!formData.product_name || !result) return;
+    setGeneratingQuote(true);
+    try {
+      const clientId = selectedClientId && selectedClientId !== 'none' ? selectedClientId : null;
+      const selectedClient = clientId ? clients.find(c => c.id === clientId) : null;
+      const items = [{
+        description: formData.product_name,
+        quantity: formData.quantity,
+        unit_price: result.sale_price_per_unit
+      }];
+      const res = await generateQuotePdf({
+        client_id: clientId,
+        client_name: selectedClient ? `${selectedClient.name} ${selectedClient.surname}` : '',
+        items,
+        notes: '',
+        valid_days: 30
+      });
+      setQuotePreview(res.html);
+      setShowQuotePreview(true);
+      toast.success(`Preventivo ${res.quote_number} generato`);
+    } catch {
+      toast.error('Errore generazione preventivo');
+    } finally {
+      setGeneratingQuote(false);
+    }
+  };
+
+  const handlePrintQuote = () => {
+    const win = window.open('', '_blank');
+    win.document.write(quotePreview);
+    win.document.close();
+    setTimeout(() => win.print(), 500);
+  };
 
   if (loading) {
     return (
@@ -687,7 +731,7 @@ export default function CalculatorPage() {
               )}
             </div>
 
-            {/* Product Name */}
+            {/* Product Name + Client */}
             <div className="space-y-1">
               <Label className="text-xs">Nome Prodotto</Label>
               <Input
@@ -697,6 +741,20 @@ export default function CalculatorPage() {
                 className="h-8 text-xs"
                 data-testid="calc-product-name"
               />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Cliente (opzionale)</Label>
+              <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                <SelectTrigger className="h-8 text-xs" data-testid="calc-client-select">
+                  <SelectValue placeholder="Nessun cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nessun cliente</SelectItem>
+                  {clients.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
@@ -793,6 +851,10 @@ export default function CalculatorPage() {
                   <Save className="w-4 h-4 mr-2" />
                   {saving ? 'Salvataggio...' : 'Registra Vendita'}
                 </Button>
+                <Button variant="outline" className="w-full mt-1.5" onClick={handleGenerateQuote} disabled={generatingQuote || !formData.product_name || !result} data-testid="generate-quote-from-calc">
+                  <FileText className="w-4 h-4 mr-2" />
+                  {generatingQuote ? 'Generazione...' : 'Genera Preventivo PDF'}
+                </Button>
               </>
             ) : (
               <div className="text-center py-8 text-muted-foreground text-sm">
@@ -802,6 +864,21 @@ export default function CalculatorPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Quote Preview Dialog */}
+      <Dialog open={showQuotePreview} onOpenChange={setShowQuotePreview}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              Anteprima Preventivo
+              <Button size="sm" onClick={handlePrintQuote} data-testid="print-calc-quote-btn">
+                <Download className="w-3.5 h-3.5 mr-1.5" /> Stampa / Salva PDF
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="border rounded-md p-4 bg-white text-black" dangerouslySetInnerHTML={{ __html: quotePreview }} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
