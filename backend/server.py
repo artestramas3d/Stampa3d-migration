@@ -1967,6 +1967,7 @@ def _parse_3mf_zip(zf):
                                     pass
                         
                         # Parse filament elements
+                        filament_total_g = 0
                         for fil in plate_elem.findall('filament'):
                             g = float(fil.get('used_g', 0) or 0)
                             filament_details.append({
@@ -1974,8 +1975,11 @@ def _parse_3mf_zip(zf):
                                 "color": fil.get('color', ''),
                                 "grams": round(g, 2)
                             })
-                            if g > weight_g:
-                                weight_g = g
+                            filament_total_g += g
+                        
+                        # Use filament sum if available, otherwise use weight from metadata
+                        if filament_total_g > 0:
+                            weight_g = filament_total_g
                         
                         if time_secs > 0 or weight_g > 0:
                             result["total_time_seconds"] = time_secs
