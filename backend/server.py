@@ -1882,8 +1882,10 @@ def _parse_3mf_zip(zf):
     logger.info(f"3MF files: {file_list}")
 
     # === Strategy 1: Bambu/Orca plate JSON (Metadata/plate_*.json) ===
+    has_plate_json = False
     for name in file_list:
         if name.startswith('Metadata/plate_') and name.endswith('.json'):
+            has_plate_json = True
             try:
                 plate_data = json.loads(zf.read(name).decode('utf-8'))
                 plate_info = {"plate": name, "print_time_seconds": 0, "filament_grams": 0, "filament_details": []}
@@ -1901,7 +1903,6 @@ def _parse_3mf_zip(zf):
                     if not isinstance(f, dict):
                         continue
                     g = float(f.get("used_g", f.get("g", 0)) or 0)
-                    # If grams is 0 but we have length in mm, calculate grams (density * volume)
                     if g == 0:
                         used_m = float(f.get("used_m", 0) or 0)
                         if used_m > 0:
@@ -1923,11 +1924,13 @@ def _parse_3mf_zip(zf):
                     if weight:
                         total_grams = float(weight)
 
-                plate_info["filament_grams"] = round(total_grams, 1)
-                plate_info["print_time_hours"] = round(plate_info["print_time_seconds"] / 3600, 2)
-                result["plates"].append(plate_info)
-                result["total_time_seconds"] += plate_info["print_time_seconds"]
-                result["total_filament_grams"] += total_grams
+                # Only add plate if it has actual data
+                if plate_info["print_time_seconds"] > 0 or total_grams > 0:
+                    plate_info["filament_grams"] = round(total_grams, 1)
+                    plate_info["print_time_hours"] = round(plate_info["print_time_seconds"] / 3600, 2)
+                    result["plates"].append(plate_info)
+                    result["total_time_seconds"] += plate_info["print_time_seconds"]
+                    result["total_filament_grams"] += total_grams
             except Exception as e:
                 logger.warning(f"Errore parsing plate {name}: {e}")
 
@@ -2124,7 +2127,7 @@ async def import_3mf(file: UploadFile = File(...), current_user: dict = Depends(
         result["total_filament_grams"] = round(result["total_filament_grams"], 1)
 
         if not result["plates"]:
-            # Detect unsliced Bambu/Orca files
+            # Detect why no data was found
             file_list = []
             with zipfile.ZipFile(io.BytesIO(content), 'r') as zf:
                 file_list = zf.namelist()
@@ -2132,10 +2135,13 @@ async def import_3mf(file: UploadFile = File(...), current_user: dict = Depends(
             has_plate_json = any(n.startswith('Metadata/plate_') and n.endswith('.json') for n in file_list)
             has_model = any(n.endswith('.model') for n in file_list)
             
-            if has_model and not has_gcode and not has_plate_json:
+            if has_model and has_plate_json and not has_gcode:
+                # Bambu Studio project saved but NOT exported as sliced file
+                raise HTTPException(status_code=400, detail="Questo file .3mf è un progetto Bambu Studio/OrcaSlicer ma NON contiene i dati di slicing. Per importare tempo e grammi devi: 1) Fare lo Slicing nel slicer 2) Usare 'File → Esporta → Esporta file piatto slicato' (NON 'Salva progetto')")
+            elif has_model and not has_gcode and not has_plate_json:
                 raise HTTPException(status_code=400, detail="Il file .3mf contiene solo il modello 3D ma non i dati di stampa. Devi prima eseguire lo SLICING nel tuo slicer (Bambu Studio, OrcaSlicer, Creality Print) e poi esportare il file .3mf.")
             else:
-                raise HTTPException(status_code=400, detail="Nessun dato di stampa trovato nel file .3mf. Assicurati di aver eseguito lo slicing prima di esportare il file.")
+                raise HTTPException(status_code=400, detail="Nessun dato di stampa trovato nel file .3mf. Assicurati di aver eseguito lo slicing e di esportare il file slicato (non il progetto).")
 
         return result
     except zipfile.BadZipFile:
