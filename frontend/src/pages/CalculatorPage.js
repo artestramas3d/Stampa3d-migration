@@ -173,13 +173,44 @@ export default function CalculatorPage() {
           print_time_hours: data.total_time_hours || hmToHours(totalH, totalM),
         }));
       }
-      if (data.total_filament_grams > 0 && formData.filaments.length > 0) {
+      
+      // Handle filament details from 3mf
+      const plateDetails = data.plates?.[0]?.filament_details || [];
+      
+      if (plateDetails.length > 0 && filaments.length > 0) {
+        // Match 3mf filaments to user's inventory by color hex
+        const newFilaments = plateDetails.map(detail => {
+          // Try to match by color hex
+          const colorMatch = detail.color ? filaments.find(f => 
+            f.color_hex?.toUpperCase() === detail.color?.toUpperCase() ||
+            f.color_hex2?.toUpperCase() === detail.color?.toUpperCase()
+          ) : null;
+          
+          // Try to match by material type if no color match
+          const typeMatch = !colorMatch && detail.type ? filaments.find(f =>
+            f.material_type?.toUpperCase() === detail.type?.toUpperCase()
+          ) : null;
+          
+          const matched = colorMatch || typeMatch || filaments[0];
+          
+          return {
+            filament_id: matched.id,
+            grams_used: detail.grams || 0
+          };
+        });
+        
+        setFormData(prev => ({ ...prev, filaments: newFilaments }));
+      } else if (data.total_filament_grams > 0 && formData.filaments.length > 0) {
+        // Fallback: put all grams in first filament
         setFormData(prev => ({
           ...prev,
-          filaments: prev.filaments.map((f, i) => i === 0 ? { ...f, grams_used: Math.round(data.total_filament_grams) } : f)
+          filaments: prev.filaments.map((f, i) => i === 0 ? { ...f, grams_used: data.total_filament_grams } : f)
         }));
       }
-      toast.success(`Importato: ${formatTime(data.total_time_hours)}h, ${Math.round(data.total_filament_grams)}g filamento`);
+      
+      const filCount = plateDetails.length || 1;
+      const filMsg = filCount > 1 ? `, ${filCount} filamenti` : '';
+      toast.success(`Importato: ${formatTime(data.total_time_hours)}h, ${data.total_filament_grams}g filamento${filMsg}`);
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Errore nell\'importazione del file .3mf');
     } finally {
