@@ -8,7 +8,7 @@ import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { 
   LayoutDashboard, Cylinder, Calculator, ShoppingCart, Receipt, Settings,
-  Menu, Sun, Moon, LogOut, Package, Megaphone, ShieldCheck, User, AlertTriangle, Mail, Bug, ShoppingBag
+  Menu, Sun, Moon, LogOut, Package, Megaphone, ShieldCheck, User, AlertTriangle, Mail, Bug, ShoppingBag, BookOpen
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -96,6 +96,17 @@ function Sidebar({ onNavigate, banners, siteSettings }) {
         >
           <Bug className="w-4 h-4" />
           <span>Segnala Problema</span>
+        </Link>
+
+        {/* Guide link */}
+        <Link
+          to="/guide"
+          onClick={onNavigate}
+          className={`sidebar-link ${location.pathname === '/guide' ? 'active' : ''}`}
+          data-testid="nav-guide"
+        >
+          <BookOpen className="w-4 h-4" />
+          <span>Guida</span>
         </Link>
 
         {/* Admin section */}
