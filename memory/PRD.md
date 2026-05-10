@@ -46,17 +46,25 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
 38. **v0.4 - Quantità Singole nelle Vendite** (08/05/2026): Quando qty > 1, crea righe individuali (batch_id, batch_index/batch_total). Ogni pezzo può essere pagato/non pagato e con prezzo modificabile indipendentemente.
 39. **v0.4 - Modifica Prezzo Vendita** (08/05/2026): Dialog modifica per nome prodotto e prezzo di vendita con ricalcolo automatico profitto.
 40. **v0.4 - Fix 3MF Unsliced** (08/05/2026): Messaggio errore chiaro quando file .3mf non è stato slicato (solo modello 3D, nessun gcode).
+41. **Fase 1 - Gestione Clienti** (10/05/2026): CRUD clienti con ricerca, export CSV, storico acquisti.
+42. **Fase 1 - Dati Aziendali** (10/05/2026): Nome, indirizzo, P.IVA, telefono, email, logo per intestazione PDF.
+43. **Fase 1 - Preventivi PDF** (10/05/2026): Generazione preventivi con prodotti/prezzi (senza costi interni), selezione cliente, anteprima e stampa PDF.
+44. **Fase 1 - Export CSV** (10/05/2026): Export CSV per filamenti e clienti.
+45. **Fase 1 - Guida Backup** (10/05/2026): GUIDA_BACKUP.md con backup/ripristino database MongoDB.
 
 ## Note Importanti
 - SMTP REALE: smtps.aruba.it, preventivi a info@artestramas3d.it
 - Deploy VPS Aruba: calcolatore.artestramas3d.it
 - Listino pubblico: listino.artestramas3d.it (punta alla stessa app, route /listino)
-- Frontend Dockerfile: NODE_OPTIONS=--max-old-space-size=512
-- requirements.txt NON deve contenere emergentintegrations
+- Frontend Dockerfile: NODE_OPTIONS=--max-old-space-size=768
+- Frontend nginx.conf: listen 80, try_files per SPA
+- Nginx proxy: proxy_pass http://frontend:80
+- requirements.txt semplificato (solo dipendenze necessarie)
 - Badge "Made with Emergent" rimosso
 
 ## Task Futuri (Backlog)
-- P1: Export CSV/Excel completo per tutte le sezioni
-- P2: Esportazione fatture PDF
-- P2: Classifica profittabilità prodotti
+- P2: Classifica profittabilità prodotti / Dashboard avanzata
+- P2: Notifiche smart (scorte basse, vendite non pagate, riepilogo settimanale)
+- P2: Catalogo pubblico migliorato (foto, filtri, richiesta preventivo)
+- P2: Sistema abbonamenti Free/Pro con Stripe
 - P3: Refactoring server.py in moduli (routes, models, services)
