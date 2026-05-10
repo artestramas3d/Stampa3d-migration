@@ -1937,11 +1937,61 @@ def _parse_3mf_zip(zf):
     if result["total_time_seconds"] > 0 or result["total_filament_grams"] > 0:
         return result
 
-    # === Strategy 2: Bambu/Orca slice_info.config (comment-style metadata) ===
+    # === Strategy 2: Bambu/Orca slice_info.config (XML metadata) ===
     for name in file_list:
         if 'slice_info' in name.lower():
             try:
                 content = zf.read(name).decode('utf-8', errors='ignore')
+                
+                # Try XML parsing first (Bambu Studio v2.x format)
+                try:
+                    import xml.etree.ElementTree as ET
+                    root = ET.fromstring(content)
+                    for plate_elem in root.iter('plate'):
+                        time_secs = 0
+                        weight_g = 0.0
+                        filament_details = []
+                        
+                        for meta in plate_elem.findall('metadata'):
+                            key = meta.get('key', '')
+                            val = meta.get('value', '')
+                            if key == 'prediction' and val:
+                                try:
+                                    time_secs = int(float(val))
+                                except ValueError:
+                                    time_secs = _parse_time_string(val)
+                            elif key == 'weight' and val:
+                                try:
+                                    weight_g = float(val.replace(',', '.'))
+                                except ValueError:
+                                    pass
+                        
+                        # Parse filament elements
+                        for fil in plate_elem.findall('filament'):
+                            g = float(fil.get('used_g', 0) or 0)
+                            filament_details.append({
+                                "type": fil.get('type', ''),
+                                "color": fil.get('color', ''),
+                                "grams": round(g, 1)
+                            })
+                            if g > weight_g:
+                                weight_g = g
+                        
+                        if time_secs > 0 or weight_g > 0:
+                            result["total_time_seconds"] = time_secs
+                            result["total_filament_grams"] = round(weight_g, 1)
+                            result["plates"].append({
+                                "plate": name,
+                                "print_time_seconds": time_secs,
+                                "print_time_hours": round(time_secs / 3600, 2),
+                                "filament_grams": round(weight_g, 1),
+                                "filament_details": filament_details
+                            })
+                            return result
+                except ET.ParseError:
+                    pass
+                
+                # Fallback: comment-style parsing (older format)
                 time_match = re.search(r'estimated printing time.*?=\s*(.+)', content)
                 weight_match = re.search(r'total filament used \[g\]\s*=\s*([\d.]+)', content)
                 length_match = re.search(r'filament used \[mm\]\s*=\s*([\d.]+)', content)
@@ -2041,14 +2091,24 @@ def _parse_3mf_zip(zf):
     for name in file_list:
         if name.endswith('.gcode'):
             try:
-                gcode = zf.read(name).decode('utf-8', errors='ignore')[:50000]  # Read first 50KB
+                gcode = zf.read(name).decode('utf-8', errors='ignore')[:50000]
                 time_secs = 0
                 weight_g = 0.0
 
+                # Bambu v2: "; total estimated time: 11m 42s" or "; model printing time: 4m 43s"
+                t0 = re.search(r'; total estimated time:\s*(.+?)(?:;|$)', gcode)
+                if t0:
+                    time_secs = _parse_time_string(t0.group(1))
+                if time_secs == 0:
+                    t0b = re.search(r'; model printing time:\s*(.+?)(?:;|$)', gcode)
+                    if t0b:
+                        time_secs = _parse_time_string(t0b.group(1))
+
                 # Bambu/Orca: "; estimated printing time (normal mode) = 2h 36m 25s"
-                t1 = re.search(r'; estimated printing time.*?=\s*(.+)', gcode)
-                if t1:
-                    time_secs = _parse_time_string(t1.group(1))
+                if time_secs == 0:
+                    t1 = re.search(r'; estimated printing time.*?=\s*(.+)', gcode)
+                    if t1:
+                        time_secs = _parse_time_string(t1.group(1))
 
                 # Creality: ";TIME:9185" or ";TIME:<9185.19>"
                 if time_secs == 0:
@@ -2072,6 +2132,12 @@ def _parse_3mf_zip(zf):
                 w1 = re.search(r'; total filament used \[g\]\s*=\s*([\d.]+)', gcode)
                 if w1:
                     weight_g = float(w1.group(1))
+
+                # Bambu v2: "; total filament weight [g] : 1.13"
+                if weight_g == 0:
+                    w1b = re.search(r'; total filament weight \[g\]\s*:\s*([\d.]+)', gcode)
+                    if w1b:
+                        weight_g = float(w1b.group(1))
 
                 # Creality: ";Filament Weight:25.58"
                 if weight_g == 0:
