@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getFilaments, createFilament, updateFilament, deleteFilament } from '../lib/api';
+import { getFilaments, createFilament, updateFilament, deleteFilament, exportFilamentsCSV } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { Progress } from '../components/ui/progress';
-import { Plus, Pencil, Trash2, Cylinder, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Cylinder, AlertTriangle, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { FilamentColorDot } from '../components/FilamentColorDot';
 import { DecimalInput } from '../components/DecimalInput';
@@ -112,7 +112,11 @@ export default function FilamentsPage() {
           <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight">Gestione Filamenti</h1>
           <p className="text-muted-foreground mt-1">Gestisci il tuo inventario di filamenti</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => window.open(exportFilamentsCSV(), '_blank')} data-testid="export-filaments-btn">
+            <Download className="w-4 h-4 mr-1.5" /> CSV
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openNewDialog} data-testid="add-filament-btn">
               <Plus className="w-4 h-4 mr-2" />
@@ -270,6 +274,7 @@ export default function FilamentsPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Low Stock Alert */}

@@ -120,4 +120,23 @@ export const import3mf = (file) => {
   return api.post('/import/3mf', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data);
 };
 
+// Clients
+export const getClients = () => api.get('/clients').then(r => r.data);
+export const createClient = (data) => api.post('/clients', data).then(r => r.data);
+export const updateClient = (id, data) => api.put(`/clients/${id}`, data).then(r => r.data);
+export const deleteClient = (id) => api.delete(`/clients/${id}`).then(r => r.data);
+export const getClientSales = (id) => api.get(`/clients/${id}/sales`).then(r => r.data);
+
+// Business Settings
+export const getBusinessSettings = () => api.get('/business-settings').then(r => r.data);
+export const updateBusinessSettings = (data) => api.put('/business-settings', data).then(r => r.data);
+
+// Quotes
+export const generateQuotePdf = (data) => api.post('/quotes/generate-pdf', data).then(r => r.data);
+export const getQuotes = () => api.get('/quotes').then(r => r.data);
+
+// Export URLs
+export const exportFilamentsCSV = () => `${API}/export/filaments`;
+export const exportClientsCSV = () => `${API}/export/clients`;
+
 export default api;

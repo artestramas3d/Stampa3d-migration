@@ -25,6 +25,8 @@ import PublicListinoPage from "./pages/PublicListinoPage";
 import LandingPage from "./pages/LandingPage";
 import GuidePage from "./pages/GuidePage";
 import CookiePolicyPage from "./pages/CookiePolicyPage";
+import ClientsPage from "./pages/ClientsPage";
+import QuotesPage from "./pages/QuotesPage";
 import { CookieBanner } from "./components/CookieBanner";
 
 function ProtectedRoute({ children }) {
@@ -82,6 +84,8 @@ function AppRoutes() {
       <Route path="/admin" element={<ProtectedRoute><AdminPanelPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/bug-report" element={<ProtectedRoute><BugReportPage /></ProtectedRoute>} />
+      <Route path="/clients" element={<ProtectedRoute><ClientsPage /></ProtectedRoute>} />
+      <Route path="/quotes" element={<ProtectedRoute><QuotesPage /></ProtectedRoute>} />
       {/* Public pages - no auth */}
       <Route path="/listino" element={<PublicListinoPage />} />
       <Route path="/landing" element={<LandingPage />} />

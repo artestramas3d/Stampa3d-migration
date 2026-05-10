@@ -332,6 +332,7 @@ class SaleCreate(BaseModel):
     design_hours: float = 0
     quantity: int = 1
     accessories: List[AccessoryUsage] = []
+    client_id: Optional[str] = None
 
 # Template for saving print configurations
 class PrintTemplateCreate(BaseModel):
@@ -864,7 +865,9 @@ async def get_recent_sales(current_user: dict = Depends(get_current_user), limit
             "filaments": doc.get("filaments", []),
             "accessories": doc.get("accessories", []),
             "labor_hours": doc.get("labor_hours", 0),
-            "design_hours": doc.get("design_hours", 0)
+            "design_hours": doc.get("design_hours", 0),
+            "client_id": doc.get("client_id", ""),
+            "client_name": doc.get("client_name", "")
         })
     return result
 
@@ -960,6 +963,7 @@ async def create_sale(sale: SaleCreate, current_user: dict = Depends(get_current
             "sale_price": price_per_unit,
             "net_profit": profit_per_unit,
             "paid": False,
+            "client_id": sale.client_id or "",
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         result = await db.sales.insert_one(doc)
@@ -2238,6 +2242,259 @@ async def admin_get_stats(current_user: dict = Depends(require_admin)):
         "total_sales": total_sales,
         "total_newsletters": total_newsletters
     }
+
+
+# ========== CLIENTS / RUBRICA ==========
+class ClientCreate(BaseModel):
+    name: str
+    surname: str = ""
+    phone: str = ""
+    email: str = ""
+    address: str = ""
+    notes: str = ""
+
+@api_router.get("/clients")
+async def get_clients(current_user: dict = Depends(get_current_user)):
+    clients = []
+    async for doc in db.clients.find({"user_id": current_user["id"]}).sort("name", 1):
+        doc["id"] = str(doc["_id"])
+        del doc["_id"]
+        clients.append(doc)
+    return clients
+
+@api_router.post("/clients")
+async def create_client(client: ClientCreate, current_user: dict = Depends(get_current_user)):
+    doc = {
+        "user_id": current_user["id"],
+        **client.dict(),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    result = await db.clients.insert_one(doc)
+    doc["id"] = str(result.inserted_id)
+    doc.pop("_id", None)
+    return doc
+
+@api_router.put("/clients/{client_id}")
+async def update_client(client_id: str, client: ClientCreate, current_user: dict = Depends(get_current_user)):
+    result = await db.clients.update_one(
+        {"_id": ObjectId(client_id), "user_id": current_user["id"]},
+        {"$set": client.dict()}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Cliente non trovato")
+    return {"message": "Cliente aggiornato"}
+
+@api_router.delete("/clients/{client_id}")
+async def delete_client(client_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.clients.delete_one({"_id": ObjectId(client_id), "user_id": current_user["id"]})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Cliente non trovato")
+    return {"message": "Cliente eliminato"}
+
+@api_router.get("/clients/{client_id}/sales")
+async def get_client_sales(client_id: str, current_user: dict = Depends(get_current_user)):
+    sales = []
+    async for doc in db.sales.find({"user_id": current_user["id"], "client_id": client_id}).sort("date", -1):
+        doc["id"] = str(doc["_id"])
+        del doc["_id"]
+        sales.append(doc)
+    return sales
+
+# ========== BUSINESS SETTINGS ==========
+class BusinessSettings(BaseModel):
+    company_name: str = ""
+    address: str = ""
+    city: str = ""
+    zip_code: str = ""
+    vat_number: str = ""
+    phone: str = ""
+    email: str = ""
+    logo_base64: str = ""
+
+@api_router.get("/business-settings")
+async def get_business_settings(current_user: dict = Depends(get_current_user)):
+    settings = await db.business_settings.find_one({"user_id": current_user["id"]})
+    if not settings:
+        return {"company_name": "", "address": "", "city": "", "zip_code": "", "vat_number": "", "phone": "", "email": "", "logo_base64": ""}
+    settings.pop("_id", None)
+    return settings
+
+@api_router.put("/business-settings")
+async def update_business_settings(data: BusinessSettings, current_user: dict = Depends(get_current_user)):
+    await db.business_settings.update_one(
+        {"user_id": current_user["id"]},
+        {"$set": {**data.dict(), "user_id": current_user["id"]}},
+        upsert=True
+    )
+    return {"message": "Dati aziendali aggiornati"}
+
+# ========== QUOTE / PREVENTIVO PDF ==========
+class QuoteItem(BaseModel):
+    description: str
+    quantity: int = 1
+    unit_price: float
+
+class QuoteCreate(BaseModel):
+    client_id: Optional[str] = None
+    client_name: str = ""
+    items: List[QuoteItem]
+    notes: str = ""
+    valid_days: int = 30
+
+@api_router.post("/quotes/generate-pdf")
+async def generate_quote_pdf(quote: QuoteCreate, current_user: dict = Depends(get_current_user)):
+    # Get business settings
+    biz = await db.business_settings.find_one({"user_id": current_user["id"]})
+    if not biz:
+        biz = {}
+    
+    # Get client info
+    client = None
+    if quote.client_id:
+        client = await db.clients.find_one({"_id": ObjectId(quote.client_id), "user_id": current_user["id"]})
+    
+    client_name = client.get("name", "") + " " + client.get("surname", "") if client else quote.client_name
+    client_address = client.get("address", "") if client else ""
+    client_email = client.get("email", "") if client else ""
+    client_phone = client.get("phone", "") if client else ""
+    
+    now = datetime.now(timezone.utc)
+    quote_number = f"PRV-{now.strftime('%Y%m%d')}-{now.strftime('%H%M%S')}"
+    valid_until = (now + timedelta(days=quote.valid_days)).strftime("%d/%m/%Y")
+    
+    # Calculate totals
+    subtotal = sum(item.quantity * item.unit_price for item in quote.items)
+    
+    # Save quote to DB
+    quote_doc = {
+        "user_id": current_user["id"],
+        "quote_number": quote_number,
+        "client_id": quote.client_id,
+        "client_name": client_name.strip(),
+        "items": [i.dict() for i in quote.items],
+        "subtotal": round(subtotal, 2),
+        "notes": quote.notes,
+        "valid_until": valid_until,
+        "created_at": now.isoformat()
+    }
+    await db.quotes.insert_one(quote_doc)
+    quote_doc.pop("_id", None)
+    
+    # Generate HTML for PDF
+    logo_html = ""
+    if biz.get("logo_base64"):
+        logo_html = f'<img src="{biz["logo_base64"]}" style="max-height:60px;max-width:200px;" />'
+    
+    items_html = ""
+    for item in quote.items:
+        total = item.quantity * item.unit_price
+        items_html += f"""
+        <tr>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;">{item.description}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;">{item.quantity}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">&euro;{item.unit_price:.2f}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;font-weight:bold;">&euro;{total:.2f}</td>
+        </tr>"""
+    
+    client_block = ""
+    if client_name.strip():
+        client_lines = [f"<strong>{client_name.strip()}</strong>"]
+        if client_address: client_lines.append(client_address)
+        if client_email: client_lines.append(client_email)
+        if client_phone: client_lines.append(client_phone)
+        client_block = f'<div style="margin-bottom:20px;">{"<br/>".join(client_lines)}</div>'
+    
+    biz_name = biz.get("company_name", "")
+    biz_lines = []
+    if biz.get("address"): biz_lines.append(biz["address"])
+    if biz.get("city") or biz.get("zip_code"): biz_lines.append(f'{biz.get("zip_code","")} {biz.get("city","")}'.strip())
+    if biz.get("vat_number"): biz_lines.append(f'P.IVA: {biz["vat_number"]}')
+    if biz.get("phone"): biz_lines.append(f'Tel: {biz["phone"]}')
+    if biz.get("email"): biz_lines.append(biz["email"])
+    
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<style>
+body {{ font-family: Arial, sans-serif; color: #333; margin: 0; padding: 30px; }}
+.header {{ display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #f97316; padding-bottom: 20px; }}
+.company {{ text-align: right; font-size: 13px; color: #555; line-height: 1.6; }}
+.company h2 {{ color: #333; margin: 0 0 5px; font-size: 18px; }}
+.quote-info {{ background: #fff7ed; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; }}
+.quote-info div {{ font-size: 13px; }}
+.quote-info strong {{ color: #ea580c; }}
+table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+th {{ background: #f97316; color: white; padding: 10px 12px; text-align: left; font-size: 13px; }}
+th:nth-child(2), th:nth-child(3), th:nth-child(4) {{ text-align: center; }}
+th:last-child {{ text-align: right; }}
+td {{ font-size: 13px; }}
+.total-row {{ font-size: 18px; text-align: right; padding: 15px 0; border-top: 2px solid #f97316; }}
+.notes {{ background: #f8fafc; padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 12px; color: #555; }}
+.footer {{ text-align: center; margin-top: 40px; font-size: 11px; color: #999; border-top: 1px solid #eee; padding-top: 15px; }}
+</style></head><body>
+<div class="header">
+    <div>{logo_html}</div>
+    <div class="company">
+        <h2>{biz_name}</h2>
+        {'<br/>'.join(biz_lines)}
+    </div>
+</div>
+<div class="quote-info">
+    <div>
+        <strong>PREVENTIVO {quote_number}</strong><br/>
+        Data: {now.strftime("%d/%m/%Y")}<br/>
+        Valido fino al: {valid_until}
+    </div>
+    <div style="text-align:right;">
+        {client_block}
+    </div>
+</div>
+<table>
+    <thead>
+        <tr><th>Descrizione</th><th>Qta</th><th>Prezzo Unit.</th><th>Totale</th></tr>
+    </thead>
+    <tbody>
+        {items_html}
+    </tbody>
+</table>
+<div class="total-row">
+    <strong>TOTALE: &euro;{subtotal:.2f}</strong>
+</div>
+{"<div class='notes'><strong>Note:</strong> " + quote.notes + "</div>" if quote.notes else ""}
+<div class="footer">{biz_name} {(' - ' + biz.get('vat_number','')) if biz.get('vat_number') else ''}</div>
+</body></html>"""
+    
+    return {"html": html, "quote_number": quote_number, "total": round(subtotal, 2)}
+
+@api_router.get("/quotes")
+async def get_quotes(current_user: dict = Depends(get_current_user)):
+    quotes = []
+    async for doc in db.quotes.find({"user_id": current_user["id"]}).sort("created_at", -1):
+        doc["id"] = str(doc["_id"])
+        del doc["_id"]
+        quotes.append(doc)
+    return quotes
+
+# ========== EXPORT CSV/EXCEL ==========
+@api_router.get("/export/filaments")
+async def export_filaments_csv(current_user: dict = Depends(get_current_user)):
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Materiale", "Colore", "Brand", "Peso Bobina (g)", "Prezzo Bobina", "Costo/g", "Rimanenti (g)", "Note"])
+    async for f in db.filaments.find({"user_id": current_user["id"]}):
+        writer.writerow([f.get("material_type",""), f.get("color",""), f.get("brand",""), f.get("spool_weight_g",0), f.get("spool_price",0), round(f.get("cost_per_gram",0),4), f.get("remaining_grams",0), f.get("notes","")])
+    output.seek(0)
+    return StreamingResponse(io.BytesIO(output.getvalue().encode('utf-8-sig')), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=filamenti.csv"})
+
+@api_router.get("/export/clients")
+async def export_clients_csv(current_user: dict = Depends(get_current_user)):
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Nome", "Cognome", "Telefono", "Email", "Indirizzo", "Note"])
+    async for c in db.clients.find({"user_id": current_user["id"]}):
+        writer.writerow([c.get("name",""), c.get("surname",""), c.get("phone",""), c.get("email",""), c.get("address",""), c.get("notes","")])
+    output.seek(0)
+    return StreamingResponse(io.BytesIO(output.getvalue().encode('utf-8-sig')), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=clienti.csv"})
+
 
 # Include router
 app.include_router(api_router)
