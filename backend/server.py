@@ -1916,7 +1916,7 @@ def _parse_3mf_zip(zf):
                     plate_info["filament_details"].append({
                         "type": f.get("type", f.get("filament_type", "")),
                         "color": f.get("color", ""),
-                        "grams": round(g, 1)
+                        "grams": round(g, 2)
                     })
 
                 if total_grams == 0:
@@ -1926,7 +1926,7 @@ def _parse_3mf_zip(zf):
 
                 # Only add plate if it has actual data
                 if plate_info["print_time_seconds"] > 0 or total_grams > 0:
-                    plate_info["filament_grams"] = round(total_grams, 1)
+                    plate_info["filament_grams"] = round(total_grams, 2)
                     plate_info["print_time_hours"] = round(plate_info["print_time_seconds"] / 3600, 2)
                     result["plates"].append(plate_info)
                     result["total_time_seconds"] += plate_info["print_time_seconds"]
@@ -1972,19 +1972,19 @@ def _parse_3mf_zip(zf):
                             filament_details.append({
                                 "type": fil.get('type', ''),
                                 "color": fil.get('color', ''),
-                                "grams": round(g, 1)
+                                "grams": round(g, 2)
                             })
                             if g > weight_g:
                                 weight_g = g
                         
                         if time_secs > 0 or weight_g > 0:
                             result["total_time_seconds"] = time_secs
-                            result["total_filament_grams"] = round(weight_g, 1)
+                            result["total_filament_grams"] = round(weight_g, 2)
                             result["plates"].append({
                                 "plate": name,
                                 "print_time_seconds": time_secs,
                                 "print_time_hours": round(time_secs / 3600, 2),
-                                "filament_grams": round(weight_g, 1),
+                                "filament_grams": round(weight_g, 2),
                                 "filament_details": filament_details
                             })
                             return result
@@ -2005,7 +2005,7 @@ def _parse_3mf_zip(zf):
                     length_mm = float(length_match.group(1))
                     radius_cm = (1.75 / 2) / 10
                     length_cm = length_mm / 10
-                    result["total_filament_grams"] = round(3.14159 * radius_cm * radius_cm * length_cm * 1.24, 1)
+                    result["total_filament_grams"] = round(3.14159 * radius_cm * radius_cm * length_cm * 1.24, 2)
                 if result["total_time_seconds"] > 0 or result["total_filament_grams"] > 0:
                     result["plates"].append({
                         "plate": name,
@@ -2030,7 +2030,7 @@ def _parse_3mf_zip(zf):
                     tag = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
                     if tag == 'Weight' and elem.text:
                         try:
-                            result["total_filament_grams"] = round(float(elem.text), 1)
+                            result["total_filament_grams"] = round(float(elem.text), 2)
                         except ValueError:
                             pass
                     if tag == 'EstimatedPrintTime' and elem.text:
@@ -2066,7 +2066,7 @@ def _parse_3mf_zip(zf):
                             continue
                         if 'weight' in attr_name and 'filament' in attr_name:
                             try:
-                                result["total_filament_grams"] = round(float(val), 1)
+                                result["total_filament_grams"] = round(float(val), 2)
                             except ValueError:
                                 pass
                         if 'time' in attr_name and ('print' in attr_name or 'estimated' in attr_name):
@@ -2157,16 +2157,16 @@ def _parse_3mf_zip(zf):
                     if length_mm > 0:
                         radius_cm = (1.75 / 2) / 10
                         length_cm = length_mm / 10
-                        weight_g = round(3.14159 * radius_cm * radius_cm * length_cm * 1.24, 1)
+                        weight_g = round(3.14159 * radius_cm * radius_cm * length_cm * 1.24, 2)
 
                 if time_secs > 0 or weight_g > 0:
                     result["total_time_seconds"] = time_secs
-                    result["total_filament_grams"] = round(weight_g, 1)
+                    result["total_filament_grams"] = round(weight_g, 2)
                     result["plates"].append({
                         "plate": name,
                         "print_time_seconds": time_secs,
                         "print_time_hours": round(time_secs / 3600, 2),
-                        "filament_grams": round(weight_g, 1),
+                        "filament_grams": round(weight_g, 2),
                         "filament_details": []
                     })
                     return result
@@ -2190,7 +2190,7 @@ async def import_3mf(file: UploadFile = File(...), current_user: dict = Depends(
             result = _parse_3mf_zip(zf)
 
         result["total_time_hours"] = round(result["total_time_seconds"] / 3600, 2)
-        result["total_filament_grams"] = round(result["total_filament_grams"], 1)
+        result["total_filament_grams"] = round(result["total_filament_grams"], 2)
 
         if not result["plates"]:
             # Detect why no data was found
