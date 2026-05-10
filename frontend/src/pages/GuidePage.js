@@ -61,21 +61,36 @@ PASSO 2 — Aggiungi filamenti
 Seleziona il filamento e inserisci i grammi che userai. Puoi aggiungere più filamenti per stampe multicolore.
 
 PASSO 3 — Tempo di stampa
-Inserisci le ore e i minuti di stampa. Puoi anche importare questi dati da un file .3mf di Bambu Studio usando il pulsante "Importa .3mf".
+Inserisci le ore e i minuti di stampa. Puoi anche importare questi dati da un file .3mf usando il pulsante "Importa .3mf".
 
 PASSO 4 — Tempo di design
 Se hai dedicato tempo al design/modellazione, inseriscilo qui.
 
 PASSO 5 — Accessori e quantità
-Aggiungi eventuali accessori e imposta la quantità di pezzi da produrre.
+Aggiungi eventuali accessori e imposta la quantità di pezzi da produrre. Se la quantità è maggiore di 1, le vendite verranno registrate come pezzi singoli che puoi gestire individualmente.
 
 PASSO 6 — Margine di profitto
 Imposta il margine percentuale desiderato oppure inserisci un prezzo manuale.
 
+PASSO 7 — Cliente (opzionale)
+Seleziona un cliente dalla rubrica per associare la vendita.
+
 Il sistema calcola: costo filamento + elettricità + ammortamento + accessori + design = costo totale. Poi applica il margine per il prezzo di vendita suggerito.
 
 IMPORTAZIONE .3MF
-Clicca "Importa .3mf" e carica il file esportato da Bambu Studio. Il sistema estrarrà automaticamente il tempo di stampa e i grammi di filamento necessari.`
+Clicca "Importa .3mf" e carica il file esportato dal tuo slicer. Slicer supportati:
+• Bambu Studio (v2.05+)
+• OrcaSlicer
+• Creality Print
+• PrusaSlicer
+• Cura
+
+IMPORTANTE: Il file deve essere esportato DOPO lo slicing. In Bambu Studio usa "File → Esporta → Esporta file piatto slicato" (NON "Salva progetto").
+
+Per stampe multicolore, il sistema riconosce automaticamente ogni filamento con tipo, colore e grammi separati.
+
+GENERA PREVENTIVO PDF
+Dopo aver calcolato i costi, puoi generare un Preventivo PDF direttamente dal calcolatore cliccando "Genera Preventivo PDF". Il preventivo mostra solo il prodotto e il prezzo finale (non i costi interni) ed è personalizzato con i tuoi dati aziendali e logo.`
       },
       {
         title: "6. Registro Vendite",
@@ -86,8 +101,18 @@ Clicca "Importa .3mf" e carica il file esportato da Bambu Studio. Il sistema est
 • Filtrare per mese e stato di pagamento
 • Ordinare per data, prezzo, profitto o nome
 • Esportare tutto in formato CSV
+• Modificare prezzo e nome di ogni vendita (icona matita)
 
-Ogni vendita registra tutti i dettagli del calcolo per riferimento futuro.`
+QUANTITÀ MULTIPLE
+Se hai stampato più copie (es. 4 portachiavi), ogni pezzo viene registrato come riga singola. Puoi:
+• Segnare pagato/non pagato ogni pezzo individualmente
+• Modificare il prezzo di ogni singolo pezzo
+• Vedere l'indicatore batch (1/4, 2/4, ecc.)
+
+RISTAMPA
+Ogni vendita ha un pulsante "Ristampa" (icona stampante). Cliccandolo, torni al Calcolatore con tutti i dati pre-compilati: filamenti, stampante, tempo di stampa e accessori.
+
+Il nome del cliente associato viene mostrato se presente.`
       },
       {
         title: "7. Acquisti",
@@ -135,6 +160,49 @@ L'amministratore riceverà la segnalazione e potrai vedere lo stato della risolu
       {
         title: "11. Tema Chiaro/Scuro",
         content: `Puoi cambiare il tema dell'interfaccia cliccando l'icona sole/luna nella barra laterale. Il tema scuro è più riposante per gli occhi, soprattutto in ambienti poco illuminati.`
+      },
+      {
+        title: "12. Gestione Clienti",
+        content: `Nella sezione Clienti puoi gestire la tua rubrica:
+• Nome, cognome, telefono, email, indirizzo e note
+• Ricerca rapida tra i clienti
+• Storico acquisti per ogni cliente (icona borsa)
+• Esportazione della rubrica in CSV
+
+I clienti possono essere associati alle vendite direttamente dal Calcolatore, selezionandoli dal menu a tendina "Cliente".`
+      },
+      {
+        title: "13. Preventivi PDF",
+        content: `Puoi generare preventivi professionali in due modi:
+
+DAL CALCOLATORE (metodo rapido):
+Dopo aver calcolato i costi, clicca "Genera Preventivo PDF". Il sistema crea un preventivo con il prodotto e il prezzo di vendita. I costi interni non vengono mostrati.
+
+DALLA PAGINA PREVENTIVI (preventivi personalizzati):
+Vai su "Preventivi" nel menu laterale. Qui puoi:
+• Creare preventivi con più prodotti
+• Selezionare un cliente dalla rubrica o inserirlo manualmente
+• Aggiungere note e validità
+• Visualizzare l'anteprima e stampare/salvare come PDF
+
+DATI AZIENDALI:
+Nel tab "Dati Aziendali" della pagina Preventivi, inserisci:
+• Nome azienda, indirizzo, CAP, città
+• P.IVA, telefono, email
+• Logo (caricamento immagine, max 500KB)
+
+Questi dati appariranno nell'intestazione di tutti i preventivi.
+
+Lo storico dei preventivi generati è consultabile nel tab "Storico".`
+      },
+      {
+        title: "14. Cookie e Privacy",
+        content: `Il sito è conforme al GDPR. Al primo accesso vedrai un banner che ti permette di:
+• Accettare tutti i cookie
+• Accettare solo quelli necessari
+• Personalizzare le preferenze (tecnici, analitici, marketing)
+
+Puoi modificare le tue preferenze in qualsiasi momento dalla pagina Cookie Policy, accessibile dal footer del sito.`
       },
       {
         title: "Consigli per Iniziare",
@@ -207,21 +275,36 @@ STEP 2 — Add Filaments
 Select the filament and enter the grams you'll use. You can add multiple filaments for multicolor prints.
 
 STEP 3 — Print Time
-Enter hours and minutes of print time. You can also import this data from a Bambu Studio .3mf file using the "Import .3mf" button.
+Enter hours and minutes of print time. You can also import this data from a .3mf file using the "Import .3mf" button.
 
 STEP 4 — Design Time
 If you spent time on design/modeling, enter it here.
 
 STEP 5 — Accessories and Quantity
-Add any accessories and set the number of pieces to produce.
+Add any accessories and set the number of pieces to produce. If quantity is greater than 1, sales will be registered as individual pieces you can manage separately.
 
 STEP 6 — Profit Margin
 Set the desired percentage margin or enter a manual price.
 
+STEP 7 — Client (optional)
+Select a client from your address book to link to the sale.
+
 The system calculates: filament cost + electricity + depreciation + accessories + design = total cost. Then applies the margin for the suggested selling price.
 
 .3MF IMPORT
-Click "Import .3mf" and upload the file exported from Bambu Studio. The system will automatically extract the print time and required filament grams.`
+Click "Import .3mf" and upload the file exported from your slicer. Supported slicers:
+• Bambu Studio (v2.05+)
+• OrcaSlicer
+• Creality Print
+• PrusaSlicer
+• Cura
+
+IMPORTANT: The file must be exported AFTER slicing. In Bambu Studio use "File → Export → Export plate sliced file" (NOT "Save project").
+
+For multicolor prints, the system automatically detects each filament with type, color and grams.
+
+GENERATE QUOTE PDF
+After calculating costs, you can generate a Quote PDF directly from the calculator by clicking "Generate Quote PDF". The quote shows only the product and final price (not internal costs) and is customized with your business details and logo.`
       },
       {
         title: "6. Sales Register",
@@ -232,8 +315,16 @@ Click "Import .3mf" and upload the file exported from Bambu Studio. The system w
 • Filter by month and payment status
 • Sort by date, price, profit or name
 • Export everything in CSV format
+• Edit price and name of any sale (pencil icon)
 
-Each sale records all calculation details for future reference.`
+MULTIPLE QUANTITIES
+If you printed multiple copies (e.g. 4 keychains), each piece is registered as a single row. You can:
+• Mark paid/unpaid for each piece individually
+• Edit the price of each piece
+• See the batch indicator (1/4, 2/4, etc.)
+
+REPRINT
+Every sale has a "Reprint" button (printer icon). Clicking it takes you back to the Calculator with all data pre-filled: filaments, printer, print time and accessories.`
       },
       {
         title: "7. Purchases",
@@ -281,6 +372,49 @@ The administrator will receive the report and you can see the resolution status.
       {
         title: "11. Light/Dark Theme",
         content: `You can change the interface theme by clicking the sun/moon icon in the sidebar. Dark theme is easier on the eyes, especially in low-light environments.`
+      },
+      {
+        title: "12. Client Management",
+        content: `In the Clients section you can manage your address book:
+• Name, surname, phone, email, address and notes
+• Quick search among clients
+• Purchase history for each client (bag icon)
+• Export address book to CSV
+
+Clients can be linked to sales directly from the Calculator by selecting them from the "Client" dropdown.`
+      },
+      {
+        title: "13. PDF Quotes",
+        content: `You can generate professional quotes in two ways:
+
+FROM THE CALCULATOR (quick method):
+After calculating costs, click "Generate Quote PDF". The system creates a quote with the product and selling price. Internal costs are not shown.
+
+FROM THE QUOTES PAGE (custom quotes):
+Go to "Quotes" in the sidebar. Here you can:
+• Create quotes with multiple products
+• Select a client from your address book or enter manually
+• Add notes and validity period
+• Preview and print/save as PDF
+
+BUSINESS DETAILS:
+In the "Business Details" tab, enter:
+• Company name, address, ZIP, city
+• VAT number, phone, email
+• Logo (image upload, max 500KB)
+
+These details will appear in the header of all quotes.
+
+The history of generated quotes is available in the "History" tab.`
+      },
+      {
+        title: "14. Cookies and Privacy",
+        content: `The site is GDPR compliant. On first visit you'll see a banner that lets you:
+• Accept all cookies
+• Accept only necessary ones
+• Customize preferences (technical, analytics, marketing)
+
+You can change your preferences at any time from the Cookie Policy page, accessible from the site footer.`
       },
       {
         title: "Tips to Get Started",
@@ -427,6 +561,47 @@ Der Administrator erhält die Meldung und Sie können den Lösungsstatus einsehe
         content: `Sie können das Design ändern, indem Sie auf das Sonnen-/Mondsymbol in der Seitenleiste klicken. Das dunkle Design ist augenschonender, besonders in schwach beleuchteten Umgebungen.`
       },
       {
+        title: "12. Kundenverwaltung",
+        content: `Im Bereich Kunden können Sie Ihr Adressbuch verwalten:
+• Name, Nachname, Telefon, E-Mail, Adresse und Notizen
+• Schnellsuche unter Kunden
+• Kaufhistorie für jeden Kunden (Taschensymbol)
+• Adressbuch als CSV exportieren
+
+Kunden können direkt im Kalkulator mit Verkäufen verknüpft werden.`
+      },
+      {
+        title: "13. PDF-Angebote",
+        content: `Sie können professionelle Angebote auf zwei Arten erstellen:
+
+AUS DEM KALKULATOR (Schnellmethode):
+Nach der Kostenberechnung klicken Sie auf "Angebot PDF erstellen". Das System erstellt ein Angebot mit Produkt und Verkaufspreis. Interne Kosten werden nicht angezeigt.
+
+VON DER ANGEBOTE-SEITE (individuelle Angebote):
+Gehen Sie zu "Angebote" in der Seitenleiste. Hier können Sie:
+• Angebote mit mehreren Produkten erstellen
+• Kunden aus dem Adressbuch auswählen oder manuell eingeben
+• Notizen und Gültigkeitsdauer hinzufügen
+• Vorschau anzeigen und als PDF drucken/speichern
+
+GESCHÄFTSDATEN:
+Im Tab "Geschäftsdaten" geben Sie ein:
+• Firmenname, Adresse, PLZ, Stadt
+• USt-IdNr., Telefon, E-Mail
+• Logo (Bild-Upload, max 500KB)
+
+Diese Daten erscheinen in der Kopfzeile aller Angebote.`
+      },
+      {
+        title: "14. Cookies und Datenschutz",
+        content: `Die Website ist DSGVO-konform. Beim ersten Besuch sehen Sie ein Banner, das Ihnen ermöglicht:
+• Alle Cookies akzeptieren
+• Nur notwendige akzeptieren
+• Präferenzen anpassen (technische, analytische, Marketing)
+
+Sie können Ihre Präferenzen jederzeit auf der Cookie-Richtlinien-Seite ändern.`
+      },
+      {
         title: "Tipps zum Einstieg",
         content: `1. Fügen Sie Ihre Drucker in den Einstellungen hinzu
 2. Registrieren Sie die Filamente, die Sie auf Lager haben
@@ -569,6 +744,47 @@ L'administrateur recevra le signalement et vous pourrez voir le statut de la ré
       {
         title: "11. Thème Clair/Sombre",
         content: `Vous pouvez changer le thème en cliquant sur l'icône soleil/lune dans la barre latérale. Le thème sombre est plus reposant pour les yeux, surtout dans les environnements peu éclairés.`
+      },
+      {
+        title: "12. Gestion des Clients",
+        content: `Dans la section Clients, vous pouvez gérer votre carnet d'adresses :
+• Nom, prénom, téléphone, email, adresse et notes
+• Recherche rapide parmi les clients
+• Historique des achats pour chaque client (icône sac)
+• Export du carnet d'adresses en CSV
+
+Les clients peuvent être associés aux ventes directement depuis le Calculateur en les sélectionnant dans le menu déroulant "Client".`
+      },
+      {
+        title: "13. Devis PDF",
+        content: `Vous pouvez générer des devis professionnels de deux manières :
+
+DEPUIS LE CALCULATEUR (méthode rapide) :
+Après avoir calculé les coûts, cliquez sur "Générer Devis PDF". Le système crée un devis avec le produit et le prix de vente. Les coûts internes ne sont pas affichés.
+
+DEPUIS LA PAGE DEVIS (devis personnalisés) :
+Allez dans "Devis" dans la barre latérale. Vous pouvez :
+• Créer des devis avec plusieurs produits
+• Sélectionner un client du carnet d'adresses ou saisir manuellement
+• Ajouter des notes et une durée de validité
+• Prévisualiser et imprimer/enregistrer en PDF
+
+DONNÉES ENTREPRISE :
+Dans l'onglet "Données Entreprise", saisissez :
+• Nom de l'entreprise, adresse, code postal, ville
+• N° TVA, téléphone, email
+• Logo (téléchargement d'image, max 500 Ko)
+
+Ces données apparaîtront dans l'en-tête de tous les devis.`
+      },
+      {
+        title: "14. Cookies et Confidentialité",
+        content: `Le site est conforme au RGPD. Lors de votre première visite, vous verrez une bannière qui vous permet de :
+• Accepter tous les cookies
+• Accepter uniquement les nécessaires
+• Personnaliser les préférences (techniques, analytiques, marketing)
+
+Vous pouvez modifier vos préférences à tout moment depuis la page Politique de Cookies.`
       },
       {
         title: "Conseils pour Démarrer",
