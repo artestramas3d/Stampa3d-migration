@@ -178,20 +178,29 @@ export default function CalculatorPage() {
       const plateDetails = data.plates?.[0]?.filament_details || [];
       
       if (plateDetails.length > 0 && filaments.length > 0) {
-        // Match 3mf filaments to user's inventory by color hex
+        // Match 3mf filaments to user's inventory by color hex, avoiding duplicates
+        const usedIds = new Set();
+        
         const newFilaments = plateDetails.map(detail => {
-          // Try to match by color hex
+          // Try exact color hex match (not already used)
           const colorMatch = detail.color ? filaments.find(f => 
-            f.color_hex?.toUpperCase() === detail.color?.toUpperCase() ||
-            f.color_hex2?.toUpperCase() === detail.color?.toUpperCase()
+            !usedIds.has(f.id) && (
+              f.color_hex?.toUpperCase() === detail.color?.toUpperCase() ||
+              f.color_hex2?.toUpperCase() === detail.color?.toUpperCase()
+            )
           ) : null;
           
-          // Try to match by material type if no color match
+          // Try material type match (not already used)
           const typeMatch = !colorMatch && detail.type ? filaments.find(f =>
-            f.material_type?.toUpperCase() === detail.type?.toUpperCase()
+            !usedIds.has(f.id) && f.material_type?.toUpperCase() === detail.type?.toUpperCase()
           ) : null;
           
-          const matched = colorMatch || typeMatch || filaments[0];
+          // Fallback: any filament not yet used, or first filament
+          const anyMatch = !colorMatch && !typeMatch ? 
+            (filaments.find(f => !usedIds.has(f.id)) || filaments[0]) : null;
+          
+          const matched = colorMatch || typeMatch || anyMatch;
+          usedIds.add(matched.id);
           
           return {
             filament_id: matched.id,
