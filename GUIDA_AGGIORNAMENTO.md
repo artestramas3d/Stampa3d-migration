@@ -12,23 +12,161 @@
 ### Passo 2: Collegati al server
 Apri il Terminale sul Mac e scrivi:
 ```
-ssh root@<IP-DEL-TUO-VPS>
+ssh root@94.177.202.133
 ```
 Inserisci la password quando richiesto.
 
-### Passo 3: Aggiorna il sito
+### Passo 3: Aggiorna il codice
 ```
 cd /opt/Stampa3d-migration
-git stash
-git pull
-docker compose up -d --build
+git reset --hard origin/main
+git pull origin main
 ```
 
-### Passo 4: Aspetta
-Il build richiede **3-5 minuti**. Quando torna il cursore `root@ArtesTramas:`, il sito è aggiornato.
+### Passo 4: Ripristina i file del server
+Questi file devono essere adattati al tuo VPS ogni volta. Copia e incolla OGNI blocco separatamente:
 
-### Passo 5: Verifica
-Apri `https://calcolatore.artestramas3d.it` nel browser e controlla che funzioni.
+**4a - Dockerfile frontend:**
+```
+cat > frontend/Dockerfile << 'EOF'
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package.json yarn.lock* ./
+RUN yarn install
+COPY . .
+ENV NODE_OPTIONS=--max-old-space-size=768
+RUN yarn build
+
+FROM nginx:alpine
+COPY --from=build /app/build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+EOF
+```
+
+**4b - Nginx frontend config:**
+```
+cat > frontend/nginx.conf << 'EOF'
+server {
+    listen 80;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+EOF
+```
+
+**4c - Correggi porta proxy Nginx:**
+```
+sed -i 's|proxy_pass http://frontend:3000|proxy_pass http://frontend:80|g' nginx/default.conf
+```
+
+**4d - Correggi requirements.txt backend:**
+```
+cat > backend/requirements.txt << 'EOF'
+fastapi==0.110.1
+uvicorn==0.25.0
+motor==3.3.1
+pymongo==4.5.0
+python-jose==3.5.0
+python-multipart==0.0.22
+python-dotenv==1.2.2
+bcrypt==4.1.3
+pydantic==2.12.5
+passlib==1.7.4
+PyJWT==2.12.1
+email-validator==2.3.0
+requests==2.32.5
+watchfiles==1.1.1
+EOF
+```
+
+### Passo 5: Ricostruisci e riavvia
+```
+docker compose up -d --build frontend backend
+docker compose restart nginx
+```
+
+### Passo 6: Aspetta
+Il build richiede **3-5 minuti**. Quando torna il cursore `root@ArtesTramas:`, il sito e' aggiornato.
+
+### Passo 7: Verifica
+```
+curl -I https://calcolatore.artestramas3d.it
+```
+Deve dire `HTTP/1.1 200 OK`. Poi apri il sito nel browser.
+
+---
+
+## Riepilogo Veloce (copia tutto in ordine)
+
+```
+ssh root@94.177.202.133
+```
+```
+cd /opt/Stampa3d-migration
+git reset --hard origin/main
+git pull origin main
+```
+```
+cat > frontend/Dockerfile << 'EOF'
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package.json yarn.lock* ./
+RUN yarn install
+COPY . .
+ENV NODE_OPTIONS=--max-old-space-size=768
+RUN yarn build
+
+FROM nginx:alpine
+COPY --from=build /app/build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+EOF
+```
+```
+cat > frontend/nginx.conf << 'EOF'
+server {
+    listen 80;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+EOF
+```
+```
+sed -i 's|proxy_pass http://frontend:3000|proxy_pass http://frontend:80|g' nginx/default.conf
+```
+```
+cat > backend/requirements.txt << 'EOF'
+fastapi==0.110.1
+uvicorn==0.25.0
+motor==3.3.1
+pymongo==4.5.0
+python-jose==3.5.0
+python-multipart==0.0.22
+python-dotenv==1.2.2
+bcrypt==4.1.3
+pydantic==2.12.5
+passlib==1.7.4
+PyJWT==2.12.1
+email-validator==2.3.0
+requests==2.32.5
+watchfiles==1.1.1
+EOF
+```
+```
+docker compose up -d --build frontend backend
+docker compose restart nginx
+```
 
 ---
 
@@ -36,11 +174,14 @@ Apri `https://calcolatore.artestramas3d.it` nel browser e controlla che funzioni
 
 | Comando | Cosa fa |
 |---------|---------|
-| `ssh root@IP` | Ti collega al server remoto |
+| `ssh root@94.177.202.133` | Ti collega al server remoto |
 | `cd /opt/Stampa3d-migration` | Vai nella cartella del progetto |
-| `git stash` | Mette da parte eventuali modifiche locali sul server |
-| `git pull` | Scarica le ultime modifiche da GitHub |
+| `git reset --hard origin/main` | Annulla modifiche locali e si allinea a GitHub |
+| `git pull origin main` | Scarica le ultime modifiche da GitHub |
+| `cat > file << 'EOF' ... EOF` | Scrive/sovrascrive un file con il contenuto dato |
+| `sed -i 's/old/new/g' file` | Sostituisce testo nel file |
 | `docker compose up -d --build` | Ricostruisce e riavvia i container |
+| `docker compose restart nginx` | Riavvia solo il proxy Nginx |
 
 ---
 
@@ -49,27 +190,29 @@ Apri `https://calcolatore.artestramas3d.it` nel browser e controlla che funzioni
 ### Il build fallisce (errore memoria)
 ```
 docker system prune -af
-docker compose up -d --build
+docker compose up -d --build frontend backend
+docker compose restart nginx
 ```
 
-### Il sito non si apre dopo il build
-Controlla i log:
+### Il sito da 502 Bad Gateway
+Controlla quale container e' crashato:
 ```
-docker compose logs nginx --tail 20
-docker compose logs backend --tail 20
+docker compose ps
 docker compose logs frontend --tail 20
+docker compose logs backend --tail 20
 ```
 
-### git pull dice "local changes would be overwritten"
+### Il sito da 404 Not Found
+Il file `nginx.conf` del frontend non e' stato copiato. Riesegui il Passo 4a e 4b, poi:
 ```
-git stash
-git pull
-docker compose up -d --build
+docker compose up -d --build frontend
+docker compose restart nginx
 ```
 
-### Vuoi riavviare senza ricostruire (più veloce)
+### Il build del backend fallisce (requirements)
+Riesegui il Passo 4d, poi:
 ```
-docker compose restart
+docker compose up -d --build backend
 ```
 
 ### Vuoi vedere se i container sono attivi
@@ -77,16 +220,27 @@ docker compose restart
 docker compose ps
 ```
 
-### Vuoi fermare tutto
+### Vuoi riavviare senza ricostruire (piu' veloce, solo backend)
 ```
-docker compose down
+docker compose restart backend
 ```
 
 ### Vuoi riavviare tutto da zero
 ```
 docker compose down
 docker system prune -af
-docker compose up -d --build
+```
+Poi riesegui dal Passo 5.
+
+---
+
+## Rinnovo Certificato SSL (ogni 3 mesi)
+
+```
+cd /opt/Stampa3d-migration
+docker compose stop nginx
+sudo certbot certonly --standalone -d calcolatore.artestramas3d.it --force-renewal
+docker compose start nginx
 ```
 
 ---
@@ -100,17 +254,3 @@ docker compose up -d --build
 | Vedere memoria RAM | `free -h` |
 | Vedere lo swap | `swapon --show` |
 | Uscire dal server | `exit` |
-
----
-
-## Riepilogo veloce (copia e incolla)
-
-```
-ssh root@<IP-DEL-TUO-VPS>
-cd /opt/Stampa3d-migration
-git stash
-git pull
-docker compose up -d --build
-```
-
-Fatto! 🚀
