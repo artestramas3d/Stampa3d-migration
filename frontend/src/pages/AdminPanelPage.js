@@ -1190,9 +1190,6 @@ export default function AdminPanelPage() {
           <TabsTrigger value="products" data-testid="tab-products">
             <ShoppingBag className="w-4 h-4 mr-1.5 hidden sm:inline" />Prodotti
           </TabsTrigger>
-          <TabsTrigger value="settings" data-testid="tab-settings">
-            <Settings2 className="w-4 h-4 mr-1.5 hidden sm:inline" />Sito
-          </TabsTrigger>
           <TabsTrigger value="landing" data-testid="tab-landing">
             <Globe className="w-4 h-4 mr-1.5 hidden sm:inline" />Landing
           </TabsTrigger>
