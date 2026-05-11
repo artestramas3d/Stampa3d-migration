@@ -74,6 +74,11 @@ export default function LoginPage() {
               {t('no_account')}{' '}
               <Link to="/register" className="text-primary hover:underline" data-testid="go-to-register">{t('register')}</Link>
             </div>
+            <div className="mt-2 text-center">
+              <Link to="/demo" className="text-xs text-muted-foreground hover:text-primary transition-colors" data-testid="go-to-demo">
+                Prova senza account →
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>

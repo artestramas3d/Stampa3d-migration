@@ -47,11 +47,11 @@ export default function LandingPage() {
             {data?.hero_subtitle || 'Creazioni in stampa 3D personalizzate'}
           </p>
           <div className="mt-8 flex items-center justify-center gap-4 flex-wrap">
-            <a href="#portfolio" className="px-6 py-3 rounded-full bg-white font-semibold text-sm flex items-center gap-2 hover:bg-white/90 transition-colors" style={{ color: primary }}>
-              Scopri i Prodotti <ChevronRight className="w-4 h-4" />
+            <a href="/demo" className="px-6 py-3 rounded-full bg-white font-semibold text-sm flex items-center gap-2 hover:bg-white/90 transition-colors" style={{ color: primary }}>
+              Prova il Calcolatore Gratis <ChevronRight className="w-4 h-4" />
             </a>
-            <a href="#contatti" className="px-6 py-3 rounded-full border-2 border-white/30 text-white font-semibold text-sm hover:bg-white/10 transition-colors">
-              Richiedi Preventivo
+            <a href="#portfolio" className="px-6 py-3 rounded-full border-2 border-white/30 text-white font-semibold text-sm hover:bg-white/10 transition-colors">
+              Scopri i Prodotti
             </a>
           </div>
         </div>
