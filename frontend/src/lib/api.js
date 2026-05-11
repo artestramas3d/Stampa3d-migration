@@ -139,4 +139,7 @@ export const getQuotes = () => api.get('/quotes').then(r => r.data);
 export const exportFilamentsCSV = () => `${API}/export/filaments`;
 export const exportClientsCSV = () => `${API}/export/clients`;
 
+// Public site scripts (no auth)
+export const getPublicSiteScripts = () => api.get('/public/site-scripts').then(r => r.data);
+
 export default api;

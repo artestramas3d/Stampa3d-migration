@@ -29,6 +29,7 @@ import ClientsPage from "./pages/ClientsPage";
 import QuotesPage from "./pages/QuotesPage";
 import DemoCalculatorPage from "./pages/DemoCalculatorPage";
 import { CookieBanner } from "./components/CookieBanner";
+import { PublicScripts } from "./components/PublicScripts";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -106,6 +107,7 @@ function App() {
           <BrowserRouter>
             <AppRoutes />
             <CookieBanner />
+            <PublicScripts />
             <Toaster position="top-right" richColors />
           </BrowserRouter>
         </AuthProvider>

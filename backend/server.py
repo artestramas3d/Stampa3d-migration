@@ -1567,17 +1567,44 @@ class SiteSettingsUpdate(BaseModel):
     subtitle: Optional[str] = None
     primary_color: Optional[str] = None
     accent_color: Optional[str] = None
+    head_scripts: Optional[str] = None
+    body_scripts: Optional[str] = None
+    demo_banner_text: Optional[str] = None
+    demo_banner_enabled: Optional[bool] = None
+    demo_banner_color: Optional[str] = None
+    demo_banner_link: Optional[str] = None
 
 @api_router.get("/site-settings")
 async def get_site_settings(current_user: dict = Depends(get_current_user)):
     doc = await db.site_settings.find_one({"_id": "global"})
     if not doc:
-        return {"brand_name": "Artes&Tramas", "subtitle": "Calcolatore", "primary_color": "#f97316", "accent_color": "#2563eb"}
+        return {"brand_name": "Artes&Tramas", "subtitle": "Calcolatore", "primary_color": "#f97316", "accent_color": "#2563eb", "head_scripts": "", "body_scripts": "", "demo_banner_text": "", "demo_banner_enabled": False, "demo_banner_color": "#f97316", "demo_banner_link": ""}
     return {
         "brand_name": doc.get("brand_name", "Artes&Tramas"),
         "subtitle": doc.get("subtitle", "Calcolatore"),
         "primary_color": doc.get("primary_color", "#f97316"),
         "accent_color": doc.get("accent_color", "#2563eb"),
+        "head_scripts": doc.get("head_scripts", ""),
+        "body_scripts": doc.get("body_scripts", ""),
+        "demo_banner_text": doc.get("demo_banner_text", ""),
+        "demo_banner_enabled": doc.get("demo_banner_enabled", False),
+        "demo_banner_color": doc.get("demo_banner_color", "#f97316"),
+        "demo_banner_link": doc.get("demo_banner_link", ""),
+    }
+
+# Public endpoint for scripts (no auth needed)
+@api_router.get("/public/site-scripts")
+async def get_public_site_scripts():
+    doc = await db.site_settings.find_one({"_id": "global"})
+    if not doc:
+        return {"head_scripts": "", "body_scripts": "", "demo_banner_text": "", "demo_banner_enabled": False, "demo_banner_color": "#f97316", "demo_banner_link": ""}
+    return {
+        "head_scripts": doc.get("head_scripts", ""),
+        "body_scripts": doc.get("body_scripts", ""),
+        "demo_banner_text": doc.get("demo_banner_text", ""),
+        "demo_banner_enabled": doc.get("demo_banner_enabled", False),
+        "demo_banner_color": doc.get("demo_banner_color", "#f97316"),
+        "demo_banner_link": doc.get("demo_banner_link", ""),
     }
 
 @api_router.put("/admin/site-settings")
@@ -1595,6 +1622,12 @@ async def update_site_settings(settings: SiteSettingsUpdate, current_user: dict 
         "subtitle": doc.get("subtitle", "Calcolatore"),
         "primary_color": doc.get("primary_color", "#f97316"),
         "accent_color": doc.get("accent_color", "#2563eb"),
+        "head_scripts": doc.get("head_scripts", ""),
+        "body_scripts": doc.get("body_scripts", ""),
+        "demo_banner_text": doc.get("demo_banner_text", ""),
+        "demo_banner_enabled": doc.get("demo_banner_enabled", False),
+        "demo_banner_color": doc.get("demo_banner_color", "#f97316"),
+        "demo_banner_link": doc.get("demo_banner_link", ""),
     }
 
 # ========== BUG REPORTS ==========

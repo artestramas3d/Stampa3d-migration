@@ -9,8 +9,10 @@ import { Separator } from '../components/ui/separator';
 import { Switch } from '../components/ui/switch';
 import { Calculator, Plus, Trash2, Lock, UserPlus, Receipt } from 'lucide-react';
 import { DecimalInput } from '../components/DecimalInput';
+import { useDemoBanner } from '../components/PublicScripts';
 
 export default function DemoCalculatorPage() {
+  const demoBanner = useDemoBanner();
   const [filaments, setFilaments] = useState([
     { name: 'PLA', color: '#000000', cost_per_gram: 0.02, grams_used: 50 }
   ]);
@@ -111,6 +113,17 @@ export default function DemoCalculatorPage() {
           </p>
           <Link to="/register"><Button size="sm">Registrati</Button></Link>
         </div>
+
+        {/* Admin custom banner */}
+        {demoBanner && (
+          <div className="mb-4 p-3 rounded-lg text-white text-center" style={{ backgroundColor: demoBanner.color }} data-testid="demo-custom-banner">
+            {demoBanner.link ? (
+              <a href={demoBanner.link} target="_blank" rel="noreferrer" className="text-sm font-semibold hover:underline">{demoBanner.text}</a>
+            ) : (
+              <p className="text-sm font-semibold">{demoBanner.text}</p>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_300px] gap-4">
           {/* Printer + Filaments */}

@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import {
   Users, Mail, Send, Shield, ShieldCheck, Trash2, CheckCircle,
   XCircle, Newspaper, Copy, Settings2, Bug, Image, Calendar, Clock, Wrench, X, Globe, MessageSquare, Plus,
-  ShoppingBag, Pencil, ImagePlus, Eye, EyeOff, Package, ExternalLink, UserCircle
+  ShoppingBag, Pencil, ImagePlus, Eye, EyeOff, Package, ExternalLink, UserCircle, Code
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Switch } from '../components/ui/switch';
@@ -115,6 +115,153 @@ function SiteSettingsTab() {
     </Card>
   );
 }
+
+
+function ScriptsTab() {
+  const [data, setData] = useState({
+    head_scripts: '', body_scripts: '',
+    demo_banner_text: '', demo_banner_enabled: false,
+    demo_banner_color: '#f97316', demo_banner_link: ''
+  });
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    getSiteSettings().then(s => {
+      setData({
+        head_scripts: s.head_scripts || '',
+        body_scripts: s.body_scripts || '',
+        demo_banner_text: s.demo_banner_text || '',
+        demo_banner_enabled: s.demo_banner_enabled || false,
+        demo_banner_color: s.demo_banner_color || '#f97316',
+        demo_banner_link: s.demo_banner_link || ''
+      });
+      setLoaded(true);
+    }).catch(() => setLoaded(true));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateSiteSettings(data);
+      toast.success('Impostazioni script salvate');
+    } catch { toast.error('Errore salvataggio'); }
+    finally { setSaving(false); }
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <div className="space-y-4">
+      {/* Head Scripts */}
+      <Card className="border-border/40">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-heading flex items-center gap-2">
+            <Code className="w-4 h-4" /> Script Head (Google AdSense, Analytics, ecc.)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Il codice inserito qui verra' aggiunto nel &lt;head&gt; di tutte le pagine pubbliche (landing, demo, listino). Ideale per Google AdSense, Analytics, Meta Pixel, ecc.
+          </p>
+          <Textarea
+            value={data.head_scripts}
+            onChange={e => setData(prev => ({...prev, head_scripts: e.target.value}))}
+            placeholder='Es. <script async src="https://pagead2.googlesyndication.com/..."></script>'
+            rows={5}
+            className="font-mono text-xs"
+            data-testid="head-scripts-input"
+          />
+        </CardContent>
+      </Card>
+
+      {/* Body Scripts */}
+      <Card className="border-border/40">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-heading flex items-center gap-2">
+            <Code className="w-4 h-4" /> Script Body
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Codice aggiunto prima della chiusura &lt;/body&gt;. Per chatbot, widget, ecc.
+          </p>
+          <Textarea
+            value={data.body_scripts}
+            onChange={e => setData(prev => ({...prev, body_scripts: e.target.value}))}
+            placeholder='Es. <script src="https://widget.esempio.com/chat.js"></script>'
+            rows={4}
+            className="font-mono text-xs"
+            data-testid="body-scripts-input"
+          />
+        </CardContent>
+      </Card>
+
+      {/* Demo Banner */}
+      <Card className="border-border/40">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-heading flex items-center gap-2">
+            Banner Pagina Demo
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Switch
+                checked={data.demo_banner_enabled}
+                onCheckedChange={v => setData(prev => ({...prev, demo_banner_enabled: v}))}
+                data-testid="demo-banner-toggle"
+              />
+              <span className="text-sm">{data.demo_banner_enabled ? 'Attivo' : 'Disattivato'}</span>
+            </label>
+          </div>
+          {data.demo_banner_enabled && (
+            <div className="space-y-3 p-3 rounded-md bg-muted/30 border border-border/40">
+              <div className="space-y-1">
+                <Label className="text-xs">Testo del banner</Label>
+                <Input
+                  value={data.demo_banner_text}
+                  onChange={e => setData(prev => ({...prev, demo_banner_text: e.target.value}))}
+                  placeholder="Es. Offerta lancio: tutto gratis per 3 mesi!"
+                  data-testid="demo-banner-text-input"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Colore sfondo</Label>
+                  <div className="flex items-center gap-2">
+                    <input type="color" value={data.demo_banner_color} onChange={e => setData(prev => ({...prev, demo_banner_color: e.target.value}))} className="w-8 h-8 rounded cursor-pointer border-0 p-0" />
+                    <Input value={data.demo_banner_color} onChange={e => setData(prev => ({...prev, demo_banner_color: e.target.value}))} className="h-8 text-xs font-mono" data-testid="demo-banner-color-input" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Link (opzionale)</Label>
+                  <Input
+                    value={data.demo_banner_link}
+                    onChange={e => setData(prev => ({...prev, demo_banner_link: e.target.value}))}
+                    placeholder="https://..."
+                    className="h-8 text-xs"
+                    data-testid="demo-banner-link-input"
+                  />
+                </div>
+              </div>
+              {data.demo_banner_text && (
+                <div className="rounded-md p-2.5 text-white text-center text-sm font-semibold" style={{ backgroundColor: data.demo_banner_color }}>
+                  Anteprima: {data.demo_banner_text}
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Button onClick={handleSave} disabled={saving} data-testid="save-scripts-btn">
+        <Settings2 className="w-4 h-4 mr-2" /> {saving ? 'Salvataggio...' : 'Salva Impostazioni'}
+      </Button>
+    </div>
+  );
+}
+
 
 function NewsletterTab({ newsletters, onReload, users }) {
   const [nlSubject, setNlSubject] = useState('');
@@ -1064,6 +1211,9 @@ export default function AdminPanelPage() {
           <TabsTrigger value="sent" data-testid="tab-sent">
             <Send className="w-4 h-4 mr-1.5 hidden sm:inline" />Inviate
           </TabsTrigger>
+          <TabsTrigger value="scripts" data-testid="tab-scripts">
+            <Code className="w-4 h-4 mr-1.5 hidden sm:inline" />Codici & Script
+          </TabsTrigger>
         </TabsList>
 
         {/* Users Tab */}
@@ -1345,6 +1495,11 @@ export default function AdminPanelPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Scripts Tab */}
+        <TabsContent value="scripts">
+          <ScriptsTab />
         </TabsContent>
       </Tabs>
     </div>
