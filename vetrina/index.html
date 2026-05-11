@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Artes&Tramas - Creazioni in Stampa 3D. Calcolatore costi, listino prodotti e servizi di stampa 3D personalizzata." />
+    <meta name="keywords" content="stampa 3d, 3d printing, calcolatore costi, filamento, PLA, PETG, artigianato digitale" />
+    <meta property="og:title" content="Artes&Tramas - Creazioni in Stampa 3D" />
+    <meta property="og:description" content="Calcolatore costi stampa 3D gratuito. Gestisci filamenti, vendite, clienti e preventivi." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://artestramas3d.it" />
+    <title>Artes&Tramas | Creazioni in Stampa 3D</title>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3943982700626910" crossorigin="anonymous"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --primary: #f97316;
+            --primary-dark: #ea580c;
+            --bg: #0a0a0a;
+            --card: #141414;
+            --border: #262626;
+            --text: #fafafa;
+            --text-muted: #a3a3a3;
+        }
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+        a { color: inherit; text-decoration: none; }
+
+        /* Nav */
+        .nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+            background: rgba(10,10,10,0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+        }
+        .nav-inner {
+            max-width: 1100px; margin: 0 auto;
+            display: flex; align-items: center; justify-content: space-between;
+            height: 60px;
+        }
+        .nav-brand { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+        .nav-brand span { color: var(--primary); }
+        .nav-links { display: flex; gap: 8px; }
+        .nav-links a {
+            padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500;
+            transition: all 0.2s;
+        }
+        .nav-links a:hover { background: rgba(249,115,22,0.1); color: var(--primary); }
+        .btn-primary {
+            background: var(--primary); color: white; padding: 8px 20px;
+            border-radius: 8px; font-weight: 600; font-size: 14px;
+            transition: all 0.2s; border: none; cursor: pointer;
+        }
+        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+
+        /* Hero */
+        .hero {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            text-align: center; padding: 80px 24px 60px;
+            background: radial-gradient(ellipse at 50% 0%, rgba(249,115,22,0.08) 0%, transparent 60%);
+        }
+        .hero-inner { max-width: 700px; }
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 14px; border-radius: 100px;
+            background: rgba(249,115,22,0.12); border: 1px solid rgba(249,115,22,0.25);
+            font-size: 13px; color: var(--primary); font-weight: 500;
+            margin-bottom: 28px;
+        }
+        .hero h1 {
+            font-size: clamp(36px, 6vw, 56px); font-weight: 700;
+            line-height: 1.1; letter-spacing: -1.5px;
+            margin-bottom: 20px;
+        }
+        .hero h1 span { color: var(--primary); }
+        .hero p { font-size: 18px; color: var(--text-muted); max-width: 520px; margin: 0 auto 36px; line-height: 1.7; }
+        .hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        .btn-hero {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 14px 28px; border-radius: 10px; font-weight: 600; font-size: 15px;
+            transition: all 0.25s; border: none; cursor: pointer;
+        }
+        .btn-hero-primary { background: var(--primary); color: white; }
+        .btn-hero-primary:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(249,115,22,0.3); }
+        .btn-hero-outline {
+            background: transparent; color: var(--text); border: 1px solid var(--border);
+        }
+        .btn-hero-outline:hover { border-color: var(--primary); color: var(--primary); }
+
+        /* Features */
+        .features {
+            padding: 80px 24px;
+            background: linear-gradient(180deg, transparent, rgba(249,115,22,0.03));
+        }
+        .features-inner { max-width: 1100px; margin: 0 auto; }
+        .features-title { text-align: center; font-size: 32px; font-weight: 700; letter-spacing: -1px; margin-bottom: 12px; }
+        .features-sub { text-align: center; color: var(--text-muted); font-size: 16px; margin-bottom: 48px; }
+        .features-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .feature-card {
+            background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+            padding: 28px; transition: all 0.3s;
+        }
+        .feature-card:hover { border-color: rgba(249,115,22,0.4); transform: translateY(-3px); }
+        .feature-icon {
+            width: 44px; height: 44px; border-radius: 10px;
+            background: rgba(249,115,22,0.12); display: flex; align-items: center; justify-content: center;
+            font-size: 20px; margin-bottom: 16px;
+        }
+        .feature-card h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+        .feature-card p { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+
+        /* Links Section */
+        .links {
+            padding: 80px 24px;
+        }
+        .links-inner { max-width: 800px; margin: 0 auto; }
+        .links-title { text-align: center; font-size: 32px; font-weight: 700; letter-spacing: -1px; margin-bottom: 40px; }
+        .link-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px; }
+        .link-card {
+            background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+            padding: 32px; text-align: center; transition: all 0.3s; display: block;
+        }
+        .link-card:hover { border-color: var(--primary); transform: translateY(-4px); box-shadow: 0 12px 40px rgba(249,115,22,0.12); }
+        .link-card-icon { font-size: 36px; margin-bottom: 16px; display: block; }
+        .link-card h3 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+        .link-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+        .link-card .link-btn {
+            display: inline-block; padding: 8px 20px; border-radius: 8px;
+            background: var(--primary); color: white; font-size: 13px; font-weight: 600;
+            transition: all 0.2s;
+        }
+        .link-card:hover .link-btn { background: var(--primary-dark); }
+
+        /* Footer */
+        .footer {
+            padding: 32px 24px; text-align: center;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted); font-size: 13px;
+        }
+        .footer a { color: var(--primary); }
+        .footer a:hover { text-decoration: underline; }
+        .footer-links { display: flex; gap: 20px; justify-content: center; margin-top: 12px; }
+
+        @media (max-width: 640px) {
+            .nav-links { display: none; }
+            .hero-btns { flex-direction: column; align-items: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Nav -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <div class="nav-brand">Artes<span>&</span>Tramas</div>
+            <div class="nav-links">
+                <a href="#servizi">Servizi</a>
+                <a href="https://listino.artestramas3d.it">Listino</a>
+                <a href="https://calcolatore.artestramas3d.it/demo">Demo</a>
+                <a href="https://calcolatore.artestramas3d.it/login" class="btn-primary">Accedi</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-inner">
+            <div class="hero-badge">Creazioni in Stampa 3D</div>
+            <h1>Il tuo partner per la <span>Stampa 3D</span></h1>
+            <p>Creazioni personalizzate, calcolatore costi professionale e un catalogo sempre aggiornato. Tutto in un unico posto.</p>
+            <div class="hero-btns">
+                <a href="https://calcolatore.artestramas3d.it/demo" class="btn-hero btn-hero-primary">
+                    Prova il Calcolatore Gratis
+                </a>
+                <a href="https://listino.artestramas3d.it" class="btn-hero btn-hero-outline">
+                    Scopri i Prodotti
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features" id="servizi">
+        <div class="features-inner">
+            <h2 class="features-title">Cosa offriamo</h2>
+            <p class="features-sub">Strumenti professionali per maker e artigiani digitali</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">&#x1F4CA;</div>
+                    <h3>Calcolatore Costi</h3>
+                    <p>Calcola il costo reale di ogni stampa 3D considerando filamento, elettricita', ammortamento stampante e tempo di lavoro.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#x1F3A8;</div>
+                    <h3>Stampe Multicolore</h3>
+                    <p>Supporto completo per stampe multicolore con tracking individuale di ogni filamento. Compatibile con Bambu Studio e OrcaSlicer.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#x1F4C4;</div>
+                    <h3>Preventivi PDF</h3>
+                    <p>Genera preventivi professionali con il tuo logo e dati aziendali. Mostra solo il prezzo finale, i costi restano privati.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#x1F4E6;</div>
+                    <h3>Gestione Magazzino</h3>
+                    <p>Tieni traccia di filamenti, accessori e scorte. Avvisi automatici quando le scorte sono basse.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#x1F4B0;</div>
+                    <h3>Vendite e Profitti</h3>
+                    <p>Registra ogni vendita, traccia i pagamenti e monitora i profitti. Export in CSV per la contabilita'.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#x1F465;</div>
+                    <h3>Gestione Clienti</h3>
+                    <p>Rubrica clienti integrata con storico acquisti. Collega vendite e preventivi ai tuoi clienti.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Links -->
+    <section class="links">
+        <div class="links-inner">
+            <h2 class="links-title">Esplora</h2>
+            <div class="link-cards">
+                <a href="https://calcolatore.artestramas3d.it/demo" class="link-card">
+                    <span class="link-card-icon">&#x1F5A9;</span>
+                    <h3>Calcolatore</h3>
+                    <p>Prova gratis il calcolatore costi per stampa 3D</p>
+                    <span class="link-btn">Prova Ora</span>
+                </a>
+                <a href="https://listino.artestramas3d.it" class="link-card">
+                    <span class="link-card-icon">&#x1F6D2;</span>
+                    <h3>Listino Prodotti</h3>
+                    <p>Sfoglia il catalogo delle nostre creazioni</p>
+                    <span class="link-btn">Vedi Listino</span>
+                </a>
+                <a href="https://calcolatore.artestramas3d.it/register" class="link-card">
+                    <span class="link-card-icon">&#x1F680;</span>
+                    <h3>Registrati</h3>
+                    <p>Crea il tuo account gratuito e inizia subito</p>
+                    <span class="link-btn">Registrati Gratis</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Artes&Tramas &mdash; Creazioni in Stampa 3D</p>
+        <div class="footer-links">
+            <a href="mailto:info@artestramas3d.it">info@artestramas3d.it</a>
+            <a href="https://calcolatore.artestramas3d.it/cookie-policy">Cookie Policy</a>
+        </div>
+    </footer>
+
+</body>
+</html>
