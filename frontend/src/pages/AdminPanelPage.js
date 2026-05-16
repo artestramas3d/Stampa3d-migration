@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Switch } from '../components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 
 function SiteSettingsTab() {
   const [settings, setSettings] = useState(null);
@@ -947,6 +947,9 @@ function ProductsTab() {
                 <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle className="font-heading">{editing ? 'Modifica Prodotto' : 'Nuovo Prodotto'}</DialogTitle>
+                    <DialogDescription className="text-xs">
+                      Compila i campi del prodotto. Le foto saranno mostrate nella vetrina pubblica.
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-3 mt-2">
                     <div className="grid grid-cols-2 gap-3">

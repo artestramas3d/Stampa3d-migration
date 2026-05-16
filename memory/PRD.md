@@ -52,9 +52,10 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
 44. **Fase 1 - Export CSV** (10/05/2026): Export CSV per filamenti e clienti.
 45. **Fase 1 - Guida Backup** (10/05/2026): GUIDA_BACKUP.md con backup/ripristino database MongoDB.
 46. **Calcolatore - Cliente e Preventivo** (10/05/2026): Selezione cliente nel calcolatore, associazione cliente alla vendita, bottone "Genera Preventivo PDF" diretto dal calcolatore con anteprima e stampa.
+47. **Vetrina Pubblica Multi-foto** (16/02/2026): Rifatta pagina /listino come storefront con prodotti multi-foto (max 5, base64), descrizione, prezzo, categoria. Carousel per-card con frecce + dots cliccabili. Pulsante "Richiedi Info / Acquista" e "Richiedi Prodotto Personalizzato" che aprono form (nome/email/telefono/messaggio) e inviano richiesta a info@artestramas3d.it via endpoint POST /api/public/product-inquiry. Inquiry salvate in db.inquiries. Modal con chiusura Escape + backdrop click + mutua esclusività. Tab "Prodotti" spostato dentro "Gestione Vetrina" nell'Admin Panel con upload multi-foto.
 
 ## Note Importanti
-- SMTP REALE: smtps.aruba.it, preventivi a info@artestramas3d.it
+- SMTP REALE: smtps.aruba.it, preventivi e inquiry prodotti a info@artestramas3d.it
 - Deploy VPS Aruba: calcolatore.artestramas3d.it
 - Listino pubblico: listino.artestramas3d.it (punta alla stessa app, route /listino)
 - Frontend Dockerfile: NODE_OPTIONS=--max-old-space-size=768
@@ -64,8 +65,8 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
 - Badge "Made with Emergent" rimosso
 
 ## Task Futuri (Backlog)
-- P2: Classifica profittabilità prodotti / Dashboard avanzata
+- P1: Sistema abbonamenti Free/Pro con Stripe
+- P2: Classifica profittabilità prodotti / Dashboard avanzata con grafici
 - P2: Notifiche smart (scorte basse, vendite non pagate, riepilogo settimanale)
-- P2: Catalogo pubblico migliorato (foto, filtri, richiesta preventivo)
-- P2: Sistema abbonamenti Free/Pro con Stripe
-- P3: Refactoring server.py in moduli (routes, models, services)
+- P0 Tech Debt: Refactoring server.py (~2800 righe) in moduli /routes, /models, /services
+- P2 Tech Debt: Split AdminPanelPage.js (~1511 righe) in componenti separati

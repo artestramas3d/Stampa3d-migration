@@ -2,14 +2,66 @@ import { useState, useEffect } from 'react';
 import { getPublicListino, sendProductInquiry } from '../lib/api';
 import { Package, X, ChevronLeft, ChevronRight, Send, ShoppingBag, Wrench } from 'lucide-react';
 
+function ProductCard({ p, index, primary, onInquire }) {
+  const photos = p.photos?.length ? p.photos : (p.photo ? [p.photo] : []);
+  const [idx, setIdx] = useState(0);
+  const prev = (e) => { e.stopPropagation(); setIdx(i => (i - 1 + photos.length) % photos.length); };
+  const next = (e) => { e.stopPropagation(); setIdx(i => (i + 1) % photos.length); };
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all group" data-testid={`listino-product-${index}`}>
+      <div className="aspect-[4/3] bg-gray-50 relative overflow-hidden">
+        {photos.length > 0 ? (
+          <>
+            <img src={photos[idx]} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-testid={`product-photo-${index}`} />
+            {photos.length > 1 && (
+              <>
+                <button onClick={prev} aria-label="Foto precedente" className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition-opacity" data-testid={`prev-photo-${index}`}>
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button onClick={next} aria-label="Foto successiva" className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition-opacity" data-testid={`next-photo-${index}`}>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                  {photos.map((_, pi) => (
+                    <button key={pi} onClick={(e) => { e.stopPropagation(); setIdx(pi); }} aria-label={`Foto ${pi + 1}`} className="w-2 h-2 rounded-full transition-colors" style={{ background: pi === idx ? 'white' : 'rgba(255,255,255,0.5)' }} />
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center"><Package className="w-14 h-14 text-gray-200" /></div>
+        )}
+      </div>
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-bold text-gray-800 text-lg">{p.name}</h3>
+          <span className="text-xl font-bold shrink-0" style={{ color: primary }}>&euro;{parseFloat(p.price).toFixed(2)}</span>
+        </div>
+        {p.description && <p className="text-sm text-gray-500 mt-2 line-clamp-3">{p.description}</p>}
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          {p.category && <span className="px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ background: `${primary}15`, color: primary }}>{p.category}</span>}
+          {p.materials && <span className="text-[11px] text-gray-400">{p.materials}</span>}
+        </div>
+        <button
+          onClick={() => onInquire(p)}
+          className="mt-4 w-full py-2.5 rounded-lg text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors hover:opacity-90"
+          style={{ background: primary }}
+          data-testid={`buy-product-${index}`}
+        >
+          <ShoppingBag className="w-4 h-4" /> Richiedi Info / Acquista
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function PublicListinoPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [showInquiry, setShowInquiry] = useState(false);
-  const [showCustom, setShowCustom] = useState(false);
-  const [photoIndex, setPhotoIndex] = useState(0);
+  const [modal, setModal] = useState(null); // null | 'inquiry' | 'custom'
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [form, setForm] = useState({ customer_name: '', customer_email: '', customer_phone: '', message: '' });
@@ -18,17 +70,26 @@ export default function PublicListinoPage() {
     getPublicListino().then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
+  const closeModal = () => { setModal(null); setSent(false); };
+
+  useEffect(() => {
+    if (!modal) return;
+    const onKey = (e) => { if (e.key === 'Escape') closeModal(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [modal]);
+
   const openInquiry = (product) => {
     setSelectedProduct(product);
-    setShowInquiry(true);
     setSent(false);
     setForm({ customer_name: '', customer_email: '', customer_phone: '', message: '' });
+    setModal('inquiry');
   };
 
   const openCustom = () => {
-    setShowCustom(true);
     setSent(false);
     setForm({ customer_name: '', customer_email: '', customer_phone: '', message: '' });
+    setModal('custom');
   };
 
   const handleSend = async (isCustom) => {
@@ -55,8 +116,8 @@ export default function PublicListinoPage() {
   const filtered = filter ? products.filter(p => p.category === filter) : products;
 
   const InquiryForm = ({ isCustom, onClose }) => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
-      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl" data-testid="inquiry-modal">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose} data-testid="inquiry-backdrop">
+      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl" data-testid="inquiry-modal" onClick={(e) => e.stopPropagation()}>
         <div className="p-5 border-b border-gray-100 flex items-center justify-between">
           <h3 className="font-bold text-lg text-gray-800">
             {isCustom ? 'Richiedi Prodotto Personalizzato' : `Richiedi Info: ${selectedProduct?.name}`}
@@ -156,49 +217,9 @@ export default function PublicListinoPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((p, i) => {
-              const photos = p.photos?.length ? p.photos : (p.photo ? [p.photo] : []);
-              return (
-                <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all group" data-testid={`listino-product-${i}`}>
-                  {/* Photo carousel */}
-                  <div className="aspect-[4/3] bg-gray-50 relative overflow-hidden">
-                    {photos.length > 0 ? (
-                      <>
-                        <img src={photos[photoIndex === i ? 0 : 0]} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                        {photos.length > 1 && (
-                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                            {photos.map((_, pi) => (
-                              <div key={pi} className="w-2 h-2 rounded-full" style={{ background: pi === 0 ? 'white' : 'rgba(255,255,255,0.5)' }} />
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center"><Package className="w-14 h-14 text-gray-200" /></div>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-bold text-gray-800 text-lg">{p.name}</h3>
-                      <span className="text-xl font-bold shrink-0" style={{ color: primary }}>&euro;{parseFloat(p.price).toFixed(2)}</span>
-                    </div>
-                    {p.description && <p className="text-sm text-gray-500 mt-2 line-clamp-3">{p.description}</p>}
-                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      {p.category && <span className="px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ background: `${primary}15`, color: primary }}>{p.category}</span>}
-                      {p.materials && <span className="text-[11px] text-gray-400">{p.materials}</span>}
-                    </div>
-                    <button
-                      onClick={() => openInquiry(p)}
-                      className="mt-4 w-full py-2.5 rounded-lg text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors hover:opacity-90"
-                      style={{ background: primary }}
-                      data-testid={`buy-product-${i}`}
-                    >
-                      <ShoppingBag className="w-4 h-4" /> Richiedi Info / Acquista
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+            {filtered.map((p, i) => (
+              <ProductCard key={p.id || i} p={p} index={i} primary={primary} onInquire={openInquiry} />
+            ))}
           </div>
         )}
       </div>
@@ -226,8 +247,8 @@ export default function PublicListinoPage() {
       </footer>
 
       {/* Modals */}
-      {showInquiry && <InquiryForm isCustom={false} onClose={() => setShowInquiry(false)} />}
-      {showCustom && <InquiryForm isCustom={true} onClose={() => setShowCustom(false)} />}
+      {modal === 'inquiry' && <InquiryForm isCustom={false} onClose={closeModal} />}
+      {modal === 'custom' && <InquiryForm isCustom={true} onClose={closeModal} />}
     </div>
   );
 }
