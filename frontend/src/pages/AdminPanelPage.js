@@ -1197,6 +1197,44 @@ export default function AdminPanelPage() {
         </div>
       )}
 
+      {/* Demo - Grafico visite giornaliere ultimi 7 giorni */}
+      {demoStats.daily && demoStats.daily.length > 0 && (
+        <Card className="border-border/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-heading flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-primary" />
+              Visite Demo — Ultimi 7 giorni
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              const days = [...demoStats.daily].reverse(); // dal piu' vecchio al piu' recente
+              const max = Math.max(1, ...days.map(d => d.count));
+              return (
+                <div className="flex items-end justify-between gap-2 h-32" data-testid="demo-daily-chart">
+                  {days.map(d => {
+                    const h = Math.max(4, Math.round((d.count / max) * 100));
+                    const dt = new Date(d.date + 'T00:00:00');
+                    const label = dt.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric' });
+                    return (
+                      <div key={d.date} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                        <span className="text-[10px] font-mono text-muted-foreground">{d.count}</span>
+                        <div
+                          className="w-full rounded-t-md transition-all"
+                          style={{ height: `${h}%`, background: 'linear-gradient(180deg, var(--primary), var(--primary))', opacity: 0.85 }}
+                          title={`${d.date}: ${d.count} visite`}
+                        />
+                        <span className="text-[10px] text-muted-foreground capitalize truncate w-full text-center">{label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs defaultValue="users" className="w-full">
         <TabsList className="grid w-full grid-cols-4 sm:grid-cols-9">
           <TabsTrigger value="users" data-testid="tab-users">
