@@ -23,78 +23,16 @@ git reset --hard origin/main
 git pull origin main
 ```
 
-### Passo 4: Ripristina i file del server
-Questi file devono essere adattati al tuo VPS ogni volta. Copia e incolla OGNI blocco separatamente:
-
-**4a - Dockerfile frontend:**
-```
-cat > frontend/Dockerfile << 'EOF'
-FROM node:20-alpine AS build
-WORKDIR /app
-COPY package.json yarn.lock* ./
-RUN yarn install
-COPY . .
-ENV NODE_OPTIONS=--max-old-space-size=768
-RUN yarn build
-
-FROM nginx:alpine
-COPY --from=build /app/build /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
-EOF
-```
-
-**4b - Nginx frontend config:**
-```
-cat > frontend/nginx.conf << 'EOF'
-server {
-    listen 80;
-    root /usr/share/nginx/html;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-EOF
-```
-
-**4c - Correggi porta proxy Nginx:**
-```
-sed -i 's|proxy_pass http://frontend:3000|proxy_pass http://frontend:80|g' nginx/default.conf
-```
-
-**4d - Correggi requirements.txt backend:**
-```
-cat > backend/requirements.txt << 'EOF'
-fastapi==0.110.1
-uvicorn==0.25.0
-motor==3.3.1
-pymongo==4.5.0
-python-jose==3.5.0
-python-multipart==0.0.22
-python-dotenv==1.2.2
-bcrypt==4.1.3
-pydantic==2.12.5
-passlib==1.7.4
-PyJWT==2.12.1
-email-validator==2.3.0
-requests==2.32.5
-watchfiles==1.1.1
-EOF
-```
-
-### Passo 5: Ricostruisci e riavvia
+### Passo 4: Ricostruisci e riavvia
 ```
 docker compose up -d --build frontend backend
 docker compose restart nginx
 ```
 
-### Passo 6: Aspetta
+### Passo 5: Aspetta
 Il build richiede **3-5 minuti**. Quando torna il cursore `root@ArtesTramas:`, il sito e' aggiornato.
 
-### Passo 7: Verifica
+### Passo 6: Verifica
 ```
 curl -I https://calcolatore.artestramas3d.it
 ```
@@ -111,59 +49,6 @@ ssh root@94.177.202.133
 cd /opt/Stampa3d-migration
 git reset --hard origin/main
 git pull origin main
-```
-```
-cat > frontend/Dockerfile << 'EOF'
-FROM node:20-alpine AS build
-WORKDIR /app
-COPY package.json yarn.lock* ./
-RUN yarn install
-COPY . .
-ENV NODE_OPTIONS=--max-old-space-size=768
-RUN yarn build
-
-FROM nginx:alpine
-COPY --from=build /app/build /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
-EOF
-```
-```
-cat > frontend/nginx.conf << 'EOF'
-server {
-    listen 80;
-    root /usr/share/nginx/html;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-EOF
-```
-```
-sed -i 's|proxy_pass http://frontend:3000|proxy_pass http://frontend:80|g' nginx/default.conf
-```
-```
-cat > backend/requirements.txt << 'EOF'
-fastapi==0.110.1
-uvicorn==0.25.0
-motor==3.3.1
-pymongo==4.5.0
-python-jose==3.5.0
-python-multipart==0.0.22
-python-dotenv==1.2.2
-bcrypt==4.1.3
-pydantic==2.12.5
-passlib==1.7.4
-PyJWT==2.12.1
-email-validator==2.3.0
-requests==2.32.5
-watchfiles==1.1.1
-EOF
-```
-```
 docker compose up -d --build frontend backend
 docker compose restart nginx
 ```
