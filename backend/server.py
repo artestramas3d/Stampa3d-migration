@@ -1158,12 +1158,14 @@ class BannerCreate(BaseModel):
     name: str
     html_code: str
     is_active: bool = True
+    pages: List[str] = ["app"]  # app, demo, shop
 
 class BannerUpdate(BaseModel):
     position: Optional[str] = None
     name: Optional[str] = None
     html_code: Optional[str] = None
     is_active: Optional[bool] = None
+    pages: Optional[List[str]] = None
 
 # Banner Endpoints (Admin only)
 @api_router.get("/banners")
@@ -1176,6 +1178,7 @@ async def get_banners(current_user: dict = Depends(require_admin)):
             "name": doc.get("name", ""),
             "html_code": doc.get("html_code", ""),
             "is_active": doc.get("is_active", False),
+            "pages": doc.get("pages", ["app"]),
             "created_at": doc.get("created_at", "")
         })
     return result
@@ -1187,6 +1190,7 @@ async def create_banner(banner: BannerCreate, current_user: dict = Depends(requi
         "name": banner.name,
         "html_code": banner.html_code,
         "is_active": banner.is_active,
+        "pages": banner.pages or ["app"],
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     result = await db.banners.insert_one(doc)
@@ -1205,11 +1209,25 @@ async def delete_banner(banner_id: str, current_user: dict = Depends(require_adm
     await db.banners.delete_one({"_id": ObjectId(banner_id)})
     return {"message": "Banner eliminato"}
 
-# Public endpoint - active banners (no auth needed for display)
+# Public endpoint - active banners for app (loggato)
 @api_router.get("/banners/active")
 async def get_active_banners(current_user: dict = Depends(get_current_user)):
     result = []
-    async for doc in db.banners.find({"is_active": True}):
+    async for doc in db.banners.find({"is_active": True, "pages": {"$in": ["app"]}}):
+        result.append({
+            "id": str(doc["_id"]),
+            "position": doc.get("position", ""),
+            "html_code": doc.get("html_code", "")
+        })
+    return result
+
+# Public endpoint - active banners for demo/shop (no auth)
+@api_router.get("/public/banners/{page}")
+async def get_public_banners(page: str):
+    if page not in ("demo", "shop"):
+        raise HTTPException(status_code=400, detail="Pagina non valida")
+    result = []
+    async for doc in db.banners.find({"is_active": True, "pages": {"$in": [page]}}):
         result.append({
             "id": str(doc["_id"]),
             "position": doc.get("position", ""),

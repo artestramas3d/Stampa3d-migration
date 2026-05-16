@@ -9,14 +9,20 @@ import { Switch } from '../components/ui/switch';
 import { Textarea } from '../components/ui/textarea';
 import { Badge } from '../components/ui/badge';
 import { Separator } from '../components/ui/separator';
-import { Megaphone, Plus, Trash2, Save, Monitor, PanelLeft, ArrowDown, LayoutTemplate } from 'lucide-react';
+import { Megaphone, Plus, Trash2, Save, Monitor, PanelLeft, ArrowDown, LayoutTemplate, AppWindow, FlaskConical, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
 
 const POSITIONS = [
   { value: 'header', label: 'Header (sopra contenuto)', icon: Monitor },
-  { value: 'sidebar', label: 'Sidebar (sotto menu)', icon: PanelLeft },
+  { value: 'sidebar', label: 'Sidebar (sotto menu - solo app)', icon: PanelLeft },
   { value: 'footer', label: 'Footer (fondo pagina)', icon: ArrowDown },
   { value: 'content', label: 'Sotto Contenuto', icon: LayoutTemplate },
+];
+
+const PAGES = [
+  { value: 'app', label: 'App (Calcolatore)', icon: AppWindow },
+  { value: 'demo', label: 'Demo Pubblica', icon: FlaskConical },
+  { value: 'shop', label: 'Shop / Vetrina', icon: ShoppingBag },
 ];
 
 const positionLabel = (pos) => POSITIONS.find(p => p.value === pos)?.label || pos;
@@ -26,7 +32,7 @@ export default function BannersPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState({ position: 'sidebar', name: '', html_code: '', is_active: true });
+  const [form, setForm] = useState({ position: 'sidebar', name: '', html_code: '', is_active: true, pages: ['app'] });
 
   useEffect(() => { loadBanners(); }, []);
 
@@ -42,14 +48,25 @@ export default function BannersPage() {
   };
 
   const resetForm = () => {
-    setForm({ position: 'sidebar', name: '', html_code: '', is_active: true });
+    setForm({ position: 'sidebar', name: '', html_code: '', is_active: true, pages: ['app'] });
     setEditId(null);
     setShowForm(false);
+  };
+
+  const togglePage = (page) => {
+    setForm(f => ({
+      ...f,
+      pages: f.pages.includes(page) ? f.pages.filter(p => p !== page) : [...f.pages, page]
+    }));
   };
 
   const handleSave = async () => {
     if (!form.name || !form.html_code) {
       toast.error('Compila nome e codice HTML');
+      return;
+    }
+    if (!form.pages || form.pages.length === 0) {
+      toast.error('Seleziona almeno una pagina');
       return;
     }
     try {
@@ -72,7 +89,8 @@ export default function BannersPage() {
       position: banner.position,
       name: banner.name,
       html_code: banner.html_code,
-      is_active: banner.is_active
+      is_active: banner.is_active,
+      pages: banner.pages?.length ? banner.pages : ['app']
     });
     setEditId(banner.id);
     setShowForm(true);
@@ -163,6 +181,29 @@ export default function BannersPage() {
                 data-testid="banner-html-input"
               />
             </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Mostra nelle pagine</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {PAGES.map(p => {
+                  const PIcon = p.icon;
+                  const active = form.pages.includes(p.value);
+                  return (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => togglePage(p.value)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-md border text-xs font-medium transition-colors ${active ? 'border-primary bg-primary/10 text-primary' : 'border-border/40 text-muted-foreground hover:bg-muted/40'}`}
+                      data-testid={`banner-page-${p.value}`}
+                    >
+                      <PIcon className="w-3.5 h-3.5" />
+                      {p.label}
+                      {active && <span className="ml-auto text-[10px]">ON</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-muted-foreground">Demo e Shop sono pagine pubbliche (no login). Sidebar visibile solo nell'App.</p>
+            </div>
             <div className="flex items-center gap-3">
               <Switch
                 checked={form.is_active}
@@ -230,6 +271,11 @@ export default function BannersPage() {
                               <p className="text-[10px] text-muted-foreground font-mono truncate max-w-xs">
                                 {banner.html_code.substring(0, 60)}...
                               </p>
+                              <div className="flex gap-1 mt-1">
+                                {(banner.pages || ['app']).map(pg => (
+                                  <Badge key={pg} variant="outline" className="text-[9px] py-0 h-4">{pg}</Badge>
+                                ))}
+                              </div>
                             </div>
                             {banner.is_active ? (
                               <Badge className="bg-emerald-500/20 text-emerald-500 text-[10px]">Attivo</Badge>

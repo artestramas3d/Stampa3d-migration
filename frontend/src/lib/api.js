@@ -68,6 +68,7 @@ export const exportPurchasesCSV = () => `${API}/export/purchases`;
 // Banners
 export const getBanners = () => api.get('/banners').then(r => r.data);
 export const getActiveBanners = () => api.get('/banners/active').then(r => r.data);
+export const getPublicBanners = (page) => api.get(`/public/banners/${page}`).then(r => r.data);
 export const createBanner = (data) => api.post('/banners', data).then(r => r.data);
 export const updateBanner = (id, data) => api.put(`/banners/${id}`, data).then(r => r.data);
 export const deleteBanner = (id) => api.delete(`/banners/${id}`).then(r => r.data);

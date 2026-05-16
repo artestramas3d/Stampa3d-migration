@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getPublicListino, sendProductInquiry } from '../lib/api';
 import { Package, X, ChevronLeft, ChevronRight, Send, ShoppingBag, Wrench } from 'lucide-react';
+import { PublicBannerSlot } from '../components/PublicBannerSlot';
 
 function ProductCard({ p, index, primary, onInquire }) {
   const photos = p.photos?.length ? p.photos : (p.photo ? [p.photo] : []);
@@ -199,6 +200,8 @@ export default function PublicListinoPage() {
         </div>
       </header>
 
+      <PublicBannerSlot page="shop" position="header" />
+
       {/* Filters */}
       {categories.length > 0 && (
         <div className="flex justify-center gap-2 py-4 px-4 flex-wrap">
@@ -230,6 +233,7 @@ export default function PublicListinoPage() {
 
       {/* Custom Request Section */}
       <div className="max-w-6xl mx-auto px-4 pb-8">
+        <PublicBannerSlot page="shop" position="content" />
         <div className="rounded-2xl p-8 text-center text-white" style={{ background: `linear-gradient(135deg, ${primary}ee, ${primary}aa)` }}>
           <Wrench className="w-10 h-10 mx-auto mb-3 opacity-80" />
           <h3 className="text-xl font-bold mb-2">Vuoi qualcosa di unico?</h3>
@@ -242,6 +246,7 @@ export default function PublicListinoPage() {
 
       {/* Footer */}
       <footer className="text-center py-6 text-sm text-gray-400 border-t border-gray-100 space-y-1">
+        <PublicBannerSlot page="shop" position="footer" />
         <p>{data.brand_name} &mdash; Creazioni in Stampa 3D</p>
         <p>
           <a href="mailto:info@artestramas3d.it" className="hover:text-gray-600">info@artestramas3d.it</a>

@@ -10,6 +10,7 @@ import { Switch } from '../components/ui/switch';
 import { Calculator, Plus, Trash2, Lock, UserPlus, Receipt } from 'lucide-react';
 import { DecimalInput } from '../components/DecimalInput';
 import { useDemoBanner } from '../components/PublicScripts';
+import { PublicBannerSlot } from '../components/PublicBannerSlot';
 import { recordDemoVisit } from '../lib/api';
 
 export default function DemoCalculatorPage() {
@@ -105,6 +106,8 @@ export default function DemoCalculatorPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
+        <PublicBannerSlot page="demo" position="header" />
+
         <div className="mb-6">
           <h1 className="text-2xl font-heading font-bold">Calcolatore Costi Stampa 3D</h1>
           <p className="text-muted-foreground text-sm mt-1">Prova il calcolatore — inserisci i tuoi dati e scopri il costo reale</p>
@@ -387,7 +390,11 @@ export default function DemoCalculatorPage() {
             </CardContent>
           </Card>
         </div>
+
+        <PublicBannerSlot page="demo" position="content" />
       </div>
+
+      <PublicBannerSlot page="demo" position="footer" />
     </div>
   );
 }
