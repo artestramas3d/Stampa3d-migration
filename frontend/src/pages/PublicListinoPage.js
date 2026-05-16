@@ -56,66 +56,22 @@ function ProductCard({ p, index, primary, onInquire }) {
   );
 }
 
-export default function PublicListinoPage() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [modal, setModal] = useState(null); // null | 'inquiry' | 'custom'
+function InquiryForm({ isCustom, onClose, selectedProduct, primary, onSubmit }) {
+  const [form, setForm] = useState({ customer_name: '', customer_email: '', customer_phone: '', message: '' });
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
-  const [form, setForm] = useState({ customer_name: '', customer_email: '', customer_phone: '', message: '' });
 
-  useEffect(() => {
-    getPublicListino().then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
-  }, []);
-
-  const closeModal = () => { setModal(null); setSent(false); };
-
-  useEffect(() => {
-    if (!modal) return;
-    const onKey = (e) => { if (e.key === 'Escape') closeModal(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [modal]);
-
-  const openInquiry = (product) => {
-    setSelectedProduct(product);
-    setSent(false);
-    setForm({ customer_name: '', customer_email: '', customer_phone: '', message: '' });
-    setModal('inquiry');
-  };
-
-  const openCustom = () => {
-    setSent(false);
-    setForm({ customer_name: '', customer_email: '', customer_phone: '', message: '' });
-    setModal('custom');
-  };
-
-  const handleSend = async (isCustom) => {
+  const handleSend = async () => {
     if (!form.customer_name || !form.customer_email || !form.message) return;
     setSending(true);
     try {
-      await sendProductInquiry({
-        product_id: isCustom ? null : selectedProduct?.id,
-        product_name: isCustom ? 'Richiesta Personalizzata' : selectedProduct?.name,
-        ...form,
-        is_custom: isCustom
-      });
+      await onSubmit(form, isCustom, selectedProduct);
       setSent(true);
     } catch { /* handled */ }
     finally { setSending(false); }
   };
 
-  if (loading) return <div className="min-h-screen bg-[#fafafa] flex items-center justify-center"><div className="animate-pulse text-gray-400 text-lg">Caricamento...</div></div>;
-  if (!data) return <div className="min-h-screen bg-[#fafafa] flex items-center justify-center"><p className="text-gray-500">Vetrina non disponibile</p></div>;
-
-  const primary = data.primary_color || '#f97316';
-  const products = data.products || [];
-  const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
-  const filtered = filter ? products.filter(p => p.category === filter) : products;
-
-  const InquiryForm = ({ isCustom, onClose }) => (
+  return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose} data-testid="inquiry-backdrop">
       <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl" data-testid="inquiry-modal" onClick={(e) => e.stopPropagation()}>
         <div className="p-5 border-b border-gray-100 flex items-center justify-between">
@@ -165,7 +121,7 @@ export default function PublicListinoPage() {
               <textarea value={form.message} onChange={e => setForm(f => ({...f, message: e.target.value}))} rows={4} className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-orange-400 resize-none" placeholder={isCustom ? 'Descrivi il prodotto personalizzato che vorresti realizzare...' : 'Scrivi la tua richiesta...'} data-testid="inquiry-message" />
             </div>
             <button
-              onClick={() => handleSend(isCustom)}
+              onClick={handleSend}
               disabled={sending || !form.customer_name || !form.customer_email || !form.message}
               className="w-full py-3 rounded-lg text-white font-semibold text-sm disabled:opacity-50 transition-colors"
               style={{ background: primary }}
@@ -178,6 +134,54 @@ export default function PublicListinoPage() {
       </div>
     </div>
   );
+}
+
+export default function PublicListinoPage() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [modal, setModal] = useState(null); // null | 'inquiry' | 'custom'
+
+  useEffect(() => {
+    getPublicListino().then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
+  }, []);
+
+  const closeModal = () => setModal(null);
+
+  useEffect(() => {
+    if (!modal) return;
+    const onKey = (e) => { if (e.key === 'Escape') closeModal(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [modal]);
+
+  const openInquiry = (product) => {
+    setSelectedProduct(product);
+    setModal('inquiry');
+  };
+
+  const openCustom = () => {
+    setSelectedProduct(null);
+    setModal('custom');
+  };
+
+  const submitInquiry = async (form, isCustom, product) => {
+    await sendProductInquiry({
+      product_id: isCustom ? null : product?.id,
+      product_name: isCustom ? 'Richiesta Personalizzata' : product?.name,
+      ...form,
+      is_custom: isCustom
+    });
+  };
+
+  if (loading) return <div className="min-h-screen bg-[#fafafa] flex items-center justify-center"><div className="animate-pulse text-gray-400 text-lg">Caricamento...</div></div>;
+  if (!data) return <div className="min-h-screen bg-[#fafafa] flex items-center justify-center"><p className="text-gray-500">Vetrina non disponibile</p></div>;
+
+  const primary = data.primary_color || '#f97316';
+  const products = data.products || [];
+  const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+  const filtered = filter ? products.filter(p => p.category === filter) : products;
 
   return (
     <div className="min-h-screen" style={{ background: '#fafafa' }} data-testid="public-listino-page">
@@ -246,9 +250,27 @@ export default function PublicListinoPage() {
         </p>
       </footer>
 
-      {/* Modals */}
-      {modal === 'inquiry' && <InquiryForm isCustom={false} onClose={closeModal} />}
-      {modal === 'custom' && <InquiryForm isCustom={true} onClose={closeModal} />}
+      {/* Modals - key forza il reset dello state interno alla chiusura/cambio prodotto */}
+      {modal === 'inquiry' && (
+        <InquiryForm
+          key={`inquiry-${selectedProduct?.id || 'x'}`}
+          isCustom={false}
+          onClose={closeModal}
+          selectedProduct={selectedProduct}
+          primary={primary}
+          onSubmit={submitInquiry}
+        />
+      )}
+      {modal === 'custom' && (
+        <InquiryForm
+          key="custom"
+          isCustom={true}
+          onClose={closeModal}
+          selectedProduct={null}
+          primary={primary}
+          onSubmit={submitInquiry}
+        />
+      )}
     </div>
   );
 }
