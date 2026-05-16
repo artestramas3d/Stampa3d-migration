@@ -104,14 +104,18 @@ export const getAdminBugScreenshot = (id) => api.get(`/admin/bug-reports/${id}/s
 export const updateAdminBugReport = (id, data) => api.put(`/admin/bug-reports/${id}`, data).then(r => r.data);
 
 // Products
+// Products (admin)
 export const getProducts = () => api.get('/products').then(r => r.data);
 export const createProduct = (data) => api.post('/products', data).then(r => r.data);
 export const updateProduct = (id, data) => api.put(`/products/${id}`, data).then(r => r.data);
 export const deleteProduct = (id) => api.delete(`/products/${id}`).then(r => r.data);
 
-// Public endpoints (no auth)
+// Public shop
 export const getPublicListino = () => api.get('/public/listino').then(r => r.data);
+export const getPublicProduct = (slug) => api.get(`/public/product/${slug}`).then(r => r.data);
 export const sendProductInquiry = (data) => api.post('/public/product-inquiry', data).then(r => r.data);
+
+// Public endpoints (no auth)
 export const getPublicLanding = () => api.get('/public/landing').then(r => r.data);
 export const submitContactForm = (data) => api.post('/public/contact', data).then(r => r.data);
 

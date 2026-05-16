@@ -22,6 +22,7 @@ import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ProfilePage from "./pages/ProfilePage";
 import BugReportPage from "./pages/BugReportPage";
 import PublicListinoPage from "./pages/PublicListinoPage";
+import PublicProductDetailPage from "./pages/PublicProductDetailPage";
 import LandingPage from "./pages/LandingPage";
 import GuidePage from "./pages/GuidePage";
 import CookiePolicyPage from "./pages/CookiePolicyPage";
@@ -76,6 +77,8 @@ function AppRoutes() {
     return (
       <Routes>
         <Route path="/cookie-policy" element={<CookiePolicyPage />} />
+        <Route path="/shop/prodotto/:slug" element={<PublicProductDetailPage />} />
+        <Route path="/prodotto/:slug" element={<PublicProductDetailPage />} />
         <Route path="*" element={<PublicListinoPage />} />
       </Routes>
     );
@@ -103,6 +106,7 @@ function AppRoutes() {
       <Route path="/quotes" element={<ProtectedRoute><QuotesPage /></ProtectedRoute>} />
       {/* Public pages - no auth */}
       <Route path="/listino" element={<PublicListinoPage />} />
+      <Route path="/shop/prodotto/:slug" element={<PublicProductDetailPage />} />
       <Route path="/landing" element={<LandingPage />} />
       <Route path="/demo" element={<DemoCalculatorPage />} />
       <Route path="/guide" element={<GuidePage />} />

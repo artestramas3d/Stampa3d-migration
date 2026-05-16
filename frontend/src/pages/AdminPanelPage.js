@@ -872,7 +872,8 @@ function ContactRequestsTab() {
 
 function ProductsTab() {
   const [products, setProducts] = useState([]);
-  const [form, setForm] = useState({ name: '', description: '', price: '', category: '', materials: '', photos: [], is_public: true });
+  const initialForm = { name: '', description: '', description_long: '', price: '', category: '', materials: '', photos: [], is_public: true, color_options: [], material_options: [], size_options: [], is_customizable: false, custom_field_label: '' };
+  const [form, setForm] = useState(initialForm);
   const [editing, setEditing] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -898,10 +899,28 @@ function ProductsTab() {
 
   const removePhoto = (index) => setForm(prev => ({ ...prev, photos: prev.photos.filter((_, i) => i !== index) }));
 
-  const openNew = () => { setForm({ name: '', description: '', price: '', category: '', materials: '', photos: [], is_public: true }); setEditing(null); setDialogOpen(true); };
+  // CSV string -> array (es. "Rosso, Blu, Verde" -> ["Rosso","Blu","Verde"])
+  const parseCsv = (s) => (s || '').split(',').map(x => x.trim()).filter(Boolean);
+  const formatCsv = (arr) => (arr || []).join(', ');
+
+  const openNew = () => { setForm(initialForm); setEditing(null); setDialogOpen(true); };
   const openEdit = (p) => {
     const photos = p.photos?.length ? p.photos : (p.photo ? [p.photo] : []);
-    setForm({ name: p.name, description: p.description, price: p.price, category: p.category, materials: p.materials || '', photos, is_public: p.is_public });
+    setForm({
+      name: p.name,
+      description: p.description,
+      description_long: p.description_long || '',
+      price: p.price,
+      category: p.category,
+      materials: p.materials || '',
+      photos,
+      is_public: p.is_public,
+      color_options: p.color_options || [],
+      material_options: p.material_options || [],
+      size_options: p.size_options || [],
+      is_customizable: p.is_customizable || false,
+      custom_field_label: p.custom_field_label || '',
+    });
     setEditing(p.id);
     setDialogOpen(true);
   };
@@ -978,9 +997,51 @@ function ProductsTab() {
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Descrizione</Label>
-                      <Textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={3} data-testid="product-description" />
+                      <Label className="text-xs">Descrizione breve (card)</Label>
+                      <Textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={2} placeholder="Mostrata nella card del catalogo (1-2 righe)" data-testid="product-description" />
                     </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Descrizione lunga (pagina dettaglio)</Label>
+                      <Textarea value={form.description_long} onChange={e => setForm({...form, description_long: e.target.value})} rows={5} placeholder="Descrizione completa con caratteristiche, dimensioni, tempo di consegna ecc. Supporta a capo." data-testid="product-description-long" />
+                    </div>
+
+                    {/* Varianti */}
+                    <div className="rounded-md border border-border/40 p-3 space-y-2 bg-muted/20">
+                      <Label className="text-xs font-semibold">Varianti disponibili (opzionali, separate da virgola)</Label>
+                      <div className="grid grid-cols-1 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">Colori</Label>
+                          <Input value={formatCsv(form.color_options)} onChange={e => setForm({...form, color_options: parseCsv(e.target.value)})} placeholder="Rosso, Blu, Nero, Bianco..." className="h-9" data-testid="product-colors" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">Materiali</Label>
+                          <Input value={formatCsv(form.material_options)} onChange={e => setForm({...form, material_options: parseCsv(e.target.value)})} placeholder="PLA, PETG, ABS, Resin..." className="h-9" data-testid="product-material-options" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">Dimensioni</Label>
+                          <Input value={formatCsv(form.size_options)} onChange={e => setForm({...form, size_options: parseCsv(e.target.value)})} placeholder="S, M, L, XL oppure 5cm, 10cm..." className="h-9" data-testid="product-sizes" />
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Il cliente potra' scegliere una variante. Il prezzo finale sara' confermato via email.</p>
+                    </div>
+
+                    {/* Personalizzazione */}
+                    <div className="rounded-md border border-border/40 p-3 space-y-2 bg-muted/20">
+                      <div className="flex items-center gap-3">
+                        <Switch checked={form.is_customizable} onCheckedChange={v => setForm({...form, is_customizable: v})} data-testid="product-customizable-toggle" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">Prodotto personalizzabile</p>
+                          <p className="text-[10px] text-muted-foreground">Il cliente puo' inserire un testo personalizzato (nome, dedica, data...)</p>
+                        </div>
+                      </div>
+                      {form.is_customizable && (
+                        <div className="space-y-1 mt-2">
+                          <Label className="text-[10px] text-muted-foreground">Etichetta del campo personalizzato</Label>
+                          <Input value={form.custom_field_label} onChange={e => setForm({...form, custom_field_label: e.target.value})} placeholder='Es. "Nome da incidere", "Dedica", "Data..."' className="h-9" data-testid="product-custom-label" />
+                        </div>
+                      )}
+                    </div>
+
                     {/* Multi-photo upload */}
                     <div className="space-y-2">
                       <Label className="text-xs">Foto (max 5, ognuna max 5MB)</Label>

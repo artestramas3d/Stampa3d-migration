@@ -1738,68 +1738,124 @@ async def admin_update_bug_report(report_id: str, update: BugReportStatusUpdate,
 
 class ProductCreate(BaseModel):
     name: str
-    description: str = ""
+    description: str = ""  # Descrizione breve (card)
+    description_long: str = ""  # Descrizione estesa (pagina dettaglio)
     price: float
     category: str = ""
-    materials: str = ""
+    materials: str = ""  # Legacy stringa; nuove varianti in `material_options`
     photos: List[str] = []  # list of base64 images
     photo: Optional[str] = None  # legacy single photo
     is_public: bool = True
+    # Varianti (semplici, senza prezzo extra - prezzo definito su contatto)
+    color_options: List[str] = []   # es. ["Rosso", "Blu", "Nero"]
+    material_options: List[str] = []  # es. ["PLA", "PETG", "ABS"]
+    size_options: List[str] = []   # es. ["S", "M", "L", "XL"]
+    # Personalizzazione
+    is_customizable: bool = False
+    custom_field_label: str = ""  # es. "Nome da incidere", "Dedica"
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    description_long: Optional[str] = None
     price: Optional[float] = None
     category: Optional[str] = None
     materials: Optional[str] = None
     photos: Optional[List[str]] = None
     photo: Optional[str] = None
     is_public: Optional[bool] = None
+    color_options: Optional[List[str]] = None
+    material_options: Optional[List[str]] = None
+    size_options: Optional[List[str]] = None
+    is_customizable: Optional[bool] = None
+    custom_field_label: Optional[str] = None
+
+
+def _slugify(text: str) -> str:
+    """Slug semplice URL-safe (no librerie esterne)"""
+    import re, unicodedata
+    text = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode()
+    text = re.sub(r"[^\w\s-]", "", text).strip().lower()
+    return re.sub(r"[\s_-]+", "-", text) or "prodotto"
+
+
+def _serialize_product(doc: dict, include_long: bool = True) -> dict:
+    photos = doc.get("photos", [])
+    if not photos and doc.get("photo"):
+        photos = [doc["photo"]]
+    out = {
+        "id": str(doc["_id"]),
+        "slug": doc.get("slug") or _slugify(doc.get("name", "")) + "-" + str(doc["_id"])[-6:],
+        "name": doc.get("name", ""),
+        "description": doc.get("description", ""),
+        "price": doc.get("price", 0),
+        "category": doc.get("category", ""),
+        "materials": doc.get("materials", ""),
+        "photos": photos,
+        "photo": photos[0] if photos else "",
+        "is_public": doc.get("is_public", True),
+        "color_options": doc.get("color_options", []),
+        "material_options": doc.get("material_options", []),
+        "size_options": doc.get("size_options", []),
+        "is_customizable": doc.get("is_customizable", False),
+        "custom_field_label": doc.get("custom_field_label", ""),
+        "created_at": doc.get("created_at", ""),
+    }
+    if include_long:
+        out["description_long"] = doc.get("description_long", "")
+    return out
+
 
 @api_router.get("/products")
 async def get_products(current_user: dict = Depends(get_current_user)):
     result = []
     async for doc in db.products.find({"user_id": current_user["id"]}).sort("created_at", -1):
-        photos = doc.get("photos", [])
-        if not photos and doc.get("photo"):
-            photos = [doc["photo"]]
-        result.append({
-            "id": str(doc["_id"]),
-            "name": doc.get("name", ""),
-            "description": doc.get("description", ""),
-            "price": doc.get("price", 0),
-            "category": doc.get("category", ""),
-            "materials": doc.get("materials", ""),
-            "photos": photos,
-            "photo": photos[0] if photos else "",
-            "is_public": doc.get("is_public", True),
-            "created_at": doc.get("created_at", "")
-        })
+        result.append(_serialize_product(doc))
     return result
 
 @api_router.post("/products")
 async def create_product(product: ProductCreate, current_user: dict = Depends(get_current_user)):
     photos = product.photos if product.photos else ([product.photo] if product.photo else [])
+    slug = _slugify(product.name)
+    # Unicita' slug
+    base_slug = slug
+    n = 2
+    while await db.products.find_one({"slug": slug}):
+        slug = f"{base_slug}-{n}"
+        n += 1
     doc = {
         "user_id": current_user["id"],
         "name": product.name,
+        "slug": slug,
         "description": product.description,
+        "description_long": product.description_long,
         "price": product.price,
         "category": product.category,
         "materials": product.materials,
         "photos": photos,
         "photo": photos[0] if photos else "",
         "is_public": product.is_public,
+        "color_options": product.color_options,
+        "material_options": product.material_options,
+        "size_options": product.size_options,
+        "is_customizable": product.is_customizable,
+        "custom_field_label": product.custom_field_label,
+        "views": 0,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     result = await db.products.insert_one(doc)
-    doc["id"] = str(result.inserted_id)
-    doc.pop("_id", None)
-    return doc
+    doc["_id"] = result.inserted_id
+    return _serialize_product(doc)
 
 @api_router.put("/products/{product_id}")
 async def update_product(product_id: str, product: ProductUpdate, current_user: dict = Depends(get_current_user)):
     update_data = {k: v for k, v in product.model_dump().items() if v is not None}
+    # Se cambia il nome, rigenera lo slug
+    if "name" in update_data:
+        new_slug = _slugify(update_data["name"])
+        existing = await db.products.find_one({"slug": new_slug, "_id": {"$ne": ObjectId(product_id)}})
+        if not existing:
+            update_data["slug"] = new_slug
     await db.products.update_one({"_id": ObjectId(product_id), "user_id": current_user["id"]}, {"$set": update_data})
     return {"message": "Prodotto aggiornato"}
 
@@ -1819,20 +1875,42 @@ async def get_public_listino():
 
     products = []
     async for doc in db.products.find({"is_public": True}).sort("category", 1):
-        photos = doc.get("photos", [])
-        if not photos and doc.get("photo"):
-            photos = [doc["photo"]]
-        products.append({
-            "id": str(doc["_id"]),
-            "name": doc.get("name", ""),
-            "description": doc.get("description", ""),
-            "price": doc.get("price", 0),
-            "category": doc.get("category", ""),
-            "materials": doc.get("materials", ""),
-            "photos": photos,
-            "photo": photos[0] if photos else "",
-        })
+        products.append(_serialize_product(doc, include_long=False))
     return {"brand_name": brand, "primary_color": primary, "products": products}
+
+
+@api_router.get("/public/product/{slug}")
+async def get_public_product(slug: str):
+    """Public product detail by slug + increments view counter"""
+    doc = await db.products.find_one({"slug": slug, "is_public": True})
+    if not doc:
+        # Fallback: prova ad usare l'id (per retrocompat con prodotti senza slug)
+        try:
+            doc = await db.products.find_one({"_id": ObjectId(slug), "is_public": True})
+        except Exception:
+            doc = None
+    if not doc:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato")
+    # Increment view counter (non blocca la risposta in caso di errore)
+    try:
+        await db.products.update_one({"_id": doc["_id"]}, {"$inc": {"views": 1}})
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        await db.product_views.update_one(
+            {"product_id": str(doc["_id"]), "date": today},
+            {"$inc": {"count": 1}},
+            upsert=True
+        )
+    except Exception:
+        pass
+    settings = await db.site_settings.find_one({"_id": "global"})
+    brand = settings.get("brand_name", "Artes&Tramas") if settings else "Artes&Tramas"
+    primary = settings.get("primary_color", "#f97316") if settings else "#f97316"
+    return {
+        "brand_name": brand,
+        "primary_color": primary,
+        "product": _serialize_product(doc, include_long=True)
+    }
+
 
 class ProductInquiry(BaseModel):
     product_id: Optional[str] = None
@@ -1842,12 +1920,39 @@ class ProductInquiry(BaseModel):
     customer_phone: str = ""
     message: str
     is_custom: bool = False
+    # Nuovi campi shop avanzato
+    selected_color: str = ""
+    selected_material: str = ""
+    selected_size: str = ""
+    custom_text: str = ""
+    inquiry_type: str = "info"  # info | quote (preventivo)
 
 @api_router.post("/public/product-inquiry")
 async def product_inquiry(inquiry: ProductInquiry):
     """Send inquiry email for a product or custom request"""
-    subject_prefix = "Richiesta Personalizzata" if inquiry.is_custom else f"Richiesta Info: {inquiry.product_name}"
-    
+    if inquiry.is_custom:
+        subject_prefix = "Richiesta Personalizzata"
+    elif inquiry.inquiry_type == "quote":
+        subject_prefix = f"Richiesta Preventivo: {inquiry.product_name}"
+    else:
+        subject_prefix = f"Richiesta Info: {inquiry.product_name}"
+
+    # Costruisci righe varianti / personalizzazione
+    variant_rows = ""
+    if inquiry.selected_color:
+        variant_rows += f"<tr><td style='padding:8px;color:#666;'>Colore:</td><td style='padding:8px;font-weight:bold;'>{inquiry.selected_color}</td></tr>"
+    if inquiry.selected_material:
+        variant_rows += f"<tr><td style='padding:8px;color:#666;'>Materiale:</td><td style='padding:8px;font-weight:bold;'>{inquiry.selected_material}</td></tr>"
+    if inquiry.selected_size:
+        variant_rows += f"<tr><td style='padding:8px;color:#666;'>Dimensione:</td><td style='padding:8px;font-weight:bold;'>{inquiry.selected_size}</td></tr>"
+    custom_block = ""
+    if inquiry.custom_text:
+        custom_block = f"""
+        <div style="margin-top:12px;padding:12px;background:#fff7ed;border-left:3px solid #f97316;border-radius:4px;">
+            <p style="font-size:12px;color:#92400e;margin:0 0 4px;font-weight:bold;">Personalizzazione richiesta:</p>
+            <p style="font-size:14px;margin:0;color:#1f2937;">{inquiry.custom_text}</p>
+        </div>"""
+
     html = f"""
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <div style="background:linear-gradient(135deg,#f97316,#ea580c);padding:20px;text-align:center;">
@@ -1859,16 +1964,18 @@ async def product_inquiry(inquiry: ProductInquiry):
                 <tr><td style="padding:8px;color:#666;">Email:</td><td style="padding:8px;"><a href="mailto:{inquiry.customer_email}">{inquiry.customer_email}</a></td></tr>
                 {"<tr><td style='padding:8px;color:#666;'>Telefono:</td><td style='padding:8px;'>" + inquiry.customer_phone + "</td></tr>" if inquiry.customer_phone else ""}
                 {"<tr><td style='padding:8px;color:#666;'>Prodotto:</td><td style='padding:8px;font-weight:bold;'>" + inquiry.product_name + "</td></tr>" if inquiry.product_name else ""}
+                {variant_rows}
             </table>
+            {custom_block}
             <div style="margin-top:15px;padding:15px;background:#f8fafc;border-radius:8px;">
                 <p style="font-size:13px;color:#666;margin:0 0 5px;">Messaggio:</p>
                 <p style="font-size:14px;margin:0;white-space:pre-wrap;">{inquiry.message}</p>
             </div>
         </div>
     </div>"""
-    
+
     send_html_email(to_email="info@artestramas3d.it", subject=f"{subject_prefix} - {inquiry.customer_name}", html_content=html)
-    
+
     await db.inquiries.insert_one({
         "product_id": inquiry.product_id,
         "product_name": inquiry.product_name,
@@ -1877,9 +1984,15 @@ async def product_inquiry(inquiry: ProductInquiry):
         "customer_phone": inquiry.customer_phone,
         "message": inquiry.message,
         "is_custom": inquiry.is_custom,
+        "inquiry_type": inquiry.inquiry_type,
+        "selected_color": inquiry.selected_color,
+        "selected_material": inquiry.selected_material,
+        "selected_size": inquiry.selected_size,
+        "custom_text": inquiry.custom_text,
+        "status": "nuova",
         "created_at": datetime.now(timezone.utc).isoformat()
     })
-    
+
     return {"message": "Richiesta inviata con successo"}
 
 @api_router.get("/public/landing")

@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { getPublicListino, sendProductInquiry } from '../lib/api';
-import { Package, X, ChevronLeft, ChevronRight, Send, ShoppingBag, Wrench } from 'lucide-react';
+import { Package, X, ChevronLeft, ChevronRight, Send, ShoppingBag, Wrench, ArrowRight, SlidersHorizontal } from 'lucide-react';
 import { PublicBannerSlot } from '../components/PublicBannerSlot';
 
-function ProductCard({ p, index, primary, onInquire }) {
+function ProductCard({ p, index, primary }) {
   const photos = p.photos?.length ? p.photos : (p.photo ? [p.photo] : []);
   const [idx, setIdx] = useState(0);
-  const prev = (e) => { e.stopPropagation(); setIdx(i => (i - 1 + photos.length) % photos.length); };
-  const next = (e) => { e.stopPropagation(); setIdx(i => (i + 1) % photos.length); };
+  const prev = (e) => { e.preventDefault(); e.stopPropagation(); setIdx(i => (i - 1 + photos.length) % photos.length); };
+  const next = (e) => { e.preventDefault(); e.stopPropagation(); setIdx(i => (i + 1) % photos.length); };
+  const detailUrl = `/shop/prodotto/${p.slug || p.id}`;
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all group" data-testid={`listino-product-${index}`}>
+    <Link to={detailUrl} className="block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all group" data-testid={`listino-product-${index}`}>
       <div className="aspect-[4/3] bg-gray-50 relative overflow-hidden">
         {photos.length > 0 ? (
           <>
@@ -24,10 +26,13 @@ function ProductCard({ p, index, primary, onInquire }) {
                 </button>
                 <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
                   {photos.map((_, pi) => (
-                    <button key={pi} onClick={(e) => { e.stopPropagation(); setIdx(pi); }} aria-label={`Foto ${pi + 1}`} className="w-2 h-2 rounded-full transition-colors" style={{ background: pi === idx ? 'white' : 'rgba(255,255,255,0.5)' }} />
+                    <button key={pi} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIdx(pi); }} aria-label={`Foto ${pi + 1}`} className="w-2 h-2 rounded-full transition-colors" style={{ background: pi === idx ? 'white' : 'rgba(255,255,255,0.5)' }} />
                   ))}
                 </div>
               </>
+            )}
+            {p.is_customizable && (
+              <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold text-white shadow" style={{ background: primary }}>Personalizzabile</span>
             )}
           </>
         ) : (
@@ -36,24 +41,23 @@ function ProductCard({ p, index, primary, onInquire }) {
       </div>
       <div className="p-4">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold text-gray-800 text-lg">{p.name}</h3>
+          <h3 className="font-bold text-gray-800 text-lg group-hover:underline">{p.name}</h3>
           <span className="text-xl font-bold shrink-0" style={{ color: primary }}>&euro;{parseFloat(p.price).toFixed(2)}</span>
         </div>
-        {p.description && <p className="text-sm text-gray-500 mt-2 line-clamp-3">{p.description}</p>}
+        {p.description && <p className="text-sm text-gray-500 mt-2 line-clamp-2">{p.description}</p>}
         <div className="flex items-center gap-2 mt-2 flex-wrap">
           {p.category && <span className="px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ background: `${primary}15`, color: primary }}>{p.category}</span>}
           {p.materials && <span className="text-[11px] text-gray-400">{p.materials}</span>}
         </div>
-        <button
-          onClick={() => onInquire(p)}
-          className="mt-4 w-full py-2.5 rounded-lg text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors hover:opacity-90"
+        <div
+          className="mt-4 w-full py-2.5 rounded-lg text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all group-hover:gap-3"
           style={{ background: primary }}
           data-testid={`buy-product-${index}`}
         >
-          <ShoppingBag className="w-4 h-4" /> Richiedi Info / Acquista
-        </button>
+          <ShoppingBag className="w-4 h-4" /> Vedi Dettagli <ArrowRight className="w-3.5 h-3.5" />
+        </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -141,8 +145,9 @@ export default function PublicListinoPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [modal, setModal] = useState(null); // null | 'inquiry' | 'custom'
+  const [priceMax, setPriceMax] = useState(null); // null = no filter
+  const [sort, setSort] = useState('default'); // default | price_asc | price_desc | name
+  const [modal, setModal] = useState(null); // null | 'custom'
 
   useEffect(() => {
     getPublicListino().then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
@@ -157,22 +162,14 @@ export default function PublicListinoPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, [modal]);
 
-  const openInquiry = (product) => {
-    setSelectedProduct(product);
-    setModal('inquiry');
-  };
+  const openCustom = () => setModal('custom');
 
-  const openCustom = () => {
-    setSelectedProduct(null);
-    setModal('custom');
-  };
-
-  const submitInquiry = async (form, isCustom, product) => {
+  const submitInquiry = async (form, isCustom) => {
     await sendProductInquiry({
-      product_id: isCustom ? null : product?.id,
-      product_name: isCustom ? 'Richiesta Personalizzata' : product?.name,
+      product_id: null,
+      product_name: 'Richiesta Personalizzata',
       ...form,
-      is_custom: isCustom
+      is_custom: true
     });
   };
 
@@ -182,7 +179,12 @@ export default function PublicListinoPage() {
   const primary = data.primary_color || '#f97316';
   const products = data.products || [];
   const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
-  const filtered = filter ? products.filter(p => p.category === filter) : products;
+  const maxProductPrice = Math.max(0, ...products.map(p => parseFloat(p.price) || 0));
+  let filtered = filter ? products.filter(p => p.category === filter) : products;
+  if (priceMax != null) filtered = filtered.filter(p => parseFloat(p.price) <= priceMax);
+  if (sort === 'price_asc') filtered = [...filtered].sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+  else if (sort === 'price_desc') filtered = [...filtered].sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+  else if (sort === 'name') filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="min-h-screen" style={{ background: '#fafafa' }} data-testid="public-listino-page">
@@ -202,22 +204,51 @@ export default function PublicListinoPage() {
 
       <PublicBannerSlot page="shop" position="header" />
 
-      {/* Filters */}
-      {categories.length > 0 && (
-        <div className="flex justify-center gap-2 py-4 px-4 flex-wrap">
-          <button onClick={() => setFilter('')} className="px-4 py-1.5 rounded-full text-sm font-medium transition-colors" style={!filter ? { background: primary, color: 'white' } : { background: '#e5e7eb', color: '#555' }}>Tutti</button>
-          {categories.map(cat => (
-            <button key={cat} onClick={() => setFilter(cat)} className="px-4 py-1.5 rounded-full text-sm font-medium transition-colors" style={filter === cat ? { background: primary, color: 'white' } : { background: '#e5e7eb', color: '#555' }}>{cat}</button>
-          ))}
+      {/* Filters bar */}
+      <div className="max-w-6xl mx-auto px-4 pt-5 pb-2">
+        {categories.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mb-3" data-testid="category-filters">
+            <button onClick={() => setFilter('')} className="px-4 py-1.5 rounded-full text-sm font-medium transition-colors" style={!filter ? { background: primary, color: 'white' } : { background: '#e5e7eb', color: '#555' }}>Tutti</button>
+            {categories.map(cat => (
+              <button key={cat} onClick={() => setFilter(cat)} className="px-4 py-1.5 rounded-full text-sm font-medium transition-colors" style={filter === cat ? { background: primary, color: 'white' } : { background: '#e5e7eb', color: '#555' }}>{cat}</button>
+            ))}
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <span className="flex items-center gap-1.5 text-gray-500"><SlidersHorizontal className="w-4 h-4" />Filtri:</span>
+          {maxProductPrice > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-full" data-testid="price-filter">
+              <span className="text-xs text-gray-500">Prezzo max:</span>
+              <input
+                type="range"
+                min={0}
+                max={Math.ceil(maxProductPrice)}
+                step={1}
+                value={priceMax ?? Math.ceil(maxProductPrice)}
+                onChange={e => setPriceMax(parseFloat(e.target.value))}
+                className="w-24 sm:w-32 accent-orange-500"
+                data-testid="price-slider"
+              />
+              <span className="text-xs font-semibold" style={{ color: primary }}>€{(priceMax ?? Math.ceil(maxProductPrice)).toFixed(0)}</span>
+              {priceMax != null && <button onClick={() => setPriceMax(null)} className="text-xs text-gray-400 hover:text-gray-700" aria-label="Reset prezzo">×</button>}
+            </div>
+          )}
+          <select value={sort} onChange={e => setSort(e.target.value)} className="px-3 py-1.5 bg-white border border-gray-200 rounded-full text-xs text-gray-700 focus:outline-none" data-testid="sort-select">
+            <option value="default">Ordina: Predefinito</option>
+            <option value="price_asc">Prezzo crescente</option>
+            <option value="price_desc">Prezzo decrescente</option>
+            <option value="name">Nome A-Z</option>
+          </select>
+          <span className="ml-auto text-xs text-gray-400">{filtered.length} risultati</span>
         </div>
-      )}
+      </div>
 
       {/* Products Grid */}
       <div className="max-w-6xl mx-auto px-4 py-6">
         {filtered.length === 0 ? (
           <div className="text-center py-16">
             <Package className="w-16 h-16 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-400 text-lg">Nessun prodotto disponibile</p>
+            <p className="text-gray-400 text-lg">Nessun prodotto trovato</p>
             <button onClick={openCustom} className="mt-4 px-5 py-2.5 rounded-lg text-white font-semibold text-sm" style={{ background: primary }}>
               <Wrench className="w-4 h-4 inline mr-1.5" />Richiedi Prodotto Personalizzato
             </button>
@@ -225,7 +256,7 @@ export default function PublicListinoPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map((p, i) => (
-              <ProductCard key={p.id || i} p={p} index={i} primary={primary} onInquire={openInquiry} />
+              <ProductCard key={p.id || i} p={p} index={i} primary={primary} />
             ))}
           </div>
         )}
@@ -256,16 +287,6 @@ export default function PublicListinoPage() {
       </footer>
 
       {/* Modals - key forza il reset dello state interno alla chiusura/cambio prodotto */}
-      {modal === 'inquiry' && (
-        <InquiryForm
-          key={`inquiry-${selectedProduct?.id || 'x'}`}
-          isCustom={false}
-          onClose={closeModal}
-          selectedProduct={selectedProduct}
-          primary={primary}
-          onSubmit={submitInquiry}
-        />
-      )}
       {modal === 'custom' && (
         <InquiryForm
           key="custom"
