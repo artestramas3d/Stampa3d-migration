@@ -106,19 +106,19 @@ function InquiryForm({ isCustom, onClose, selectedProduct, primary, onSubmit }) 
             )}
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Nome *</label>
-              <input value={form.customer_name} onChange={e => setForm(f => ({...f, customer_name: e.target.value}))} className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-orange-400" placeholder="Il tuo nome" data-testid="inquiry-name" />
+              <input value={form.customer_name} onChange={e => setForm(f => ({...f, customer_name: e.target.value}))} className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-900 text-sm focus:outline-none focus:border-orange-400" placeholder="Il tuo nome" data-testid="inquiry-name" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Email *</label>
-              <input type="email" value={form.customer_email} onChange={e => setForm(f => ({...f, customer_email: e.target.value}))} className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-orange-400" placeholder="la.tua@email.com" data-testid="inquiry-email" />
+              <input type="email" value={form.customer_email} onChange={e => setForm(f => ({...f, customer_email: e.target.value}))} className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-900 text-sm focus:outline-none focus:border-orange-400" placeholder="la.tua@email.com" data-testid="inquiry-email" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Telefono</label>
-              <input value={form.customer_phone} onChange={e => setForm(f => ({...f, customer_phone: e.target.value}))} className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-orange-400" placeholder="Opzionale" data-testid="inquiry-phone" />
+              <input value={form.customer_phone} onChange={e => setForm(f => ({...f, customer_phone: e.target.value}))} className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-900 text-sm focus:outline-none focus:border-orange-400" placeholder="Opzionale" data-testid="inquiry-phone" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">{isCustom ? 'Descrivi il prodotto che vorresti *' : 'Messaggio *'}</label>
-              <textarea value={form.message} onChange={e => setForm(f => ({...f, message: e.target.value}))} rows={4} className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-orange-400 resize-none" placeholder={isCustom ? 'Descrivi il prodotto personalizzato che vorresti realizzare...' : 'Scrivi la tua richiesta...'} data-testid="inquiry-message" />
+              <textarea value={form.message} onChange={e => setForm(f => ({...f, message: e.target.value}))} rows={4} className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-900 text-sm focus:outline-none focus:border-orange-400 resize-none" placeholder={isCustom ? 'Descrivi il prodotto personalizzato che vorresti realizzare...' : 'Scrivi la tua richiesta...'} data-testid="inquiry-message" />
             </div>
             <button
               onClick={handleSend}
