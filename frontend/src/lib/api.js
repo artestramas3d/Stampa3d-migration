@@ -1,6 +1,12 @@
 import axios from 'axios';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+// Path API relativo al dominio corrente. Funziona su:
+// - calcolatore.artestramas3d.it (app principale)
+// - shop.artestramas3d.it (vetrina pubblica)
+// - listino.artestramas3d.it (legacy alias)
+// - Emergent preview env
+// nginx ha la rule `location /api/` per ogni dominio che proxa al backend.
+const API = '/api';
 
 const api = axios.create({
   baseURL: API,

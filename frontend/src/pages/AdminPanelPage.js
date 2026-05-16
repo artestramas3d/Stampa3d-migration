@@ -935,7 +935,11 @@ function ProductsTab() {
               <ShoppingBag className="w-4 h-4" /> Prodotti Vetrina ({products.length})
             </CardTitle>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => window.open('/listino', '_blank')} data-testid="view-listino-btn">
+              <Button variant="outline" size="sm" onClick={() => {
+                const host = window.location.hostname;
+                const shopUrl = host.endsWith('artestramas3d.it') ? 'https://shop.artestramas3d.it' : '/listino';
+                window.open(shopUrl, '_blank');
+              }} data-testid="view-listino-btn">
                 <ExternalLink className="w-3.5 h-3.5 mr-1.5" />Vedi Vetrina
               </Button>
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
