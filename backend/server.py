@@ -2737,6 +2737,97 @@ async def get_demo_stats(current_user: dict = Depends(require_admin)):
     return {"total": total, "today": today_count, "daily": daily}
 
 
+# ========== ADMIN - INQUIRIES (Richieste prodotto/personalizzate) ==========
+
+@api_router.get("/admin/inquiries")
+async def admin_get_inquiries(current_user: dict = Depends(require_admin)):
+    """Lista tutte le richieste prodotti / personalizzate / preventivi"""
+    result = []
+    async for doc in db.inquiries.find().sort("created_at", -1):
+        result.append({
+            "id": str(doc["_id"]),
+            "product_id": doc.get("product_id"),
+            "product_name": doc.get("product_name", ""),
+            "customer_name": doc.get("customer_name", ""),
+            "customer_email": doc.get("customer_email", ""),
+            "customer_phone": doc.get("customer_phone", ""),
+            "message": doc.get("message", ""),
+            "is_custom": doc.get("is_custom", False),
+            "inquiry_type": doc.get("inquiry_type", "info"),
+            "selected_color": doc.get("selected_color", ""),
+            "selected_material": doc.get("selected_material", ""),
+            "selected_size": doc.get("selected_size", ""),
+            "custom_text": doc.get("custom_text", ""),
+            "status": doc.get("status", "nuova"),
+            "admin_note": doc.get("admin_note", ""),
+            "created_at": doc.get("created_at", "")
+        })
+    return result
+
+
+class InquiryStatusUpdate(BaseModel):
+    status: str  # nuova | in_lavorazione | preventivo_inviato | chiusa
+    admin_note: Optional[str] = None
+
+
+@api_router.put("/admin/inquiries/{inquiry_id}")
+async def admin_update_inquiry(inquiry_id: str, update: InquiryStatusUpdate, current_user: dict = Depends(require_admin)):
+    valid = {"nuova", "in_lavorazione", "preventivo_inviato", "chiusa"}
+    if update.status not in valid:
+        raise HTTPException(status_code=400, detail="Stato non valido")
+    upd = {"status": update.status}
+    if update.admin_note is not None:
+        upd["admin_note"] = update.admin_note
+    await db.inquiries.update_one({"_id": ObjectId(inquiry_id)}, {"$set": upd})
+    return {"message": "Richiesta aggiornata"}
+
+
+@api_router.delete("/admin/inquiries/{inquiry_id}")
+async def admin_delete_inquiry(inquiry_id: str, current_user: dict = Depends(require_admin)):
+    await db.inquiries.delete_one({"_id": ObjectId(inquiry_id)})
+    return {"message": "Richiesta eliminata"}
+
+
+# ========== ADMIN - PRODUCT ANALYTICS ==========
+
+@api_router.get("/admin/product-stats")
+async def admin_product_stats(current_user: dict = Depends(require_admin)):
+    """Top prodotti per visualizzazioni + inquiries totali per prodotto"""
+    # Aggrega inquiry per product_name
+    inquiry_counts = {}
+    async for doc in db.inquiries.find({"is_custom": {"$ne": True}}):
+        name = doc.get("product_name") or "(senza nome)"
+        inquiry_counts[name] = inquiry_counts.get(name, 0) + 1
+
+    # Top prodotti per views
+    top = []
+    async for doc in db.products.find({}).sort("views", -1).limit(10):
+        photos = doc.get("photos", [])
+        if not photos and doc.get("photo"):
+            photos = [doc["photo"]]
+        name = doc.get("name", "")
+        top.append({
+            "id": str(doc["_id"]),
+            "name": name,
+            "slug": doc.get("slug", ""),
+            "photo": photos[0] if photos else "",
+            "price": doc.get("price", 0),
+            "views": doc.get("views", 0),
+            "inquiries": inquiry_counts.get(name, 0),
+            "is_public": doc.get("is_public", True)
+        })
+
+    total_inquiries = await db.inquiries.count_documents({})
+    custom_requests = await db.inquiries.count_documents({"is_custom": True})
+    quote_requests = await db.inquiries.count_documents({"inquiry_type": "quote"})
+
+    return {
+        "top_products": top,
+        "total_inquiries": total_inquiries,
+        "custom_requests": custom_requests,
+        "quote_requests": quote_requests
+    }
+
 
 @api_router.delete("/quotes/{quote_id}")
 async def delete_quote(quote_id: str, current_user: dict = Depends(get_current_user)):

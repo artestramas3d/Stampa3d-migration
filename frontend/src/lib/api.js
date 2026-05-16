@@ -115,6 +115,12 @@ export const getPublicListino = () => api.get('/public/listino').then(r => r.dat
 export const getPublicProduct = (slug) => api.get(`/public/product/${slug}`).then(r => r.data);
 export const sendProductInquiry = (data) => api.post('/public/product-inquiry', data).then(r => r.data);
 
+// Admin - Richieste/Inquiries + Product Analytics
+export const getAdminInquiries = () => api.get('/admin/inquiries').then(r => r.data);
+export const updateAdminInquiry = (id, data) => api.put(`/admin/inquiries/${id}`, data).then(r => r.data);
+export const deleteAdminInquiry = (id) => api.delete(`/admin/inquiries/${id}`).then(r => r.data);
+export const getAdminProductStats = () => api.get('/admin/product-stats').then(r => r.data);
+
 // Public endpoints (no auth)
 export const getPublicLanding = () => api.get('/public/landing').then(r => r.data);
 export const submitContactForm = (data) => api.post('/public/contact', data).then(r => r.data);
