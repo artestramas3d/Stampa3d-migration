@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getBusinessSettings, updateBusinessSettings, getClients, generateQuotePdf, getQuotes } from '../lib/api';
+import { getBusinessSettings, updateBusinessSettings, getClients, generateQuotePdf, getQuotes, deleteQuote, sendQuoteEmail } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Building2, FileText, Plus, Trash2, Eye, Download, Save, ImagePlus } from 'lucide-react';
+import { Building2, FileText, Plus, Trash2, Eye, Download, Save, ImagePlus, Send, Pencil, Mail } from 'lucide-react';
 import { DecimalInput } from '../components/DecimalInput';
 import { toast } from 'sonner';
 
@@ -21,6 +21,9 @@ export default function QuotesPage() {
   const [generating, setGenerating] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [showPreview, setShowPreview] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(null);
+  const [emailTo, setEmailTo] = useState('');
+  const [editingQuote, setEditingQuote] = useState(null);
   const logoRef = useRef(null);
 
   const [quoteForm, setQuoteForm] = useState({
@@ -81,6 +84,38 @@ export default function QuotesPage() {
     win.document.write(previewHtml);
     win.document.close();
     setTimeout(() => win.print(), 500);
+  };
+
+  const handleDeleteQuote = async (id) => {
+    if (!window.confirm('Eliminare questo preventivo?')) return;
+    try {
+      await deleteQuote(id);
+      setQuotes(prev => prev.filter(q => q.id !== id));
+      toast.success('Preventivo eliminato');
+    } catch { toast.error('Errore eliminazione'); }
+  };
+
+  const handleEditQuote = (q) => {
+    setEditingQuote(q);
+    setQuoteForm({
+      client_id: q.client_id || '',
+      client_name: q.client_name || '',
+      items: q.items || [{ description: '', quantity: 1, unit_price: 0 }],
+      notes: q.notes || '',
+      valid_days: 30
+    });
+  };
+
+  const handleSendEmail = async (quoteId) => {
+    if (!emailTo) { toast.error('Inserisci email destinatario'); return; }
+    setSendingEmail(quoteId);
+    try {
+      await sendQuoteEmail({ quote_id: quoteId, to_email: emailTo });
+      toast.success(`Preventivo inviato a ${emailTo}`);
+      setEmailTo('');
+      setQuotes(await getQuotes());
+    } catch { toast.error("Errore nell'invio"); }
+    finally { setSendingEmail(null); }
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
@@ -173,8 +208,13 @@ export default function QuotesPage() {
 
               <Button onClick={handleGenerate} disabled={generating} className="w-full" data-testid="generate-quote-btn">
                 <FileText className="w-4 h-4 mr-2" />
-                {generating ? 'Generazione...' : 'Genera Preventivo PDF'}
+                {generating ? 'Generazione...' : editingQuote ? 'Aggiorna e Genera PDF' : 'Genera Preventivo PDF'}
               </Button>
+              {editingQuote && (
+                <Button variant="ghost" className="w-full" onClick={() => { setEditingQuote(null); setQuoteForm({ client_id: '', client_name: '', items: [{ description: '', quantity: 1, unit_price: 0 }], notes: '', valid_days: 30 }); }}>
+                  Annulla Modifica
+                </Button>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -241,17 +281,51 @@ export default function QuotesPage() {
               {quotes.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">Nessun preventivo generato</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {quotes.map(q => (
-                    <div key={q.id} className="p-3 rounded-md bg-muted/30 border border-border/40 flex items-center justify-between" data-testid={`quote-${q.id}`}>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-semibold text-sm">{q.quote_number}</span>
-                          <span className="font-mono text-primary font-bold">&euro;{q.subtotal?.toFixed(2)}</span>
+                    <div key={q.id} className="p-3 rounded-md bg-muted/30 border border-border/40" data-testid={`quote-${q.id}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-mono font-semibold text-sm">{q.quote_number}</span>
+                            <span className="font-mono text-primary font-bold">&euro;{q.subtotal?.toFixed(2)}</span>
+                            {q.sent_to && (
+                              <Badge className="bg-emerald-500/20 text-emerald-500 text-[10px]">
+                                <Mail className="w-2.5 h-2.5 mr-1" />Inviato
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {q.client_name || 'Senza cliente'} — {new Date(q.created_at).toLocaleDateString('it-IT')} — Valido: {q.valid_until}
+                          </p>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">
+                            {q.items?.map((item, i) => <span key={i}>{i > 0 ? ', ' : ''}{item.description} x{item.quantity}</span>)}
+                          </div>
+                          {q.sent_to && <p className="text-[10px] text-emerald-500 mt-0.5">Inviato a: {q.sent_to}</p>}
                         </div>
-                        <p className="text-xs text-muted-foreground">{q.client_name || 'Senza cliente'} - {new Date(q.created_at).toLocaleDateString('it-IT')}</p>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleEditQuote(q)} title="Modifica" data-testid={`edit-quote-${q.id}`}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => handleDeleteQuote(q.id)} title="Elimina" data-testid={`delete-quote-${q.id}`}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                      <p className="text-xs text-muted-foreground">Valido fino: {q.valid_until}</p>
+                      {/* Send email section */}
+                      <div className="mt-2 pt-2 border-t border-border/20 flex items-center gap-2">
+                        <Input
+                          placeholder={q.client_name ? `Email ${q.client_name}...` : "Email destinatario..."}
+                          value={sendingEmail === q.id ? emailTo : ''}
+                          onFocus={() => { setSendingEmail(q.id); setEmailTo(''); }}
+                          onChange={e => { setSendingEmail(q.id); setEmailTo(e.target.value); }}
+                          className="h-7 text-xs flex-1"
+                          data-testid={`email-quote-${q.id}`}
+                        />
+                        <Button size="sm" className="h-7 text-xs" onClick={() => handleSendEmail(q.id)} disabled={sendingEmail === q.id && !emailTo} data-testid={`send-quote-${q.id}`}>
+                          <Send className="w-3 h-3 mr-1" /> Invia
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSales, deleteSale, updateSalePaid, updateSale, exportSalesCSV } from '../lib/api';
+import { getSales, deleteSale, updateSalePaid, updateSale, exportSalesCSV, getClients } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -25,6 +25,8 @@ export default function SalesPage() {
   const [editingSale, setEditingSale] = useState(null);
   const [editPrice, setEditPrice] = useState(0);
   const [editName, setEditName] = useState('');
+  const [editClientId, setEditClientId] = useState('');
+  const [clients, setClients] = useState([]);
 
   useEffect(() => {
     loadSales();
@@ -32,8 +34,9 @@ export default function SalesPage() {
 
   const loadSales = async () => {
     try {
-      const data = await getSales();
+      const [data, clientsData] = await Promise.all([getSales(), getClients()]);
       setSales(data);
+      setClients(clientsData);
     } catch (err) {
       toast.error('Errore nel caricamento vendite');
     } finally {
@@ -85,16 +88,20 @@ export default function SalesPage() {
     setEditingSale(sale);
     setEditPrice(sale.sale_price || 0);
     setEditName(sale.product_name || '');
+    setEditClientId(sale.client_id || '');
   };
 
   const handleSaveEdit = async () => {
     if (!editingSale) return;
     try {
-      await updateSale(editingSale.id, { sale_price: editPrice, product_name: editName });
+      await updateSale(editingSale.id, { sale_price: editPrice, product_name: editName, client_id: editClientId && editClientId !== 'none' ? editClientId : '' });
+      const clientObj = clients.find(c => c.id === editClientId);
       setSales(prev => prev.map(s => s.id === editingSale.id ? {
         ...s,
         sale_price: editPrice,
         product_name: editName,
+        client_id: editClientId && editClientId !== 'none' ? editClientId : '',
+        client_name: clientObj ? `${clientObj.name} ${clientObj.surname || ''}`.trim() : '',
         net_profit: parseFloat((editPrice - (s.total_cost || 0)).toFixed(2))
       } : s));
       setEditingSale(null);
@@ -380,6 +387,20 @@ export default function SalesPage() {
                 className="font-mono"
                 data-testid="edit-sale-price"
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Cliente</Label>
+              <Select value={editClientId || 'none'} onValueChange={setEditClientId}>
+                <SelectTrigger data-testid="edit-sale-client">
+                  <SelectValue placeholder="Nessun cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nessun cliente</SelectItem>
+                  {clients.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             {editingSale && (
               <div className="text-xs text-muted-foreground space-y-1 p-3 rounded-md bg-muted/30">

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   getAdminUsers, getAdminStats, getAdminEmailLogs, getAdminNewsletters,
   sendAdminNewsletter, deleteAdminNewsletter, adminVerifyUser, adminToggleAdmin, adminDeleteUser,
-  getSiteSettings, updateSiteSettings,
+  getSiteSettings, updateSiteSettings, getDemoStats,
   getAdminBugReports, getAdminBugScreenshot, updateAdminBugReport,
   getLandingSettings, updateLandingSettings, getContactRequests,
   getProducts, createProduct, updateProduct, deleteProduct,
@@ -1060,18 +1060,20 @@ export default function AdminPanelPage() {
   const [emailLogs, setEmailLogs] = useState([]);
   const [newsletters, setNewsletters] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [demoStats, setDemoStats] = useState({ total: 0, today: 0, daily: [] });
 
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
     try {
-      const [usersData, statsData, logsData, nlData] = await Promise.all([
-        getAdminUsers(), getAdminStats(), getAdminEmailLogs(), getAdminNewsletters()
+      const [usersData, statsData, logsData, nlData, demoData] = await Promise.all([
+        getAdminUsers(), getAdminStats(), getAdminEmailLogs(), getAdminNewsletters(), getDemoStats()
       ]);
       setUsers(usersData);
       setStats(statsData);
       setEmailLogs(logsData);
       setNewsletters(nlData);
+      setDemoStats(demoData);
     } catch {
       toast.error('Errore nel caricamento dati admin');
     } finally {
@@ -1166,6 +1168,13 @@ export default function AdminPanelPage() {
             <CardContent className="p-4">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Newsletter</p>
               <p className="text-2xl font-heading font-bold font-mono">{stats.total_newsletters}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/40">
+            <CardContent className="p-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Visite Demo</p>
+              <p className="text-2xl font-heading font-bold font-mono">{demoStats.total}</p>
+              <p className="text-[10px] text-muted-foreground">Oggi: {demoStats.today}</p>
             </CardContent>
           </Card>
         </div>

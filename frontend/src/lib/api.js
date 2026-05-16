@@ -134,6 +134,13 @@ export const updateBusinessSettings = (data) => api.put('/business-settings', da
 // Quotes
 export const generateQuotePdf = (data) => api.post('/quotes/generate-pdf', data).then(r => r.data);
 export const getQuotes = () => api.get('/quotes').then(r => r.data);
+export const deleteQuote = (id) => api.delete(`/quotes/${id}`).then(r => r.data);
+export const updateQuote = (id, data) => api.put(`/quotes/${id}`, data).then(r => r.data);
+export const sendQuoteEmail = (data) => api.post('/quotes/send-email', data).then(r => r.data);
+
+// Demo stats
+export const recordDemoVisit = () => api.post('/public/demo-visit').then(r => r.data);
+export const getDemoStats = () => api.get('/admin/demo-stats').then(r => r.data);
 
 // Export URLs
 export const exportFilamentsCSV = () => `${API}/export/filaments`;

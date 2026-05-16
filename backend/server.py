@@ -827,6 +827,7 @@ async def update_sale_paid(sale_id: str, request: UpdatePaidRequest, current_use
 class UpdateSaleRequest(BaseModel):
     sale_price: Optional[float] = None
     product_name: Optional[str] = None
+    client_id: Optional[str] = None
 
 @api_router.patch("/sales/{sale_id}")
 async def update_sale(sale_id: str, request: UpdateSaleRequest, current_user: dict = Depends(get_current_user)):
@@ -840,6 +841,8 @@ async def update_sale(sale_id: str, request: UpdateSaleRequest, current_user: di
         update_fields["net_profit"] = round(request.sale_price - sale.get("total_cost", 0), 2)
     if request.product_name is not None:
         update_fields["product_name"] = request.product_name
+    if request.client_id is not None:
+        update_fields["client_id"] = request.client_id
     
     if update_fields:
         await db.sales.update_one(
@@ -2508,6 +2511,121 @@ async def get_quotes(current_user: dict = Depends(get_current_user)):
         del doc["_id"]
         quotes.append(doc)
     return quotes
+
+# ========== DEMO VISIT COUNTER ==========
+@api_router.post("/public/demo-visit")
+async def record_demo_visit():
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    await db.demo_visits.update_one(
+        {"date": today},
+        {"$inc": {"count": 1}},
+        upsert=True
+    )
+    # Also increment total
+    await db.demo_visits.update_one(
+        {"_id": "total"},
+        {"$inc": {"count": 1}},
+        upsert=True
+    )
+    return {"ok": True}
+
+@api_router.get("/admin/demo-stats")
+async def get_demo_stats(current_user: dict = Depends(require_admin)):
+    total_doc = await db.demo_visits.find_one({"_id": "total"})
+    total = total_doc.get("count", 0) if total_doc else 0
+    
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today_doc = await db.demo_visits.find_one({"date": today})
+    today_count = today_doc.get("count", 0) if today_doc else 0
+    
+    # Last 7 days
+    daily = []
+    for i in range(7):
+        d = (datetime.now(timezone.utc) - timedelta(days=i)).strftime("%Y-%m-%d")
+        doc = await db.demo_visits.find_one({"date": d})
+        daily.append({"date": d, "count": doc.get("count", 0) if doc else 0})
+    
+    return {"total": total, "today": today_count, "daily": daily}
+
+
+
+@api_router.delete("/quotes/{quote_id}")
+async def delete_quote(quote_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.quotes.delete_one({"_id": ObjectId(quote_id), "user_id": current_user["id"]})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Preventivo non trovato")
+    return {"message": "Preventivo eliminato"}
+
+@api_router.put("/quotes/{quote_id}")
+async def update_quote(quote_id: str, quote: QuoteCreate, current_user: dict = Depends(get_current_user)):
+    existing = await db.quotes.find_one({"_id": ObjectId(quote_id), "user_id": current_user["id"]})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Preventivo non trovato")
+    
+    subtotal = sum(item.quantity * item.unit_price for item in quote.items)
+    client = None
+    if quote.client_id:
+        client = await db.clients.find_one({"_id": ObjectId(quote.client_id), "user_id": current_user["id"]})
+    client_name = client.get("name", "") + " " + client.get("surname", "") if client else quote.client_name
+    
+    update_data = {
+        "client_id": quote.client_id,
+        "client_name": client_name.strip(),
+        "items": [i.dict() for i in quote.items],
+        "subtotal": round(subtotal, 2),
+        "notes": quote.notes,
+        "valid_until": (datetime.now(timezone.utc) + timedelta(days=quote.valid_days)).strftime("%d/%m/%Y"),
+    }
+    await db.quotes.update_one({"_id": ObjectId(quote_id)}, {"$set": update_data})
+    return {"message": "Preventivo aggiornato"}
+
+class QuoteEmailRequest(BaseModel):
+    quote_id: str
+    to_email: str
+
+@api_router.post("/quotes/send-email")
+async def send_quote_email(req: QuoteEmailRequest, current_user: dict = Depends(get_current_user)):
+    quote = await db.quotes.find_one({"_id": ObjectId(req.quote_id), "user_id": current_user["id"]})
+    if not quote:
+        raise HTTPException(status_code=404, detail="Preventivo non trovato")
+    
+    # Regenerate HTML
+    biz = await db.business_settings.find_one({"user_id": current_user["id"]}) or {}
+    
+    logo_html = ""
+    if biz.get("logo_base64"):
+        logo_html = f'<img src="{biz["logo_base64"]}" style="max-height:60px;max-width:200px;" />'
+    
+    items_html = ""
+    for item in quote.get("items", []):
+        total = item["quantity"] * item["unit_price"]
+        items_html += f'<tr><td style="padding:8px 12px;border-bottom:1px solid #eee;">{item["description"]}</td><td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;">{item["quantity"]}</td><td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">&euro;{item["unit_price"]:.2f}</td><td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;font-weight:bold;">&euro;{total:.2f}</td></tr>'
+    
+    biz_name = biz.get("company_name", "Artes&Tramas")
+    html = f"""<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+    <div style="background:linear-gradient(135deg,#f97316,#ea580c);padding:20px;text-align:center;">
+        <h2 style="color:white;margin:0;">Preventivo {quote.get('quote_number','')}</h2>
+        <p style="color:rgba(255,255,255,0.8);margin:5px 0 0;font-size:14px;">{biz_name}</p>
+    </div>
+    <div style="padding:20px;">
+        <p>Gentile {quote.get('client_name','Cliente')},</p>
+        <p>In allegato il preventivo richiesto:</p>
+        <table style="width:100%;border-collapse:collapse;margin:15px 0;">
+            <tr style="background:#f97316;color:white;"><th style="padding:8px 12px;text-align:left;">Descrizione</th><th style="padding:8px;text-align:center;">Qta</th><th style="padding:8px;text-align:right;">Prezzo</th><th style="padding:8px 12px;text-align:right;">Totale</th></tr>
+            {items_html}
+        </table>
+        <p style="text-align:right;font-size:20px;font-weight:bold;color:#f97316;">TOTALE: &euro;{quote.get('subtotal',0):.2f}</p>
+        <p style="font-size:13px;color:#666;">Valido fino al: {quote.get('valid_until','')}</p>
+        {f'<p style="font-size:13px;color:#666;background:#f8fafc;padding:10px;border-radius:4px;">{quote.get("notes","")}</p>' if quote.get("notes") else ''}
+    </div>
+    <div style="padding:15px;text-align:center;background:#f3f4f6;font-size:11px;color:#999;">{biz_name}</div>
+    </div>"""
+    
+    send_html_email(to_email=req.to_email, subject=f"Preventivo {quote.get('quote_number','')} - {biz_name}", html_content=html)
+    await db.quotes.update_one({"_id": ObjectId(req.quote_id)}, {"$set": {"sent_to": req.to_email, "sent_at": datetime.now(timezone.utc).isoformat()}})
+    return {"message": f"Preventivo inviato a {req.to_email}"}
+
+
 
 # ========== EXPORT CSV/EXCEL ==========
 @api_router.get("/export/filaments")

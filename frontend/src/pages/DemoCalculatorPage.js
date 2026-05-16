@@ -10,9 +10,14 @@ import { Switch } from '../components/ui/switch';
 import { Calculator, Plus, Trash2, Lock, UserPlus, Receipt } from 'lucide-react';
 import { DecimalInput } from '../components/DecimalInput';
 import { useDemoBanner } from '../components/PublicScripts';
+import { recordDemoVisit } from '../lib/api';
 
 export default function DemoCalculatorPage() {
   const demoBanner = useDemoBanner();
+
+  // Record visit once
+  useState(() => { recordDemoVisit().catch(() => {}); });
+
   const [filaments, setFilaments] = useState([
     { name: 'PLA', color: '#000000', cost_per_gram: 0.02, grams_used: 50 }
   ]);
