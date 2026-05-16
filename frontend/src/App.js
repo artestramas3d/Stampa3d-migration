@@ -68,6 +68,19 @@ function PublicRoute({ children }) {
 }
 
 function AppRoutes() {
+  // Se il dominio è shop/listino, mostra direttamente lo Shop pubblico (no login)
+  const host = typeof window !== 'undefined' ? window.location.hostname : '';
+  const isShopDomain = host === 'shop.artestramas3d.it' || host === 'listino.artestramas3d.it';
+
+  if (isShopDomain) {
+    return (
+      <Routes>
+        <Route path="/cookie-policy" element={<CookiePolicyPage />} />
+        <Route path="*" element={<PublicListinoPage />} />
+      </Routes>
+    );
+  }
+
   return (
     <Routes>
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
