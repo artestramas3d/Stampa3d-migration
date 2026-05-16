@@ -104,6 +104,7 @@ export const deleteProduct = (id) => api.delete(`/products/${id}`).then(r => r.d
 
 // Public endpoints (no auth)
 export const getPublicListino = () => api.get('/public/listino').then(r => r.data);
+export const sendProductInquiry = (data) => api.post('/public/product-inquiry', data).then(r => r.data);
 export const getPublicLanding = () => api.get('/public/landing').then(r => r.data);
 export const submitContactForm = (data) => api.post('/public/contact', data).then(r => r.data);
 

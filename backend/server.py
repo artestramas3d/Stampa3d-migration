@@ -1724,8 +1724,9 @@ class ProductCreate(BaseModel):
     price: float
     category: str = ""
     materials: str = ""
-    photo: Optional[str] = None  # base64
-    is_public: bool = True  # visible on public listino
+    photos: List[str] = []  # list of base64 images
+    photo: Optional[str] = None  # legacy single photo
+    is_public: bool = True
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
@@ -1733,6 +1734,7 @@ class ProductUpdate(BaseModel):
     price: Optional[float] = None
     category: Optional[str] = None
     materials: Optional[str] = None
+    photos: Optional[List[str]] = None
     photo: Optional[str] = None
     is_public: Optional[bool] = None
 
@@ -1740,6 +1742,9 @@ class ProductUpdate(BaseModel):
 async def get_products(current_user: dict = Depends(get_current_user)):
     result = []
     async for doc in db.products.find({"user_id": current_user["id"]}).sort("created_at", -1):
+        photos = doc.get("photos", [])
+        if not photos and doc.get("photo"):
+            photos = [doc["photo"]]
         result.append({
             "id": str(doc["_id"]),
             "name": doc.get("name", ""),
@@ -1747,8 +1752,8 @@ async def get_products(current_user: dict = Depends(get_current_user)):
             "price": doc.get("price", 0),
             "category": doc.get("category", ""),
             "materials": doc.get("materials", ""),
-            "has_photo": bool(doc.get("photo")),
-            "photo": doc.get("photo", ""),
+            "photos": photos,
+            "photo": photos[0] if photos else "",
             "is_public": doc.get("is_public", True),
             "created_at": doc.get("created_at", "")
         })
@@ -1756,6 +1761,7 @@ async def get_products(current_user: dict = Depends(get_current_user)):
 
 @api_router.post("/products")
 async def create_product(product: ProductCreate, current_user: dict = Depends(get_current_user)):
+    photos = product.photos if product.photos else ([product.photo] if product.photo else [])
     doc = {
         "user_id": current_user["id"],
         "name": product.name,
@@ -1763,13 +1769,13 @@ async def create_product(product: ProductCreate, current_user: dict = Depends(ge
         "price": product.price,
         "category": product.category,
         "materials": product.materials,
-        "photo": product.photo,
+        "photos": photos,
+        "photo": photos[0] if photos else "",
         "is_public": product.is_public,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     result = await db.products.insert_one(doc)
     doc["id"] = str(result.inserted_id)
-    doc["has_photo"] = bool(doc.get("photo"))
     doc.pop("_id", None)
     return doc
 
@@ -1795,6 +1801,9 @@ async def get_public_listino():
 
     products = []
     async for doc in db.products.find({"is_public": True}).sort("category", 1):
+        photos = doc.get("photos", [])
+        if not photos and doc.get("photo"):
+            photos = [doc["photo"]]
         products.append({
             "id": str(doc["_id"]),
             "name": doc.get("name", ""),
@@ -1802,9 +1811,58 @@ async def get_public_listino():
             "price": doc.get("price", 0),
             "category": doc.get("category", ""),
             "materials": doc.get("materials", ""),
-            "photo": doc.get("photo", ""),
+            "photos": photos,
+            "photo": photos[0] if photos else "",
         })
     return {"brand_name": brand, "primary_color": primary, "products": products}
+
+class ProductInquiry(BaseModel):
+    product_id: Optional[str] = None
+    product_name: str = ""
+    customer_name: str
+    customer_email: str
+    customer_phone: str = ""
+    message: str
+    is_custom: bool = False
+
+@api_router.post("/public/product-inquiry")
+async def product_inquiry(inquiry: ProductInquiry):
+    """Send inquiry email for a product or custom request"""
+    subject_prefix = "Richiesta Personalizzata" if inquiry.is_custom else f"Richiesta Info: {inquiry.product_name}"
+    
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+        <div style="background:linear-gradient(135deg,#f97316,#ea580c);padding:20px;text-align:center;">
+            <h2 style="color:white;margin:0;">{subject_prefix}</h2>
+        </div>
+        <div style="padding:20px;background:white;">
+            <table style="width:100%;font-size:14px;">
+                <tr><td style="padding:8px;color:#666;width:120px;">Nome:</td><td style="padding:8px;font-weight:bold;">{inquiry.customer_name}</td></tr>
+                <tr><td style="padding:8px;color:#666;">Email:</td><td style="padding:8px;"><a href="mailto:{inquiry.customer_email}">{inquiry.customer_email}</a></td></tr>
+                {"<tr><td style='padding:8px;color:#666;'>Telefono:</td><td style='padding:8px;'>" + inquiry.customer_phone + "</td></tr>" if inquiry.customer_phone else ""}
+                {"<tr><td style='padding:8px;color:#666;'>Prodotto:</td><td style='padding:8px;font-weight:bold;'>" + inquiry.product_name + "</td></tr>" if inquiry.product_name else ""}
+            </table>
+            <div style="margin-top:15px;padding:15px;background:#f8fafc;border-radius:8px;">
+                <p style="font-size:13px;color:#666;margin:0 0 5px;">Messaggio:</p>
+                <p style="font-size:14px;margin:0;white-space:pre-wrap;">{inquiry.message}</p>
+            </div>
+        </div>
+    </div>"""
+    
+    send_html_email(to_email="info@artestramas3d.it", subject=f"{subject_prefix} - {inquiry.customer_name}", html_content=html)
+    
+    await db.inquiries.insert_one({
+        "product_id": inquiry.product_id,
+        "product_name": inquiry.product_name,
+        "customer_name": inquiry.customer_name,
+        "customer_email": inquiry.customer_email,
+        "customer_phone": inquiry.customer_phone,
+        "message": inquiry.message,
+        "is_custom": inquiry.is_custom,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {"message": "Richiesta inviata con successo"}
 
 @api_router.get("/public/landing")
 async def get_public_landing():
