@@ -1,0 +1,42 @@
+{
+  "summary": "Tested new Products / Public Listino / Product Inquiry feature (multi-photo support, custom inquiry, admin ProductsTab inside Gestione Vetrina). Backend: 11/11 pytest tests passed (100%). Frontend: public /listino renders, product inquiry modal opens & submits successfully (success state 'Richiesta Inviata!' shown), custom request modal opens & submits, Admin Panel 'Gestione Vetrina' tab contains ProductsTab with multi-photo upload UI (max 5), is_public toggle, create/edit flows work, delete endpoint verified via API (200).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "PublicListinoPage - product card carousel", "issue": "Photo carousel only ever shows first photo (line 167: `photos[photoIndex === i ? 0 : 0]` always evaluates to index 0). Dots indicator shows but is non-interactive — multi-photo navigation not implemented on public cards.", "selector": "[data-testid^='listino-product-']", "priority": "MEDIUM"},
+      {"component": "PublicListinoPage - InquiryForm modal", "issue": "Modal has no Escape-key handler nor backdrop click-to-close; only the X button closes. Also if inquiry success state is open and user clicks 'Richiedi Prodotto Personalizzato' (header button) without closing first, both modals can render simultaneously (showInquiry & showCustom both true).", "selector": "[data-testid='inquiry-modal']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin product dialog", "issues": ["React a11y warning: 'Missing Description or aria-describedby for DialogContent' — add <DialogDescription> to the product dialog."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_products_listino_inquiry.py",
+    "/app/test_reports/pytest/pytest_products_listino.xml"
+  ],
+  "action_items": [
+    "Fix photo carousel on PublicListinoPage product cards — implement working multi-photo navigation (currently photoIndex state is unused and only first photo ever renders).",
+    "Add Escape-key handler and backdrop-click close to InquiryForm modal; and ensure mutual exclusivity between showInquiry and showCustom (close one when opening the other).",
+    "Add DialogDescription (or aria-describedby) to product Dialog in AdminPanelPage to silence Radix accessibility warning."
+  ],
+  "critical_code_review_comments": [
+    "AdminPanelPage.js is 1511 lines — should be split into smaller files (ProductsTab, ScriptsTab, etc.) per the >700-line rule.",
+    "server.py product CRUD doesn't validate photos array length server-side; client enforces max 5 but the API will accept arbitrary count. Consider Pydantic validator: `photos: List[str] = Field(default_factory=list, max_length=5)`.",
+    "PUT /api/products/{id} returns only {'message': ...}; consider returning the updated document so frontend can re-render without an extra GET round-trip.",
+    "PublicListinoPage line 167: `photos[photoIndex === i ? 0 : 0]` is a clear logic bug — index is always 0."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_products_listino_inquiry.py (new)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "~90%"},
+  "test_credentials": "testuser@example.com / password123 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Test products created via API during tests were cleaned up. All TEST_ prefixed products deleted.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend Products + Public Listino + Product Inquiry feature is functionally complete and 100% passing. Frontend admin Gestione Vetrina tab works end-to-end. Main outstanding UX bugs are: (1) photo carousel on public listino only shows first photo despite dots indicator, (2) modal lacks Escape/backdrop close. SMTP send to info@artestramas3d.it returns 200; actual mail delivery not verified. Inquiries stored in db.inquiries.",
+  "rca of the issue": "The photo carousel bug in PublicListinoPage.js line 167 is a typo: `photos[photoIndex === i ? 0 : 0]` always returns photos[0] regardless of state. Should be `photos[photoIndex]` with per-card index state (currently photoIndex is a single number shared across all cards but never updated). Fix requires either: (a) per-card index map, or (b) embedded carousel state in a sub-component."
+}
