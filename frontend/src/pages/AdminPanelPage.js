@@ -144,7 +144,7 @@ function ScriptsTab() {
     setSaving(true);
     try {
       await updateSiteSettings(data);
-      toast.success('Impostazioni script salvate');
+      toast.success('Impostazioni salvate');
     } catch { toast.error('Errore salvataggio'); }
     finally { setSaving(false); }
   };
@@ -153,55 +153,11 @@ function ScriptsTab() {
 
   return (
     <div className="space-y-4">
-      {/* Head Scripts */}
+      {/* Demo/Listino Banner */}
       <Card className="border-border/40">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-heading flex items-center gap-2">
-            <Code className="w-4 h-4" /> Script Head (Google AdSense, Analytics, ecc.)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-xs text-muted-foreground">
-            Il codice inserito qui verra' aggiunto nel &lt;head&gt; di tutte le pagine pubbliche (landing, demo, listino). Ideale per Google AdSense, Analytics, Meta Pixel, ecc.
-          </p>
-          <Textarea
-            value={data.head_scripts}
-            onChange={e => setData(prev => ({...prev, head_scripts: e.target.value}))}
-            placeholder='Es. <script async src="https://pagead2.googlesyndication.com/..."></script>'
-            rows={5}
-            className="font-mono text-xs"
-            data-testid="head-scripts-input"
-          />
-        </CardContent>
-      </Card>
-
-      {/* Body Scripts */}
-      <Card className="border-border/40">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-heading flex items-center gap-2">
-            <Code className="w-4 h-4" /> Script Body
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-xs text-muted-foreground">
-            Codice aggiunto prima della chiusura &lt;/body&gt;. Per chatbot, widget, ecc.
-          </p>
-          <Textarea
-            value={data.body_scripts}
-            onChange={e => setData(prev => ({...prev, body_scripts: e.target.value}))}
-            placeholder='Es. <script src="https://widget.esempio.com/chat.js"></script>'
-            rows={4}
-            className="font-mono text-xs"
-            data-testid="body-scripts-input"
-          />
-        </CardContent>
-      </Card>
-
-      {/* Demo Banner */}
-      <Card className="border-border/40">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-heading flex items-center gap-2">
-            Banner Pagina Demo
+            Banner Pagina Demo e Listino
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -252,6 +208,39 @@ function ScriptsTab() {
               )}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Script esterni */}
+      <Card className="border-border/40">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-heading flex items-center gap-2">
+            <Code className="w-4 h-4" /> Script Esterni (AdSense, Analytics)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Codice aggiunto nel &lt;head&gt; delle pagine pubbliche (landing, demo, listino).
+          </p>
+          <Textarea
+            value={data.head_scripts}
+            onChange={e => setData(prev => ({...prev, head_scripts: e.target.value}))}
+            placeholder='Es. <script async src="https://pagead2.googlesyndication.com/..."></script>'
+            rows={4}
+            className="font-mono text-xs"
+            data-testid="head-scripts-input"
+          />
+          <p className="text-xs text-muted-foreground">
+            Codice aggiunto prima della chiusura &lt;/body&gt;.
+          </p>
+          <Textarea
+            value={data.body_scripts}
+            onChange={e => setData(prev => ({...prev, body_scripts: e.target.value}))}
+            placeholder='Es. <script src="https://widget.esempio.com/chat.js"></script>'
+            rows={3}
+            className="font-mono text-xs"
+            data-testid="body-scripts-input"
+          />
         </CardContent>
       </Card>
 
@@ -1209,7 +1198,7 @@ export default function AdminPanelPage() {
             <Send className="w-4 h-4 mr-1.5 hidden sm:inline" />Inviate
           </TabsTrigger>
           <TabsTrigger value="scripts" data-testid="tab-scripts">
-            <Code className="w-4 h-4 mr-1.5 hidden sm:inline" />Codici & Script
+            <Code className="w-4 h-4 mr-1.5 hidden sm:inline" />Gestione Vetrina
           </TabsTrigger>
         </TabsList>
 
@@ -1231,6 +1220,7 @@ export default function AdminPanelPage() {
                       <TableHead>Stato</TableHead>
                       <TableHead>Ruolo</TableHead>
                       <TableHead>Registrato</TableHead>
+                      <TableHead>Ultimo Accesso</TableHead>
                       <TableHead>Azioni</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1261,6 +1251,9 @@ export default function AdminPanelPage() {
                         </TableCell>
                         <TableCell className="font-mono text-xs text-muted-foreground">
                           {user.created_at ? new Date(user.created_at).toLocaleDateString('it-IT') : '-'}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {user.last_login ? new Date(user.last_login).toLocaleString('it-IT') : 'Mai'}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">

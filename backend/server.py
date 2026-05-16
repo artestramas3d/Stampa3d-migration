@@ -398,6 +398,7 @@ async def login(user: UserLogin, response: Response):
     user_id = str(db_user["_id"])
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
+    await db.users.update_one({"_id": db_user["_id"]}, {"$set": {"last_login": datetime.now(timezone.utc).isoformat()}})
     response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
     return {"id": user_id, "email": email, "name": db_user.get("name", ""), "is_admin": db_user.get("is_admin", False), "email_verified": db_user.get("email_verified", True)}
@@ -1339,7 +1340,8 @@ async def admin_get_users(current_user: dict = Depends(require_admin)):
             "name": doc.get("name", ""),
             "is_admin": doc.get("is_admin", False),
             "email_verified": doc.get("email_verified", False),
-            "created_at": doc.get("created_at", "")
+            "created_at": doc.get("created_at", ""),
+            "last_login": doc.get("last_login", "")
         })
     return result
 
