@@ -245,6 +245,33 @@ docker compose start nginx
 
 ---
 
+## Attivare il sottodominio shop.artestramas3d.it (UNA TANTUM)
+
+Il listino è ora accessibile su `shop.artestramas3d.it` (oltre che `listino.artestramas3d.it`). I clienti **NON** devono registrarsi per visitarlo. Procedura una tantum:
+
+### Passo 1: Crea il record DNS su Aruba
+1. Vai nel pannello DNS di Aruba
+2. Crea un record A:
+   - Nome: `shop`
+   - Valore: `94.177.202.133` (IP del tuo VPS)
+3. Salva e aspetta 5-10 minuti
+
+### Passo 2: Connettiti al server e lancia lo script
+```
+ssh root@94.177.202.133
+cd /opt/Stampa3d-migration
+git pull origin main
+bash setup-shop.sh
+```
+
+Lo script automaticamente:
+- Verifica che il DNS sia configurato
+- Genera il certificato SSL via Let's Encrypt
+- Riavvia nginx
+
+### Passo 3: Verifica
+Apri `https://shop.artestramas3d.it` nel browser. Deve mostrare la vetrina prodotti.
+
 ## Comandi utili
 
 | Cosa vuoi fare | Comando |
