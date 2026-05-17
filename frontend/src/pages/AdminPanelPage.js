@@ -1545,8 +1545,8 @@ export default function AdminPanelPage() {
           <TabsTrigger value="users" data-testid="tab-users">
             <Users className="w-4 h-4 mr-1.5 hidden sm:inline" />Utenti
           </TabsTrigger>
-          <TabsTrigger value="landing" data-testid="tab-landing">
-            <Globe className="w-4 h-4 mr-1.5 hidden sm:inline" />Landing
+          <TabsTrigger value="vetrina" data-testid="tab-vetrina">
+            <ShoppingBag className="w-4 h-4 mr-1.5 hidden sm:inline" />Gestione Vetrina
           </TabsTrigger>
           <TabsTrigger value="newsletter" data-testid="tab-newsletter">
             <Newspaper className="w-4 h-4 mr-1.5 hidden sm:inline" />Newsletter
@@ -1558,16 +1558,13 @@ export default function AdminPanelPage() {
             <MessageSquare className="w-4 h-4 mr-1.5 hidden sm:inline" />Preventivi
           </TabsTrigger>
           <TabsTrigger value="orders" data-testid="tab-orders">
-            <ShoppingBag className="w-4 h-4 mr-1.5 hidden sm:inline" />Richieste
+            <Inbox className="w-4 h-4 mr-1.5 hidden sm:inline" />Richieste
           </TabsTrigger>
           <TabsTrigger value="emails" data-testid="tab-emails">
             <Mail className="w-4 h-4 mr-1.5 hidden sm:inline" />Email Log
           </TabsTrigger>
           <TabsTrigger value="sent" data-testid="tab-sent">
             <Send className="w-4 h-4 mr-1.5 hidden sm:inline" />Inviate
-          </TabsTrigger>
-          <TabsTrigger value="scripts" data-testid="tab-scripts">
-            <Code className="w-4 h-4 mr-1.5 hidden sm:inline" />Gestione Vetrina
           </TabsTrigger>
         </TabsList>
 
@@ -1747,9 +1744,11 @@ export default function AdminPanelPage() {
           <SiteSettingsTab />
         </TabsContent>
 
-        {/* Landing Settings Tab */}
-        <TabsContent value="landing">
-          <LandingSettingsTab />
+        {/* Vetrina Tab (Prodotti + Scripts) */}
+        <TabsContent value="vetrina">
+          <ProductsTab />
+          <div className="mt-6" />
+          <ScriptsTab />
         </TabsContent>
 
         {/* Newsletter Tab */}
@@ -1854,13 +1853,6 @@ export default function AdminPanelPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* Scripts/Vetrina Tab */}
-        <TabsContent value="scripts">
-          <ProductsTab />
-          <div className="mt-6" />
-          <ScriptsTab />
         </TabsContent>
       </Tabs>
     </div>
