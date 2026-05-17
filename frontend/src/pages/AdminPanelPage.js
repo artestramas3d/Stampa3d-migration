@@ -1566,6 +1566,9 @@ export default function AdminPanelPage() {
           <TabsTrigger value="sent" data-testid="tab-sent">
             <Send className="w-4 h-4 mr-1.5 hidden sm:inline" />Inviate
           </TabsTrigger>
+          <TabsTrigger value="scripts" data-testid="tab-scripts">
+            <Code className="w-4 h-4 mr-1.5 hidden sm:inline" />Codici
+          </TabsTrigger>
         </TabsList>
 
         {/* Orders/Inquiries Tab */}
@@ -1744,11 +1747,9 @@ export default function AdminPanelPage() {
           <SiteSettingsTab />
         </TabsContent>
 
-        {/* Vetrina Tab (Prodotti + Scripts) */}
+        {/* Vetrina Tab (solo Prodotti) */}
         <TabsContent value="vetrina">
           <ProductsTab />
-          <div className="mt-6" />
-          <ScriptsTab />
         </TabsContent>
 
         {/* Newsletter Tab */}
@@ -1853,6 +1854,11 @@ export default function AdminPanelPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Codici/Scripts Tab */}
+        <TabsContent value="scripts">
+          <ScriptsTab />
         </TabsContent>
       </Tabs>
     </div>

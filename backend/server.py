@@ -1808,8 +1808,11 @@ def _serialize_product(doc: dict, include_long: bool = True) -> dict:
 
 @api_router.get("/products")
 async def get_products(current_user: dict = Depends(get_current_user)):
+    # Gli admin vedono e gestiscono TUTTI i prodotti (collaborazione tra admin).
+    # Gli utenti normali vedono solo i propri.
+    query = {} if current_user.get("is_admin") else {"user_id": current_user["id"]}
     result = []
-    async for doc in db.products.find({"user_id": current_user["id"]}).sort("created_at", -1):
+    async for doc in db.products.find(query).sort("created_at", -1):
         result.append(_serialize_product(doc))
     return result
 
@@ -1856,12 +1859,19 @@ async def update_product(product_id: str, product: ProductUpdate, current_user: 
         existing = await db.products.find_one({"slug": new_slug, "_id": {"$ne": ObjectId(product_id)}})
         if not existing:
             update_data["slug"] = new_slug
-    await db.products.update_one({"_id": ObjectId(product_id), "user_id": current_user["id"]}, {"$set": update_data})
+    # Admin puo' modificare qualunque prodotto (collaborazione), utente solo i propri
+    q = {"_id": ObjectId(product_id)}
+    if not current_user.get("is_admin"):
+        q["user_id"] = current_user["id"]
+    await db.products.update_one(q, {"$set": update_data})
     return {"message": "Prodotto aggiornato"}
 
 @api_router.delete("/products/{product_id}")
 async def delete_product(product_id: str, current_user: dict = Depends(get_current_user)):
-    await db.products.delete_one({"_id": ObjectId(product_id), "user_id": current_user["id"]})
+    q = {"_id": ObjectId(product_id)}
+    if not current_user.get("is_admin"):
+        q["user_id"] = current_user["id"]
+    await db.products.delete_one(q)
     return {"message": "Prodotto eliminato"}
 
 # ========== PUBLIC ENDPOINTS (no auth) ==========
