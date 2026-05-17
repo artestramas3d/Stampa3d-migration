@@ -42,7 +42,11 @@ function ProductCard({ p, index, primary }) {
       <div className="p-4">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-bold text-gray-800 text-lg group-hover:underline">{p.name}</h3>
-          <span className="text-xl font-bold shrink-0" style={{ color: primary }}>&euro;{parseFloat(p.price).toFixed(2)}</span>
+          {p.show_price !== false ? (
+            <span className="text-xl font-bold shrink-0" style={{ color: primary }}>&euro;{parseFloat(p.price).toFixed(2)}</span>
+          ) : (
+            <span className="text-[11px] font-semibold shrink-0 px-2 py-1 rounded-full text-right whitespace-nowrap" style={{ color: primary, background: `${primary}15` }} data-testid={`ask-price-${index}`}>Scrivici per il prezzo</span>
+          )}
         </div>
         {p.description && <p className="text-sm text-gray-500 mt-2 line-clamp-2">{p.description}</p>}
         <div className="flex items-center gap-2 mt-2 flex-wrap">

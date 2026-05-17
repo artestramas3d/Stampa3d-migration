@@ -104,7 +104,11 @@ function InquiryModal({ open, onClose, product, variant, customText, type, prima
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-sm text-gray-800 truncate">{product?.name}</p>
-                  <p className="text-xs text-gray-500">{brand}</p>
+                  {product?.show_price === false ? (
+                    <p className="text-xs text-gray-500">Prezzo su richiesta</p>
+                  ) : (
+                    <p className="text-xs text-gray-500">{brand}</p>
+                  )}
                 </div>
               </div>
               {(variant.color || variant.material || variant.size || customText) && (
@@ -264,8 +268,16 @@ export default function PublicProductDetailPage() {
             </div>
 
             <div className="flex items-baseline gap-3">
-              <p className="text-3xl font-bold" style={{ color: primary }}>€{parseFloat(product.price).toFixed(2)}</p>
-              <p className="text-xs text-gray-500">prezzo base · varianti su richiesta</p>
+              {product.show_price !== false ? (
+                <>
+                  <p className="text-3xl font-bold" style={{ color: primary }}>€{parseFloat(product.price).toFixed(2)}</p>
+                  <p className="text-xs text-gray-500">prezzo base · varianti su richiesta</p>
+                </>
+              ) : (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold" style={{ color: primary, background: `${primary}15` }} data-testid="ask-price-detail">
+                  <Mail className="w-4 h-4" /> Scrivici per sapere il prezzo
+                </div>
+              )}
             </div>
 
             <hr className="border-gray-100" />
@@ -326,7 +338,8 @@ export default function PublicProductDetailPage() {
                 style={{ background: primary }}
                 data-testid="cta-quote"
               >
-                <ShoppingBag className="w-4 h-4" /> Personalizza e Richiedi Preventivo
+                <ShoppingBag className="w-4 h-4" />
+                {product.show_price === false ? 'Richiedi Prezzo / Preventivo' : 'Personalizza e Richiedi Preventivo'}
               </button>
               <button
                 onClick={() => setModalType('info')}

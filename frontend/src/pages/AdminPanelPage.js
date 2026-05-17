@@ -874,7 +874,7 @@ function ContactRequestsTab() {
 
 function ProductsTab() {
   const [products, setProducts] = useState([]);
-  const initialForm = { name: '', description: '', description_long: '', price: '', category: '', materials: '', photos: [], is_public: true, color_options: [], material_options: [], size_options: [], is_customizable: false, custom_field_label: '' };
+  const initialForm = { name: '', description: '', description_long: '', price: '', category: '', materials: '', photos: [], is_public: true, color_options: [], material_options: [], size_options: [], is_customizable: false, custom_field_label: '', show_price: true };
   const [form, setForm] = useState(initialForm);
   const [editing, setEditing] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -922,6 +922,7 @@ function ProductsTab() {
       size_options: p.size_options || [],
       is_customizable: p.is_customizable || false,
       custom_field_label: p.custom_field_label || '',
+      show_price: p.show_price !== false,
     });
     setEditing(p.id);
     setDialogOpen(true);
@@ -1067,6 +1068,13 @@ function ProductsTab() {
                       <div>
                         <p className="text-sm font-medium">{form.is_public ? 'Visibile nella Vetrina' : 'Nascosto'}</p>
                         <p className="text-[10px] text-muted-foreground">I prodotti pubblici appaiono nella vetrina online</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 rounded-md bg-muted/30">
+                      <Switch checked={form.show_price} onCheckedChange={v => setForm({...form, show_price: v})} data-testid="product-show-price-toggle" />
+                      <div>
+                        <p className="text-sm font-medium">{form.show_price ? 'Mostra prezzo in vetrina' : 'Nascondi prezzo'}</p>
+                        <p className="text-[10px] text-muted-foreground">Se disattivato, sul prodotto apparira': "Scrivici per sapere il prezzo"</p>
                       </div>
                     </div>
                     <Button onClick={handleSave} disabled={saving} className="w-full" data-testid="save-product-btn">
