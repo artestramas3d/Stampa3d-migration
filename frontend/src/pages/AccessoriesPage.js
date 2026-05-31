@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAccessories, createAccessory, updateAccessory, deleteAccessory } from '../lib/api';
+import { getAccessories, createAccessory, updateAccessory, deleteAccessory, getAccessoryCategories, addAccessoryCategory, deleteAccessoryCategory } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -7,15 +7,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Textarea } from '../components/ui/textarea';
-import { Plus, Pencil, Trash2, Package, KeyRound, Box, Tag } from 'lucide-react';
+import { Plus, Pencil, Trash2, Package, KeyRound, Box, Tag, X, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const CATEGORIES = [
-  { value: 'gancetto', label: 'Gancetto Portachiavi', icon: KeyRound },
-  { value: 'magnete', label: 'Magnete', icon: Box },
-  { value: 'packaging', label: 'Packaging', icon: Package },
-  { value: 'altro', label: 'Altro', icon: Tag }
-];
+// Icona di default per categorie utente. Le categorie predefinite mantengono la loro icona.
+const PREDEFINED_ICONS = {
+  gancetto: { label: 'Gancetto Portachiavi', icon: KeyRound },
+  magnete: { label: 'Magnete', icon: Box },
+  packaging: { label: 'Packaging', icon: Package },
+  altro: { label: 'Altro', icon: Tag },
+};
+
+const formatCatLabel = (value) => PREDEFINED_ICONS[value]?.label || (value.charAt(0).toUpperCase() + value.slice(1));
+const formatCatIcon = (value) => PREDEFINED_ICONS[value]?.icon || Tag;
 
 const defaultAccessory = {
   name: '',
@@ -27,14 +31,47 @@ const defaultAccessory = {
 
 export default function AccessoriesPage() {
   const [accessories, setAccessories] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAccessory, setEditingAccessory] = useState(null);
   const [formData, setFormData] = useState(defaultAccessory);
+  const [catDialogOpen, setCatDialogOpen] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
 
   useEffect(() => {
     loadAccessories();
+    loadCategories();
   }, []);
+
+  const loadCategories = async () => {
+    try {
+      const cats = await getAccessoryCategories();
+      setCategories(cats);
+    } catch { /* ignore */ }
+  };
+
+  const handleAddCategory = async () => {
+    const n = newCatName.trim().toLowerCase();
+    if (!n) return;
+    try {
+      await addAccessoryCategory(n);
+      toast.success('Categoria aggiunta');
+      setNewCatName('');
+      loadCategories();
+    } catch { toast.error('Errore'); }
+  };
+
+  const handleRemoveCategory = async (name) => {
+    if (!window.confirm(`Rimuovere la categoria "${name}"? Gli accessori esistenti restano salvati ma non potrai piu' selezionarla.`)) return;
+    try {
+      await deleteAccessoryCategory(name);
+      toast.success('Categoria rimossa');
+      loadCategories();
+    } catch { toast.error('Errore'); }
+  };
+
+  const getCategoryInfo = (category) => ({ value: category, label: formatCatLabel(category), icon: formatCatIcon(category) });
 
   const loadAccessories = async () => {
     try {
@@ -91,12 +128,8 @@ export default function AccessoriesPage() {
 
   const openNewDialog = () => {
     setEditingAccessory(null);
-    setFormData(defaultAccessory);
+    setFormData({ ...defaultAccessory, category: categories[0] || 'altro' });
     setDialogOpen(true);
-  };
-
-  const getCategoryInfo = (category) => {
-    return CATEGORIES.find(c => c.value === category) || CATEGORIES[3];
   };
 
   // Calculate totals
@@ -110,6 +143,46 @@ export default function AccessoriesPage() {
           <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight">Accessori</h1>
           <p className="text-muted-foreground mt-1">Gestisci gancetti, magneti, packaging e altri accessori</p>
         </div>
+        <div className="flex items-center gap-2">
+        <Dialog open={catDialogOpen} onOpenChange={setCatDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" data-testid="manage-categories-btn">
+              <Settings2 className="w-4 h-4 mr-2" />Categorie
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="font-heading">Gestione Categorie Accessori</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">Aggiungi categorie personalizzate (es. "bustine", "stickers", "scatole"). Le categorie predefinite possono essere rimosse, ma gli accessori esistenti continueranno a usarle.</p>
+              <div className="flex gap-2">
+                <Input
+                  value={newCatName}
+                  onChange={e => setNewCatName(e.target.value)}
+                  placeholder="Nome nuova categoria"
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddCategory(); } }}
+                  data-testid="new-category-input"
+                />
+                <Button onClick={handleAddCategory} data-testid="add-category-btn"><Plus className="w-4 h-4" /></Button>
+              </div>
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                {categories.map(cat => {
+                  const Icon = formatCatIcon(cat);
+                  return (
+                    <div key={cat} className="flex items-center justify-between p-2 rounded border border-border/40 bg-muted/20">
+                      <span className="text-sm flex items-center gap-2"><Icon className="w-3.5 h-3.5" /> {formatCatLabel(cat)}</span>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => handleRemoveCategory(cat)} data-testid={`remove-cat-${cat}`}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openNewDialog} data-testid="add-accessory-btn">
@@ -145,8 +218,8 @@ export default function AccessoriesPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map(cat => (
-                      <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                    {categories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{formatCatLabel(cat)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -198,6 +271,7 @@ export default function AccessoriesPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Stats Cards */}

@@ -41,6 +41,9 @@ export const getAccessories = () => api.get('/accessories').then(r => r.data);
 export const createAccessory = (data) => api.post('/accessories', data).then(r => r.data);
 export const updateAccessory = (id, data) => api.put(`/accessories/${id}`, data).then(r => r.data);
 export const deleteAccessory = (id) => api.delete(`/accessories/${id}`).then(r => r.data);
+export const getAccessoryCategories = () => api.get('/accessory-categories').then(r => r.data);
+export const addAccessoryCategory = (name) => api.post('/accessory-categories', { name }).then(r => r.data);
+export const deleteAccessoryCategory = (name) => api.delete(`/accessory-categories/${encodeURIComponent(name)}`).then(r => r.data);
 
 // Purchases
 export const getPurchases = () => api.get('/purchases').then(r => r.data);

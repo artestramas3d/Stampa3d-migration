@@ -333,6 +333,7 @@ class SaleCreate(BaseModel):
     quantity: int = 1
     accessories: List[AccessoryUsage] = []
     client_id: Optional[str] = None
+    shipping_cost: float = 0
 
 # Template for saving print configurations
 class PrintTemplateCreate(BaseModel):
@@ -674,6 +675,46 @@ async def delete_accessory(accessory_id: str, current_user: dict = Depends(get_c
     await db.accessories.delete_one({"_id": ObjectId(accessory_id), "user_id": current_user["id"]})
     return {"message": "Accessorio eliminato"}
 
+# ==== Categorie Accessori personalizzabili ====
+DEFAULT_ACC_CATEGORIES = ["gancetto", "magnete", "packaging", "altro"]
+
+class AccessoryCategoryCreate(BaseModel):
+    name: str
+
+@api_router.get("/accessory-categories")
+async def get_accessory_categories(current_user: dict = Depends(get_current_user)):
+    """Restituisce le categorie accessori dell'utente. Se vuoto, restituisce i default."""
+    cats = []
+    async for doc in db.accessory_categories.find({"user_id": current_user["id"]}).sort("name", 1):
+        cats.append(doc.get("name", ""))
+    return cats or DEFAULT_ACC_CATEGORIES
+
+@api_router.post("/accessory-categories")
+async def add_accessory_category(cat: AccessoryCategoryCreate, current_user: dict = Depends(get_current_user)):
+    name = cat.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Nome non valido")
+    # Se l'utente non ha ancora alcuna categoria, copia i default + la nuova
+    exists = await db.accessory_categories.count_documents({"user_id": current_user["id"]})
+    if exists == 0:
+        for d in DEFAULT_ACC_CATEGORIES:
+            await db.accessory_categories.insert_one({"user_id": current_user["id"], "name": d})
+    # Evita duplicati
+    dup = await db.accessory_categories.find_one({"user_id": current_user["id"], "name": name})
+    if not dup:
+        await db.accessory_categories.insert_one({"user_id": current_user["id"], "name": name})
+    return {"message": "Categoria aggiunta", "name": name}
+
+@api_router.delete("/accessory-categories/{name}")
+async def delete_accessory_category(name: str, current_user: dict = Depends(get_current_user)):
+    # Se utente non ha mai personalizzato, materializza i default per poter cancellare
+    exists = await db.accessory_categories.count_documents({"user_id": current_user["id"]})
+    if exists == 0:
+        for d in DEFAULT_ACC_CATEGORIES:
+            await db.accessory_categories.insert_one({"user_id": current_user["id"], "name": d})
+    await db.accessory_categories.delete_one({"user_id": current_user["id"], "name": name})
+    return {"message": "Categoria rimossa"}
+
 # Print Calculator
 @api_router.post("/calculate")
 async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Depends(get_current_user)):
@@ -778,8 +819,13 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
 # Sales CRUD
 @api_router.get("/sales")
 async def get_sales(current_user: dict = Depends(get_current_user)):
+    # Pre-load clients map per nome
+    clients_map = {}
+    async for c in db.clients.find({"user_id": current_user["id"]}):
+        clients_map[str(c["_id"])] = c.get("name", "")
     result = []
     async for doc in db.sales.find({"user_id": current_user["id"]}).sort("date", -1):
+        cid = doc.get("client_id", "") or ""
         result.append({
             "id": str(doc["_id"]),
             "date": doc.get("date", ""),
@@ -802,7 +848,10 @@ async def get_sales(current_user: dict = Depends(get_current_user)):
             "paid": doc.get("paid", False),
             "batch_id": doc.get("batch_id"),
             "batch_index": doc.get("batch_index"),
-            "batch_total": doc.get("batch_total")
+            "batch_total": doc.get("batch_total"),
+            "client_id": cid,
+            "client_name": clients_map.get(cid, ""),
+            "shipping_cost": doc.get("shipping_cost", 0)
         })
     return result
 
@@ -828,22 +877,82 @@ class UpdateSaleRequest(BaseModel):
     sale_price: Optional[float] = None
     product_name: Optional[str] = None
     client_id: Optional[str] = None
+    accessories: Optional[List[AccessoryUsage]] = None
+    shipping_cost: Optional[float] = None
 
 @api_router.patch("/sales/{sale_id}")
 async def update_sale(sale_id: str, request: UpdateSaleRequest, current_user: dict = Depends(get_current_user)):
     sale = await db.sales.find_one({"_id": ObjectId(sale_id), "user_id": current_user["id"]})
     if not sale:
         raise HTTPException(status_code=404, detail="Vendita non trovata")
-    
+
     update_fields = {}
-    if request.sale_price is not None:
-        update_fields["sale_price"] = request.sale_price
-        update_fields["net_profit"] = round(request.sale_price - sale.get("total_cost", 0), 2)
     if request.product_name is not None:
         update_fields["product_name"] = request.product_name
     if request.client_id is not None:
         update_fields["client_id"] = request.client_id
-    
+
+    # Ricalcola accessory_cost se accessori cambiati
+    new_accessory_cost = None
+    if request.accessories is not None:
+        # Restore old accessory stock first
+        for usage in sale.get("accessories", []):
+            if usage.get("accessory_id"):
+                try:
+                    await db.accessories.update_one(
+                        {"_id": ObjectId(usage["accessory_id"]), "user_id": current_user["id"]},
+                        {"$inc": {"stock_quantity": usage.get("quantity", 0)}}
+                    )
+                except Exception:
+                    pass
+        # Charge new stock and compute cost
+        accessory_cost = 0
+        new_acc_list = []
+        for usage in request.accessories:
+            acc = await db.accessories.find_one({"_id": ObjectId(usage.accessory_id), "user_id": current_user["id"]})
+            if not acc:
+                continue
+            accessory_cost += acc.get("unit_cost", 0) * usage.quantity
+            try:
+                await db.accessories.update_one(
+                    {"_id": ObjectId(usage.accessory_id), "user_id": current_user["id"]},
+                    {"$inc": {"stock_quantity": -usage.quantity}}
+                )
+            except Exception:
+                pass
+            new_acc_list.append({
+                "accessory_id": usage.accessory_id,
+                "accessory_name": acc.get("name", ""),
+                "category": acc.get("category", ""),
+                "quantity": usage.quantity,
+                "unit_cost": acc.get("unit_cost", 0),
+                "total_cost": round(acc.get("unit_cost", 0) * usage.quantity, 2)
+            })
+        update_fields["accessories"] = new_acc_list
+        new_accessory_cost = round(accessory_cost, 2)
+        update_fields["accessory_cost"] = new_accessory_cost
+
+    # Spese di spedizione
+    new_shipping = sale.get("shipping_cost", 0)
+    if request.shipping_cost is not None:
+        new_shipping = max(0.0, float(request.shipping_cost))
+        update_fields["shipping_cost"] = new_shipping
+
+    # Ricalcola total_cost e net_profit se accessori o spedizione cambiati
+    base_cost = sale.get("filament_cost", 0) + sale.get("electricity_cost", 0) + sale.get("depreciation_cost", 0) + sale.get("labor_cost", 0) + sale.get("design_cost", 0)
+    accessory_cost_final = new_accessory_cost if new_accessory_cost is not None else sale.get("accessory_cost", 0)
+    new_total = round(base_cost + accessory_cost_final + new_shipping, 2)
+    if request.accessories is not None or request.shipping_cost is not None:
+        update_fields["total_cost"] = new_total
+
+    # Sale price + ricalcolo net_profit
+    sale_price = sale.get("sale_price", 0)
+    if request.sale_price is not None:
+        update_fields["sale_price"] = request.sale_price
+        sale_price = request.sale_price
+    if "sale_price" in update_fields or "total_cost" in update_fields:
+        update_fields["net_profit"] = round(sale_price - new_total, 2)
+
     if update_fields:
         await db.sales.update_one(
             {"_id": ObjectId(sale_id), "user_id": current_user["id"]},
@@ -924,6 +1033,9 @@ async def create_sale(sale: SaleCreate, current_user: dict = Depends(get_current
             )
     
     total_cost = material_cost + electricity_cost + depreciation_cost + labor_cost + design_cost + accessories_cost
+    # Spese di spedizione: applicate al batch intero, non per unita'
+    shipping_cost = max(0.0, float(getattr(sale, "shipping_cost", 0) or 0))
+    total_cost += shipping_cost
     
     # Store filaments data for copy feature
     filaments_data = [{"filament_id": f.filament_id, "grams_used": f.grams_used} for f in filament_list]
@@ -968,6 +1080,7 @@ async def create_sale(sale: SaleCreate, current_user: dict = Depends(get_current
             "net_profit": profit_per_unit,
             "paid": False,
             "client_id": sale.client_id or "",
+            "shipping_cost": round(shipping_cost / quantity, 2),
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         result = await db.sales.insert_one(doc)

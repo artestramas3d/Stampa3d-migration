@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSales, deleteSale, updateSalePaid, updateSale, exportSalesCSV, getClients } from '../lib/api';
+import { getSales, deleteSale, updateSalePaid, updateSale, exportSalesCSV, getClients, getAccessories } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -10,7 +10,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
-import { Download, Trash2, Receipt, Search, CheckCircle, Clock, ArrowUpDown, Printer, Pencil } from 'lucide-react';
+import { Download, Trash2, Receipt, Search, CheckCircle, Clock, ArrowUpDown, Printer, Pencil, Plus, X, Truck } from 'lucide-react';
 import { toast } from 'sonner';
 import { DecimalInput } from '../components/DecimalInput';
 
@@ -26,7 +26,10 @@ export default function SalesPage() {
   const [editPrice, setEditPrice] = useState(0);
   const [editName, setEditName] = useState('');
   const [editClientId, setEditClientId] = useState('');
+  const [editAccessories, setEditAccessories] = useState([]); // [{accessory_id, quantity}]
+  const [editShipping, setEditShipping] = useState(0);
   const [clients, setClients] = useState([]);
+  const [accessoriesList, setAccessoriesList] = useState([]);
 
   useEffect(() => {
     loadSales();
@@ -34,9 +37,10 @@ export default function SalesPage() {
 
   const loadSales = async () => {
     try {
-      const [data, clientsData] = await Promise.all([getSales(), getClients()]);
+      const [data, clientsData, accData] = await Promise.all([getSales(), getClients(), getAccessories()]);
       setSales(data);
       setClients(clientsData);
+      setAccessoriesList(accData);
     } catch (err) {
       toast.error('Errore nel caricamento vendite');
     } finally {
@@ -88,22 +92,36 @@ export default function SalesPage() {
     setEditingSale(sale);
     setEditPrice(sale.sale_price || 0);
     setEditName(sale.product_name || '');
-    setEditClientId(sale.client_id || '');
+    setEditClientId(sale.client_id || 'none');
+    setEditAccessories((sale.accessories || []).map(a => ({ accessory_id: a.accessory_id, quantity: a.quantity || 1 })));
+    setEditShipping(sale.shipping_cost || 0);
+  };
+
+  const addAccessoryToEdit = (accId) => {
+    if (!accId || editAccessories.some(a => a.accessory_id === accId)) return;
+    setEditAccessories(prev => [...prev, { accessory_id: accId, quantity: 1 }]);
+  };
+  const updateAccessoryQty = (accId, qty) => {
+    setEditAccessories(prev => prev.map(a => a.accessory_id === accId ? { ...a, quantity: Math.max(1, parseInt(qty) || 1) } : a));
+  };
+  const removeAccessoryFromEdit = (accId) => {
+    setEditAccessories(prev => prev.filter(a => a.accessory_id !== accId));
   };
 
   const handleSaveEdit = async () => {
     if (!editingSale) return;
     try {
-      await updateSale(editingSale.id, { sale_price: editPrice, product_name: editName, client_id: editClientId && editClientId !== 'none' ? editClientId : '' });
-      const clientObj = clients.find(c => c.id === editClientId);
-      setSales(prev => prev.map(s => s.id === editingSale.id ? {
-        ...s,
+      const payload = {
         sale_price: editPrice,
         product_name: editName,
         client_id: editClientId && editClientId !== 'none' ? editClientId : '',
-        client_name: clientObj ? `${clientObj.name} ${clientObj.surname || ''}`.trim() : '',
-        net_profit: parseFloat((editPrice - (s.total_cost || 0)).toFixed(2))
-      } : s));
+        accessories: editAccessories,
+        shipping_cost: editShipping,
+      };
+      await updateSale(editingSale.id, payload);
+      // Ricarica dal backend per ottenere total_cost ricalcolato
+      const updated = await getSales();
+      setSales(updated);
       setEditingSale(null);
       toast.success('Vendita aggiornata');
     } catch {
@@ -402,12 +420,70 @@ export default function SalesPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Accessori modificabili (es. packaging aggiunto al momento della spedizione) */}
+            <div className="space-y-2">
+              <Label className="flex items-center justify-between">
+                <span>Accessori (es. packaging)</span>
+                {accessoriesList.length > 0 && (
+                  <Select value="" onValueChange={addAccessoryToEdit}>
+                    <SelectTrigger className="w-[180px] h-8 text-xs" data-testid="add-acc-edit">
+                      <SelectValue placeholder="+ Aggiungi" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accessoriesList.filter(a => !editAccessories.some(ea => ea.accessory_id === a.id)).map(a => (
+                        <SelectItem key={a.id} value={a.id}>{a.name} (€{a.unit_cost?.toFixed(2)})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </Label>
+              {editAccessories.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">Nessun accessorio sulla vendita</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {editAccessories.map(ea => {
+                    const acc = accessoriesList.find(a => a.id === ea.accessory_id);
+                    if (!acc) return null;
+                    return (
+                      <div key={ea.accessory_id} className="flex items-center gap-2 p-2 rounded-md bg-muted/30">
+                        <span className="flex-1 text-sm">{acc.name} <span className="text-xs text-muted-foreground">€{acc.unit_cost?.toFixed(2)} · {acc.category}</span></span>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={ea.quantity}
+                          onChange={e => updateAccessoryQty(ea.accessory_id, e.target.value)}
+                          className="w-16 h-8 text-xs"
+                          data-testid={`acc-qty-${ea.accessory_id}`}
+                        />
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => removeAccessoryFromEdit(ea.accessory_id)} data-testid={`acc-remove-${ea.accessory_id}`}>
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5"><Truck className="w-3.5 h-3.5" /> Spese di spedizione (€)</Label>
+              <DecimalInput
+                value={editShipping}
+                onChange={(num) => setEditShipping(num)}
+                className="font-mono"
+                data-testid="edit-sale-shipping"
+              />
+              <p className="text-[10px] text-muted-foreground">Aggiunto al costo totale della vendita. Inseriscilo solo quando spedisci.</p>
+            </div>
+
             {editingSale && (
               <div className="text-xs text-muted-foreground space-y-1 p-3 rounded-md bg-muted/30">
-                <p>Costo: <span className="font-mono">€{editingSale.total_cost?.toFixed(2)}</span></p>
-                <p>Profitto stimato: <span className={`font-mono font-semibold ${(editPrice - (editingSale.total_cost || 0)) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                <p>Costo (originale): <span className="font-mono">€{editingSale.total_cost?.toFixed(2)}</span></p>
+                <p>Profitto stimato post-modifica: <span className={`font-mono font-semibold ${(editPrice - (editingSale.total_cost || 0)) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                   €{(editPrice - (editingSale.total_cost || 0)).toFixed(2)}
                 </span></p>
+                <p className="text-[10px]">Il costo finale e il profitto verranno ricalcolati dopo il salvataggio.</p>
               </div>
             )}
             <Button onClick={handleSaveEdit} className="w-full" data-testid="save-edit-sale">
