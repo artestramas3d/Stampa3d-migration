@@ -3158,16 +3158,29 @@ async def admin_create_affiliate(link: AffiliateLinkCreate, current_user: dict =
     return _serialize_affiliate(doc)
 
 
+def _parse_affiliate_oid(link_id: str) -> ObjectId:
+    try:
+        return ObjectId(link_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID link non valido")
+
+
 @api_router.put("/admin/affiliate-links/{link_id}")
 async def admin_update_affiliate(link_id: str, link: AffiliateLinkUpdate, current_user: dict = Depends(require_admin)):
+    oid = _parse_affiliate_oid(link_id)
     update = {k: v for k, v in link.model_dump().items() if v is not None}
-    await db.affiliate_links.update_one({"_id": ObjectId(link_id)}, {"$set": update})
+    result = await db.affiliate_links.update_one({"_id": oid}, {"$set": update})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Link non trovato")
     return {"message": "Link aggiornato"}
 
 
 @api_router.delete("/admin/affiliate-links/{link_id}")
 async def admin_delete_affiliate(link_id: str, current_user: dict = Depends(require_admin)):
-    await db.affiliate_links.delete_one({"_id": ObjectId(link_id)})
+    oid = _parse_affiliate_oid(link_id)
+    result = await db.affiliate_links.delete_one({"_id": oid})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Link non trovato")
     return {"message": "Link eliminato"}
 
 
@@ -3189,10 +3202,11 @@ async def get_affiliate_links_by_placement(placement: str):
 @api_router.post("/affiliate-links/{link_id}/click")
 async def track_affiliate_click(link_id: str):
     """Tracking click (no auth). Restituisce URL di redirect."""
-    doc = await db.affiliate_links.find_one({"_id": ObjectId(link_id)})
+    oid = _parse_affiliate_oid(link_id)
+    doc = await db.affiliate_links.find_one({"_id": oid})
     if not doc:
         raise HTTPException(status_code=404, detail="Link non trovato")
-    await db.affiliate_links.update_one({"_id": ObjectId(link_id)}, {"$inc": {"clicks": 1}})
+    await db.affiliate_links.update_one({"_id": oid}, {"$inc": {"clicks": 1}})
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     await db.affiliate_clicks.insert_one({
         "link_id": link_id,
