@@ -15,7 +15,8 @@ import {
   Trophy,
   AlertTriangle,
   Cylinder,
-  Package
+  Package,
+  Truck
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -29,18 +30,19 @@ import {
   Line
 } from 'recharts';
 
-function StatCard({ title, value, icon: Icon, suffix = '', prefix = '' }) {
+function StatCard({ title, value, icon: Icon, suffix = '', prefix = '', subtitle = '' }) {
   return (
     <Card className="stat-card">
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">{title}</p>
             <p className="text-2xl font-heading font-bold">
               {prefix}<span className="font-mono">{value}</span>{suffix}
             </p>
+            {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{subtitle}</p>}
           </div>
-          <div className="w-10 h-10 rounded-sm bg-primary/10 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-sm bg-primary/10 flex items-center justify-center shrink-0">
             <Icon className="w-5 h-5 text-primary" />
           </div>
         </div>
@@ -186,6 +188,15 @@ export default function DashboardPage() {
           title="Più Redditizio"
           value={stats?.most_profitable || 'N/A'}
           icon={Trophy}
+        />
+        <StatCard
+          title="Spedizioni Mese"
+          value={stats?.shipping_total_month?.toLocaleString('it-IT', { minimumFractionDigits: 2 }) || '0.00'}
+          icon={Truck}
+          prefix="€"
+          subtitle={stats?.shipping_sales_count_month
+            ? `${stats.shipping_sales_count_month} spedizioni · media €${(stats?.shipping_avg_per_sale || 0).toFixed(2)}`
+            : 'Nessuna spedizione questo mese'}
         />
       </div>
 

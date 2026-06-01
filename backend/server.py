@@ -1153,7 +1153,23 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
         {"id": str(a["_id"]), "name": a.get("name", ""), "stock_quantity": a.get("stock_quantity", 0)}
         for a in accessories if a.get("stock_quantity", 0) < 10
     ]
-    
+
+    # Spedizioni: totale del mese corrente + media per vendita (vendite con spedizione)
+    current_month = datetime.now(timezone.utc).strftime("%Y-%m")
+    shipping_total_month = 0.0
+    shipping_total_all = 0.0
+    sales_with_shipping = 0
+    sales_with_shipping_month = 0
+    for s in sales:
+        sc = float(s.get("shipping_cost", 0) or 0)
+        if sc > 0:
+            shipping_total_all += sc
+            sales_with_shipping += 1
+            if s.get("date", "")[:7] == current_month:
+                shipping_total_month += sc
+                sales_with_shipping_month += 1
+    shipping_avg = round(shipping_total_all / sales_with_shipping, 2) if sales_with_shipping > 0 else 0
+
     return {
         "total_sales": round(total_sales, 2),
         "total_profit": round(total_profit, 2),
@@ -1166,7 +1182,11 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
         "chart_data": chart_data,
         "top_products": [{"name": p[0], "profit": round(p[1], 2)} for p in top_products],
         "low_stock_filaments": low_stock_filaments,
-        "low_stock_accessories": low_stock_accessories
+        "low_stock_accessories": low_stock_accessories,
+        "shipping_total_month": round(shipping_total_month, 2),
+        "shipping_total_all": round(shipping_total_all, 2),
+        "shipping_avg_per_sale": shipping_avg,
+        "shipping_sales_count_month": sales_with_shipping_month
     }
 
 # Export CSV
