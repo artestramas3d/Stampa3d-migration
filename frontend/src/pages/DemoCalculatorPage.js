@@ -11,6 +11,7 @@ import { Calculator, Plus, Trash2, Lock, UserPlus, Receipt } from 'lucide-react'
 import { DecimalInput } from '../components/DecimalInput';
 import { useDemoBanner } from '../components/PublicScripts';
 import { PublicBannerSlot } from '../components/PublicBannerSlot';
+import { AffiliateLinks } from '../components/AffiliateLinks';
 import { recordDemoVisit } from '../lib/api';
 
 export default function DemoCalculatorPage() {
@@ -392,6 +393,9 @@ export default function DemoCalculatorPage() {
         </div>
 
         <PublicBannerSlot page="demo" position="content" />
+
+        {/* Risorse consigliate per chi prova il calcolatore */}
+        <AffiliateLinks placement="demo" />
       </div>
 
       <PublicBannerSlot page="demo" position="footer" />

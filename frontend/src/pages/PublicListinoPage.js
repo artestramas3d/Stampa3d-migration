@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getPublicListino, sendProductInquiry } from '../lib/api';
 import { Package, X, ChevronLeft, ChevronRight, Send, ShoppingBag, Wrench, ArrowRight, SlidersHorizontal } from 'lucide-react';
 import { PublicBannerSlot } from '../components/PublicBannerSlot';
+import { AffiliateLinks } from '../components/AffiliateLinks';
 
 function ProductCard({ p, index, primary }) {
   const photos = p.photos?.length ? p.photos : (p.photo ? [p.photo] : []);
@@ -280,8 +281,11 @@ export default function PublicListinoPage() {
       </div>
 
       {/* Footer */}
-      <footer className="text-center py-6 text-sm text-gray-400 border-t border-gray-100 space-y-1">
+      <footer className="text-center py-6 text-sm text-gray-400 border-t border-gray-100 space-y-2">
         <PublicBannerSlot page="shop" position="footer" />
+        <div className="max-w-4xl mx-auto px-4">
+          <AffiliateLinks placement="shop_footer" compact />
+        </div>
         <p>{data.brand_name} &mdash; Creazioni in Stampa 3D</p>
         <p>
           <a href="mailto:info@artestramas3d.it" className="hover:text-gray-600">info@artestramas3d.it</a>

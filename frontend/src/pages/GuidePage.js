@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Book, Printer, Globe } from 'lucide-react';
+import { AffiliateLinks } from '../components/AffiliateLinks';
 
 const GUIDES = {
   it: {
@@ -863,6 +864,11 @@ export default function GuidePage() {
               </div>
             </div>
           ))}
+
+          {/* Risorse Consigliate (link affiliati gestiti dall'Admin) */}
+          <div className="print:break-inside-avoid">
+            <AffiliateLinks placement="guida" />
+          </div>
         </div>
 
         {/* Footer */}

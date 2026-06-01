@@ -3104,6 +3104,104 @@ async def admin_page_stats_reset(current_user: dict = Depends(require_admin)):
     return {"message": "Statistiche resettate"}
 
 
+# ========== AFFILIATE LINKS ==========
+
+class AffiliateLinkCreate(BaseModel):
+    title: str
+    url: str
+    description: str = ""
+    image_url: str = ""  # opzionale (es. logo del partner)
+    placements: List[str] = ["guida"]  # guida, shop_footer, calculator, demo
+    is_active: bool = True
+    sort_order: int = 0
+
+class AffiliateLinkUpdate(BaseModel):
+    title: Optional[str] = None
+    url: Optional[str] = None
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+    placements: Optional[List[str]] = None
+    is_active: Optional[bool] = None
+    sort_order: Optional[int] = None
+
+
+def _serialize_affiliate(doc: dict) -> dict:
+    return {
+        "id": str(doc["_id"]),
+        "title": doc.get("title", ""),
+        "url": doc.get("url", ""),
+        "description": doc.get("description", ""),
+        "image_url": doc.get("image_url", ""),
+        "placements": doc.get("placements", []),
+        "is_active": doc.get("is_active", True),
+        "sort_order": doc.get("sort_order", 0),
+        "clicks": doc.get("clicks", 0),
+        "created_at": doc.get("created_at", "")
+    }
+
+
+@api_router.get("/admin/affiliate-links")
+async def admin_get_affiliates(current_user: dict = Depends(require_admin)):
+    out = []
+    async for doc in db.affiliate_links.find().sort([("sort_order", 1), ("created_at", -1)]):
+        out.append(_serialize_affiliate(doc))
+    return out
+
+
+@api_router.post("/admin/affiliate-links")
+async def admin_create_affiliate(link: AffiliateLinkCreate, current_user: dict = Depends(require_admin)):
+    doc = link.model_dump()
+    doc["clicks"] = 0
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    r = await db.affiliate_links.insert_one(doc)
+    doc["_id"] = r.inserted_id
+    return _serialize_affiliate(doc)
+
+
+@api_router.put("/admin/affiliate-links/{link_id}")
+async def admin_update_affiliate(link_id: str, link: AffiliateLinkUpdate, current_user: dict = Depends(require_admin)):
+    update = {k: v for k, v in link.model_dump().items() if v is not None}
+    await db.affiliate_links.update_one({"_id": ObjectId(link_id)}, {"$set": update})
+    return {"message": "Link aggiornato"}
+
+
+@api_router.delete("/admin/affiliate-links/{link_id}")
+async def admin_delete_affiliate(link_id: str, current_user: dict = Depends(require_admin)):
+    await db.affiliate_links.delete_one({"_id": ObjectId(link_id)})
+    return {"message": "Link eliminato"}
+
+
+@api_router.get("/affiliate-links/{placement}")
+async def get_affiliate_links_by_placement(placement: str):
+    """Endpoint pubblico (no auth) per recuperare i link affiliati attivi per una posizione."""
+    valid = {"guida", "shop_footer", "calculator", "demo"}
+    if placement not in valid:
+        raise HTTPException(status_code=400, detail="Placement non valido")
+    out = []
+    async for doc in db.affiliate_links.find({"is_active": True, "placements": {"$in": [placement]}}).sort("sort_order", 1):
+        s = _serialize_affiliate(doc)
+        # Non esporre clicks pubblicamente
+        s.pop("clicks", None)
+        out.append(s)
+    return out
+
+
+@api_router.post("/affiliate-links/{link_id}/click")
+async def track_affiliate_click(link_id: str):
+    """Tracking click (no auth). Restituisce URL di redirect."""
+    doc = await db.affiliate_links.find_one({"_id": ObjectId(link_id)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Link non trovato")
+    await db.affiliate_links.update_one({"_id": ObjectId(link_id)}, {"$inc": {"clicks": 1}})
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    await db.affiliate_clicks.insert_one({
+        "link_id": link_id,
+        "date": today,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    return {"url": doc.get("url", "")}
+
+
 @api_router.delete("/quotes/{quote_id}")
 async def delete_quote(quote_id: str, current_user: dict = Depends(get_current_user)):
     result = await db.quotes.delete_one({"_id": ObjectId(quote_id), "user_id": current_user["id"]})

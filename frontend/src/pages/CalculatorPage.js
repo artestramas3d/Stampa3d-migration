@@ -16,6 +16,7 @@ import {
   Calculator, Receipt, Save, AlertCircle, Package, Plus, Minus, Trash2, 
   Palette, Copy, History, Euro, Percent, Clock, Upload, FileText, Download, Sparkles
 } from 'lucide-react';
+import { AffiliateLinks } from '../components/AffiliateLinks';
 import { toast } from 'sonner';
 import { FilamentColorDot } from '../components/FilamentColorDot';
 import { DecimalInput } from '../components/DecimalInput';
@@ -940,6 +941,9 @@ export default function CalculatorPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Risorse consigliate (link affiliati) */}
+      <AffiliateLinks placement="calculator" />
 
       {/* Quote Preview Dialog */}
       <Dialog open={showQuotePreview} onOpenChange={setShowQuotePreview}>

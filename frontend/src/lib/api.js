@@ -129,6 +129,14 @@ export const trackPageView = (path, visitor_id) => api.post('/track/page-view', 
 export const getAdminPageStats = (days = 7) => api.get(`/admin/page-stats?days=${days}`).then(r => r.data);
 export const resetAdminPageStats = () => api.delete('/admin/page-stats').then(r => r.data);
 
+// Affiliate links
+export const getAdminAffiliateLinks = () => api.get('/admin/affiliate-links').then(r => r.data);
+export const createAffiliateLink = (data) => api.post('/admin/affiliate-links', data).then(r => r.data);
+export const updateAffiliateLink = (id, data) => api.put(`/admin/affiliate-links/${id}`, data).then(r => r.data);
+export const deleteAffiliateLink = (id) => api.delete(`/admin/affiliate-links/${id}`).then(r => r.data);
+export const getAffiliateLinksByPlacement = (placement) => api.get(`/affiliate-links/${placement}`).then(r => r.data);
+export const trackAffiliateClick = (id) => api.post(`/affiliate-links/${id}/click`).then(r => r.data);
+
 // Public endpoints (no auth)
 export const getPublicLanding = () => api.get('/public/landing').then(r => r.data);
 export const submitContactForm = (data) => api.post('/public/contact', data).then(r => r.data);

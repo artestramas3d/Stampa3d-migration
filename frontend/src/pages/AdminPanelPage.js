@@ -8,7 +8,8 @@ import {
   getProducts, createProduct, updateProduct, deleteProduct,
   getAdminUserProfile,
   getAdminInquiries, updateAdminInquiry, deleteAdminInquiry, getAdminProductStats,
-  getAdminPageStats
+  getAdminPageStats,
+  getAdminAffiliateLinks, createAffiliateLink, updateAffiliateLink, deleteAffiliateLink
 } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -23,7 +24,7 @@ import {
   Users, Mail, Send, Shield, ShieldCheck, Trash2, CheckCircle,
   XCircle, Newspaper, Copy, Settings2, Bug, Image, Calendar, Clock, Wrench, X, Globe, MessageSquare, Plus,
   ShoppingBag, Pencil, ImagePlus, Eye, EyeOff, Package, ExternalLink, UserCircle, Code,
-  Inbox, Phone, Palette, Ruler, Sparkles, FileText, BarChart3, TrendingUp, LineChart
+  Inbox, Phone, Palette, Ruler, Sparkles, FileText, BarChart3, TrendingUp, LineChart, Link2, MousePointerClick, Save
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Switch } from '../components/ui/switch';
@@ -1533,6 +1534,184 @@ function PageAnalyticsTab() {
   );
 }
 
+// ============= AFFILIATE LINKS TAB =============
+
+const PLACEMENT_LABELS = {
+  guida: 'Pagina Guida (utenti loggati)',
+  shop_footer: 'Footer Shop pubblico',
+  calculator: 'Calcolatore (utenti loggati)',
+  demo: 'Demo pubblica',
+};
+
+function AffiliateLinksTab() {
+  const [links, setLinks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const initial = { title: '', url: '', description: '', image_url: '', placements: ['guida'], is_active: true, sort_order: 0 };
+  const [form, setForm] = useState(initial);
+  const [editId, setEditId] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try { setLinks(await getAdminAffiliateLinks()); } catch { /* ignore */ }
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const togglePlacement = (p) => {
+    setForm(f => ({ ...f, placements: f.placements.includes(p) ? f.placements.filter(x => x !== p) : [...f.placements, p] }));
+  };
+
+  const resetForm = () => { setForm(initial); setEditId(null); setShowForm(false); };
+
+  const handleSave = async () => {
+    if (!form.title || !form.url) { toast.error('Titolo e URL obbligatori'); return; }
+    if (form.placements.length === 0) { toast.error('Seleziona almeno una pagina'); return; }
+    try {
+      if (editId) {
+        await updateAffiliateLink(editId, form);
+        toast.success('Link aggiornato');
+      } else {
+        await createAffiliateLink(form);
+        toast.success('Link creato');
+      }
+      resetForm();
+      load();
+    } catch { toast.error('Errore salvataggio'); }
+  };
+
+  const handleEdit = (l) => {
+    setForm({
+      title: l.title,
+      url: l.url,
+      description: l.description || '',
+      image_url: l.image_url || '',
+      placements: l.placements?.length ? l.placements : ['guida'],
+      is_active: l.is_active,
+      sort_order: l.sort_order || 0,
+    });
+    setEditId(l.id);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Eliminare il link?')) return;
+    try { await deleteAffiliateLink(id); toast.success('Eliminato'); load(); }
+    catch { toast.error('Errore'); }
+  };
+
+  const totalClicks = links.reduce((s, l) => s + (l.clicks || 0), 0);
+
+  return (
+    <div className="space-y-4" data-testid="affiliate-tab">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h3 className="text-lg font-heading font-bold flex items-center gap-2"><Link2 className="w-4 h-4 text-primary" /> Link Affiliati</h3>
+          <p className="text-xs text-muted-foreground">Gestisci i link sponsorizzati visibili su Guida, Shop, Calcolatore, Demo. Total click: <strong className="text-primary">{totalClicks}</strong></p>
+        </div>
+        <Button size="sm" onClick={() => { resetForm(); setShowForm(true); }} data-testid="add-affiliate-btn"><Plus className="w-4 h-4 mr-1.5" />Nuovo Link</Button>
+      </div>
+
+      {showForm && (
+        <Card className="border-primary/40">
+          <CardContent className="p-4 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Titolo *</Label>
+                <Input value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="Es. Bambu Lab — Stampanti 3D" className="h-9" data-testid="aff-title" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">URL affiliato *</Label>
+                <Input value={form.url} onChange={e => setForm({...form, url: e.target.value})} placeholder="https://amzn.to/... oppure https://bambulab.com/?ref=..." className="h-9" data-testid="aff-url" />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Descrizione (max 100 caratteri)</Label>
+              <Input value={form.description} onChange={e => setForm({...form, description: e.target.value.slice(0, 100)})} placeholder="Es. Le stampanti che uso e consiglio" className="h-9" data-testid="aff-description" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">URL immagine/logo (opzionale)</Label>
+              <Input value={form.image_url} onChange={e => setForm({...form, image_url: e.target.value})} placeholder="https://.../logo.png" className="h-9" data-testid="aff-image" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Mostra nelle pagine *</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(PLACEMENT_LABELS).map(([k, label]) => {
+                  const active = form.placements.includes(k);
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => togglePlacement(k)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-md border text-xs font-medium transition-colors ${active ? 'border-primary bg-primary/10 text-primary' : 'border-border/40 text-muted-foreground hover:bg-muted/40'}`}
+                      data-testid={`aff-placement-${k}`}
+                    >
+                      <span className="w-3 h-3 rounded-full border" style={{ background: active ? 'currentColor' : 'transparent' }} />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Ordine (0 = primo)</Label>
+                <Input type="number" value={form.sort_order} onChange={e => setForm({...form, sort_order: parseInt(e.target.value) || 0})} className="h-9 font-mono" data-testid="aff-order" />
+              </div>
+              <div className="flex items-end gap-2 pb-1">
+                <Switch checked={form.is_active} onCheckedChange={v => setForm({...form, is_active: v})} data-testid="aff-active" />
+                <Label className="text-xs">Attivo (visibile pubblicamente)</Label>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" onClick={handleSave} data-testid="aff-save"><Save className="w-3.5 h-3.5 mr-1.5" />Salva</Button>
+              <Button size="sm" variant="outline" onClick={resetForm}>Annulla</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Lista */}
+      <Card className="border-border/40">
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">Caricamento...</div>
+          ) : links.length === 0 ? (
+            <div className="p-10 text-center">
+              <Link2 className="w-10 h-10 mx-auto text-muted-foreground/40 mb-2" />
+              <p className="text-sm text-muted-foreground mb-3">Nessun link affiliato configurato.</p>
+              <p className="text-[11px] text-muted-foreground max-w-md mx-auto">Aggiungi i tuoi link (Amazon Associates, Bambu Lab Affiliate, 3DJake, ecc.). Verranno mostrati automaticamente nelle pagine selezionate con il disclaimer GDPR.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/40">
+              {links.map(l => (
+                <div key={l.id} className="p-3 hover:bg-muted/20 flex items-center gap-3 flex-wrap" data-testid={`aff-row-${l.id}`}>
+                  {l.image_url ? <img src={l.image_url} alt="" className="w-10 h-10 rounded object-cover shrink-0" /> : <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center shrink-0"><Link2 className="w-4 h-4 text-primary" /></div>}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-sm truncate">{l.title}</p>
+                      {!l.is_active && <Badge variant="outline" className="text-[9px]">Disattivo</Badge>}
+                      <Badge variant="outline" className="text-[9px] flex items-center gap-1"><MousePointerClick className="w-2.5 h-2.5" />{l.clicks || 0}</Badge>
+                    </div>
+                    <p className="text-[10px] font-mono text-muted-foreground truncate">{l.url}</p>
+                    <div className="flex gap-1 mt-0.5 flex-wrap">
+                      {(l.placements || []).map(pl => <span key={pl} className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{pl}</span>)}
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleEdit(l)} data-testid={`aff-edit-${l.id}`}><Pencil className="w-3.5 h-3.5" /></Button>
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(l.id)} data-testid={`aff-delete-${l.id}`}><Trash2 className="w-3.5 h-3.5" /></Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function AdminPanelPage() {
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState(null);
@@ -1698,7 +1877,7 @@ export default function AdminPanelPage() {
       )}
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 sm:grid-cols-10">
+        <TabsList className="grid w-full grid-cols-5 sm:grid-cols-11">
           <TabsTrigger value="users" data-testid="tab-users">
             <Users className="w-4 h-4 mr-1.5 hidden sm:inline" />Utenti
           </TabsTrigger>
@@ -1720,6 +1899,9 @@ export default function AdminPanelPage() {
           <TabsTrigger value="analytics" data-testid="tab-analytics">
             <BarChart3 className="w-4 h-4 mr-1.5 hidden sm:inline" />Analytics
           </TabsTrigger>
+          <TabsTrigger value="affiliates" data-testid="tab-affiliates">
+            <Link2 className="w-4 h-4 mr-1.5 hidden sm:inline" />Affiliati
+          </TabsTrigger>
           <TabsTrigger value="emails" data-testid="tab-emails">
             <Mail className="w-4 h-4 mr-1.5 hidden sm:inline" />Email Log
           </TabsTrigger>
@@ -1739,6 +1921,11 @@ export default function AdminPanelPage() {
         {/* Page Analytics Tab */}
         <TabsContent value="analytics">
           <PageAnalyticsTab />
+        </TabsContent>
+
+        {/* Affiliate Links Tab */}
+        <TabsContent value="affiliates">
+          <AffiliateLinksTab />
         </TabsContent>
 
         {/* Users Tab */}
