@@ -14,7 +14,7 @@ import { ScrollArea } from '../components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { 
   Calculator, Receipt, Save, AlertCircle, Package, Plus, Minus, Trash2, 
-  Palette, Copy, History, Euro, Percent, Clock, Upload, FileText, Download
+  Palette, Copy, History, Euro, Percent, Clock, Upload, FileText, Download, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { FilamentColorDot } from '../components/FilamentColorDot';
@@ -72,7 +72,11 @@ export default function CalculatorPage() {
     manual_price: null,
     quantity: 1,
     product_name: '',
-    accessories: []
+    accessories: [],
+    // Pro features
+    yield_rate: 100,
+    maintenance_cost_per_hour: null,
+    vat_rate: 0,
   });
 
   const [result, setResult] = useState(null);
@@ -663,6 +667,47 @@ export default function CalculatorPage() {
               </div>
             </div>
 
+            {/* Pro features: yield rate, manutenzione, IVA */}
+            <div className="rounded-md border border-primary/20 bg-primary/5 p-3 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-1.5">
+                <Sparkles className="w-3 h-3" /> Calcolo Professionale
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground" title="Percentuale di stampe andate a buon fine. Es. 85% = 15% delle stampe falliscono">Tasso Successo (%)</Label>
+                  <Input
+                    type="number" min="1" max="100" step="1"
+                    value={formData.yield_rate}
+                    onChange={(e) => setFormData({...formData, yield_rate: parseFloat(e.target.value) || 100})}
+                    className="h-8 font-mono text-xs"
+                    placeholder="100"
+                    data-testid="yield-rate-input"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground" title="Costo orario manutenzione/riparazioni (es. ugelli, cinghie, lubrificanti). Lascia vuoto per usare quello della stampante.">Manutenzione (€/h)</Label>
+                  <DecimalInput
+                    value={formData.maintenance_cost_per_hour == null ? '' : formData.maintenance_cost_per_hour}
+                    onChange={(num) => setFormData({...formData, maintenance_cost_per_hour: isNaN(num) ? null : num})}
+                    className="h-8 font-mono text-xs"
+                    placeholder="auto"
+                    data-testid="maintenance-input"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground" title="Aliquota IVA da applicare al prezzo finale (es. 22 per IVA 22%). 0 = nessuna IVA.">IVA (%)</Label>
+                  <Input
+                    type="number" min="0" max="100" step="1"
+                    value={formData.vat_rate}
+                    onChange={(e) => setFormData({...formData, vat_rate: parseFloat(e.target.value) || 0})}
+                    className="h-8 font-mono text-xs"
+                    placeholder="0"
+                    data-testid="vat-rate-input"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Accessories */}
             {accessories.length > 0 && (
               <div className="space-y-2">
@@ -791,9 +836,16 @@ export default function CalculatorPage() {
                   <div className="flex justify-between"><span>Materiale ({result.total_grams}g)</span><span className="font-mono">€{result.material_cost.toFixed(2)}</span></div>
                   <div className="flex justify-between"><span>Elettricità</span><span className="font-mono">€{result.electricity_cost.toFixed(2)}</span></div>
                   <div className="flex justify-between"><span>Ammortamento</span><span className="font-mono">€{result.depreciation_cost.toFixed(2)}</span></div>
+                  {result.maintenance_cost > 0 && <div className="flex justify-between"><span>Manutenzione</span><span className="font-mono">€{result.maintenance_cost.toFixed(2)}</span></div>}
                   {result.accessories_cost > 0 && <div className="flex justify-between"><span>Accessori</span><span className="font-mono">€{result.accessories_cost.toFixed(2)}</span></div>}
                   {result.labor_cost > 0 && <div className="flex justify-between"><span>Lavoro</span><span className="font-mono">€{result.labor_cost.toFixed(2)}</span></div>}
                   {result.design_cost > 0 && <div className="flex justify-between"><span>Design</span><span className="font-mono">€{result.design_cost.toFixed(2)}</span></div>}
+                  {result.yield_extra_cost > 0 && (
+                    <div className="flex justify-between text-amber-600 dark:text-amber-400" title={`Tasso successo ${result.yield_rate}%: assorbe il costo delle stampe fallite`}>
+                      <span>Rischio fallimento ({(100 - result.yield_rate).toFixed(0)}%)</span>
+                      <span className="font-mono">+€{result.yield_extra_cost.toFixed(2)}</span>
+                    </div>
+                  )}
                 </div>
 
                 <Separator />
@@ -824,6 +876,18 @@ export default function CalculatorPage() {
                         <span className="text-lg font-heading font-bold">TOTALE ({result.quantity} pz)</span>
                         <span className="text-xl font-mono font-bold text-primary">€{result.sale_price_total.toFixed(2)}</span>
                       </div>
+                      {result.vat_rate > 0 && (
+                        <>
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>+ IVA {result.vat_rate.toFixed(0)}%</span>
+                            <span className="font-mono">€{result.vat_amount_total.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm font-semibold pt-1 border-t border-border/40">
+                            <span>TOTALE c/IVA</span>
+                            <span className="font-mono text-primary">€{result.price_with_vat_total.toFixed(2)}</span>
+                          </div>
+                        </>
+                      )}
                       <div className="flex justify-between text-sm text-muted-foreground">
                         <span>Profitto/unità</span>
                         <span className="font-mono text-emerald-500">+€{result.net_profit_per_unit.toFixed(2)}</span>
@@ -839,6 +903,18 @@ export default function CalculatorPage() {
                         <span className="text-lg font-heading font-bold">PREZZO</span>
                         <span className="text-2xl font-mono font-bold text-primary">€{result.sale_price_per_unit.toFixed(2)}</span>
                       </div>
+                      {result.vat_rate > 0 && (
+                        <>
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>+ IVA {result.vat_rate.toFixed(0)}%</span>
+                            <span className="font-mono">€{result.vat_amount_per_unit.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm font-semibold pt-1 border-t border-border/40">
+                            <span>Prezzo c/IVA</span>
+                            <span className="font-mono text-primary">€{result.price_with_vat_per_unit.toFixed(2)}</span>
+                          </div>
+                        </>
+                      )}
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Profitto ({result.margin_percent.toFixed(0)}%)</span>
                         <span className="font-mono font-semibold text-emerald-500">+€{result.net_profit_per_unit.toFixed(2)}</span>

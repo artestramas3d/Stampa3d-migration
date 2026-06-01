@@ -13,7 +13,8 @@ const defaultPrinter = {
   printer_cost: 300,
   estimated_life_hours: 5000,
   electricity_cost_kwh: 0.25,
-  average_power_watts: 200
+  average_power_watts: 200,
+  maintenance_cost_per_hour: 0
 };
 
 export default function SettingsPage() {
@@ -64,7 +65,8 @@ export default function SettingsPage() {
       printer_cost: printer.printer_cost,
       estimated_life_hours: printer.estimated_life_hours,
       electricity_cost_kwh: printer.electricity_cost_kwh,
-      average_power_watts: printer.average_power_watts
+      average_power_watts: printer.average_power_watts,
+      maintenance_cost_per_hour: printer.maintenance_cost_per_hour || 0
     });
     setDialogOpen(true);
   };
@@ -176,6 +178,18 @@ export default function SettingsPage() {
                       className="font-mono"
                       data-testid="power-watts-input"
                     />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label title="Costo orario di manutenzione e riparazioni (es. ugelli, lubrificanti, cinghie). Verra' usato come default nel calcolatore.">Manutenzione (€/ora di stampa)</Label>
+                    <Input
+                      type="number" step="0.01"
+                      value={formData.maintenance_cost_per_hour}
+                      onChange={(e) => setFormData({...formData, maintenance_cost_per_hour: parseFloat(e.target.value) || 0})}
+                      className="font-mono"
+                      placeholder="0.05"
+                      data-testid="maintenance-per-hour-input"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Esempio: ugello sostitutivo ogni 1000h → 0.01-0.05 €/h. Lasciare 0 se non vuoi conteggiare.</p>
                   </div>
                 </div>
 

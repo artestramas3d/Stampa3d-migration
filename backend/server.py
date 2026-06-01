@@ -260,6 +260,7 @@ class FixedCostsCreate(BaseModel):
     estimated_life_hours: float
     electricity_cost_kwh: float
     average_power_watts: float
+    maintenance_cost_per_hour: float = 0  # Costo orario manutenzione/riparazioni
 
 class FixedCostsUpdate(BaseModel):
     printer_name: Optional[str] = None
@@ -267,6 +268,7 @@ class FixedCostsUpdate(BaseModel):
     estimated_life_hours: Optional[float] = None
     electricity_cost_kwh: Optional[float] = None
     average_power_watts: Optional[float] = None
+    maintenance_cost_per_hour: Optional[float] = None
 
 class PurchaseCreate(BaseModel):
     date: str
@@ -318,6 +320,10 @@ class PrintCalculationCreate(BaseModel):
     quantity: int = 1  # Number of products in this print
     product_name: str = ""
     accessories: List[AccessoryUsage] = []
+    # ===== Feature Pro (solo utenti registrati) =====
+    yield_rate: float = 100  # % stampe riuscite (es. 85 = 15% fallimento). Default 100
+    maintenance_cost_per_hour: Optional[float] = None  # Costo orario manutenzione/riparazioni (€/h). Se None usa quello della stampante
+    vat_rate: float = 0  # IVA da applicare al prezzo finale (es. 22). Default 0 = no IVA
 
 class SaleCreate(BaseModel):
     date: str
@@ -493,6 +499,7 @@ async def get_printers(current_user: dict = Depends(get_current_user)):
             "estimated_life_hours": doc.get("estimated_life_hours", 0),
             "electricity_cost_kwh": doc.get("electricity_cost_kwh", 0),
             "average_power_watts": doc.get("average_power_watts", 0),
+            "maintenance_cost_per_hour": doc.get("maintenance_cost_per_hour", 0),
             "depreciation_per_hour": depreciation,
             "electricity_cost_per_hour": electricity_per_hour
         })
@@ -509,6 +516,7 @@ async def create_printer(printer: FixedCostsCreate, current_user: dict = Depends
         "estimated_life_hours": printer.estimated_life_hours,
         "electricity_cost_kwh": printer.electricity_cost_kwh,
         "average_power_watts": printer.average_power_watts,
+        "maintenance_cost_per_hour": printer.maintenance_cost_per_hour or 0,
         "depreciation_per_hour": depreciation,
         "electricity_cost_per_hour": electricity_per_hour,
         "created_at": datetime.now(timezone.utc).isoformat()
@@ -754,7 +762,11 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
     
     electricity_cost = calc.print_time_hours * printer.get("electricity_cost_per_hour", 0)
     depreciation_cost = calc.print_time_hours * printer.get("depreciation_per_hour", 0)
-    
+
+    # ===== Manutenzione (costo orario) - Pro feature =====
+    maint_per_hour = calc.maintenance_cost_per_hour if calc.maintenance_cost_per_hour is not None else printer.get("maintenance_cost_per_hour", 0)
+    maintenance_cost = calc.print_time_hours * max(0.0, float(maint_per_hour or 0))
+
     # Calculate accessories cost
     accessories_cost = 0
     accessories_details = []
@@ -769,16 +781,24 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
                 "unit_cost": acc.get("unit_cost", 0),
                 "total": cost
             })
-    
-    production_cost = material_cost + electricity_cost + depreciation_cost + accessories_cost
+
+    production_cost = material_cost + electricity_cost + depreciation_cost + maintenance_cost + accessories_cost
     labor_cost = calc.labor_hours * 15  # 15€/hour labor
     design_cost = calc.design_hours * 20  # 20€/hour design
-    total_cost = production_cost + labor_cost + design_cost
-    
+    total_cost_raw = production_cost + labor_cost + design_cost
+
+    # ===== Yield Rate / Tasso fallimento - Pro feature =====
+    # Se yield_rate=85%, ogni stampa "buona" assorbe il costo delle stampe fallite.
+    # Costo effettivo = costo_teorico / (yield_rate / 100)
+    yield_rate = max(1.0, min(100.0, float(calc.yield_rate or 100)))
+    yield_factor = yield_rate / 100.0
+    yield_extra_cost = round(total_cost_raw / yield_factor - total_cost_raw, 2) if yield_factor < 1.0 else 0
+    total_cost = total_cost_raw / yield_factor
+
     # Calculate per-unit cost if quantity > 1
     quantity = max(1, calc.quantity)
     cost_per_unit = total_cost / quantity
-    
+
     # Use manual price or calculate from margin
     if calc.manual_price is not None and calc.manual_price > 0:
         sale_price_per_unit = calc.manual_price
@@ -788,21 +808,31 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
         sale_price_per_unit = cost_per_unit * (1 + calc.margin_percent / 100)
         sale_price_total = sale_price_per_unit * quantity
         margin_percent = calc.margin_percent
-    
+
     net_profit_per_unit = sale_price_per_unit - cost_per_unit
     net_profit_total = net_profit_per_unit * quantity
-    
+
+    # ===== IVA - Pro feature =====
+    vat_rate = max(0.0, float(calc.vat_rate or 0))
+    vat_amount_per_unit = round(sale_price_per_unit * vat_rate / 100, 2)
+    vat_amount_total = round(sale_price_total * vat_rate / 100, 2)
+    price_with_vat_per_unit = round(sale_price_per_unit + vat_amount_per_unit, 2)
+    price_with_vat_total = round(sale_price_total + vat_amount_total, 2)
+
     return {
         "material_cost": round(material_cost, 2),
         "filaments_details": filaments_details,
         "total_grams": round(total_grams, 2),
         "electricity_cost": round(electricity_cost, 2),
         "depreciation_cost": round(depreciation_cost, 2),
+        "maintenance_cost": round(maintenance_cost, 2),
         "accessories_cost": round(accessories_cost, 2),
         "accessories_details": accessories_details,
         "production_cost": round(production_cost, 2),
         "labor_cost": round(labor_cost, 2),
         "design_cost": round(design_cost, 2),
+        "yield_rate": yield_rate,
+        "yield_extra_cost": yield_extra_cost,
         "total_cost": round(total_cost, 2),
         "quantity": quantity,
         "cost_per_unit": round(cost_per_unit, 2),
@@ -811,6 +841,11 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
         "net_profit_per_unit": round(net_profit_per_unit, 2),
         "net_profit_total": round(net_profit_total, 2),
         "margin_percent": round(margin_percent, 1),
+        "vat_rate": vat_rate,
+        "vat_amount_per_unit": vat_amount_per_unit,
+        "vat_amount_total": vat_amount_total,
+        "price_with_vat_per_unit": price_with_vat_per_unit,
+        "price_with_vat_total": price_with_vat_total,
         # Legacy fields for compatibility
         "sale_price": round(sale_price_total, 2),
         "net_profit": round(net_profit_total, 2)

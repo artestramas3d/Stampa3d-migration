@@ -117,7 +117,7 @@ export default function DemoCalculatorPage() {
         <div className="mb-4 p-3 rounded-lg bg-primary/10 border border-primary/30 flex items-center justify-between flex-wrap gap-2" data-testid="demo-banner">
           <p className="text-sm">
             <Lock className="w-3.5 h-3.5 inline mr-1.5" />
-            Versione demo — <strong>Registrati gratis</strong> per sbloccare: salvataggio dati, import .3mf, gestione vendite, clienti, preventivi PDF e molto altro
+            Versione demo — <strong>Registrati gratis</strong> per sbloccare: <strong>calcolo professionale con IVA, tasso fallimento, costi manutenzione</strong>, salvataggio dati, import .3mf, vendite, clienti, preventivi PDF
           </p>
           <Link to="/register"><Button size="sm">Registrati</Button></Link>
         </div>
