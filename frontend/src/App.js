@@ -23,6 +23,7 @@ import ProfilePage from "./pages/ProfilePage";
 import BugReportPage from "./pages/BugReportPage";
 import PublicListinoPage from "./pages/PublicListinoPage";
 import PublicProductDetailPage from "./pages/PublicProductDetailPage";
+import { PageTracker } from "./components/PageTracker";
 import LandingPage from "./pages/LandingPage";
 import GuidePage from "./pages/GuidePage";
 import CookiePolicyPage from "./pages/CookiePolicyPage";
@@ -75,17 +76,22 @@ function AppRoutes() {
 
   if (isShopDomain) {
     return (
-      <Routes>
-        <Route path="/cookie-policy" element={<CookiePolicyPage />} />
-        <Route path="/shop/prodotto/:slug" element={<PublicProductDetailPage />} />
-        <Route path="/prodotto/:slug" element={<PublicProductDetailPage />} />
-        <Route path="*" element={<PublicListinoPage />} />
-      </Routes>
+      <>
+        <PageTracker />
+        <Routes>
+          <Route path="/cookie-policy" element={<CookiePolicyPage />} />
+          <Route path="/shop/prodotto/:slug" element={<PublicProductDetailPage />} />
+          <Route path="/prodotto/:slug" element={<PublicProductDetailPage />} />
+          <Route path="*" element={<PublicListinoPage />} />
+        </Routes>
+      </>
     );
   }
 
   return (
-    <Routes>
+    <>
+      <PageTracker />
+      <Routes>
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
       <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
@@ -113,6 +119,7 @@ function AppRoutes() {
       <Route path="/cookie-policy" element={<CookiePolicyPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }
 

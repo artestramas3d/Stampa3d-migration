@@ -124,6 +124,11 @@ export const updateAdminInquiry = (id, data) => api.put(`/admin/inquiries/${id}`
 export const deleteAdminInquiry = (id) => api.delete(`/admin/inquiries/${id}`).then(r => r.data);
 export const getAdminProductStats = () => api.get('/admin/product-stats').then(r => r.data);
 
+// Page tracking
+export const trackPageView = (path, visitor_id) => api.post('/track/page-view', { path, visitor_id, referrer: typeof document !== 'undefined' ? document.referrer : '' }).then(r => r.data).catch(() => {});
+export const getAdminPageStats = (days = 7) => api.get(`/admin/page-stats?days=${days}`).then(r => r.data);
+export const resetAdminPageStats = () => api.delete('/admin/page-stats').then(r => r.data);
+
 // Public endpoints (no auth)
 export const getPublicLanding = () => api.get('/public/landing').then(r => r.data);
 export const submitContactForm = (data) => api.post('/public/contact', data).then(r => r.data);

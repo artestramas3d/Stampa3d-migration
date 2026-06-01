@@ -7,7 +7,8 @@ import {
   getLandingSettings, updateLandingSettings, getContactRequests,
   getProducts, createProduct, updateProduct, deleteProduct,
   getAdminUserProfile,
-  getAdminInquiries, updateAdminInquiry, deleteAdminInquiry, getAdminProductStats
+  getAdminInquiries, updateAdminInquiry, deleteAdminInquiry, getAdminProductStats,
+  getAdminPageStats
 } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -22,7 +23,7 @@ import {
   Users, Mail, Send, Shield, ShieldCheck, Trash2, CheckCircle,
   XCircle, Newspaper, Copy, Settings2, Bug, Image, Calendar, Clock, Wrench, X, Globe, MessageSquare, Plus,
   ShoppingBag, Pencil, ImagePlus, Eye, EyeOff, Package, ExternalLink, UserCircle, Code,
-  Inbox, Phone, Palette, Ruler, Sparkles, FileText, BarChart3, TrendingUp
+  Inbox, Phone, Palette, Ruler, Sparkles, FileText, BarChart3, TrendingUp, LineChart
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Switch } from '../components/ui/switch';
@@ -1384,6 +1385,154 @@ function InquiriesTab() {
   );
 }
 
+// ============= PAGE ANALYTICS TAB =============
+
+const PRESET_DAYS = [7, 14, 30, 60];
+const pathLabel = (p) => {
+  if (p === '/') return 'Dashboard (home loggati)';
+  if (p === '/listino' || p === '*') return 'Shop / Listino pubblico';
+  if (p.startsWith('/shop/prodotto')) return 'Pagine prodotto (tutti)';
+  return p;
+};
+
+function PageAnalyticsTab() {
+  const [data, setData] = useState(null);
+  const [days, setDays] = useState(7);
+  const [loading, setLoading] = useState(true);
+
+  const load = async (d) => {
+    setLoading(true);
+    try { setData(await getAdminPageStats(d)); } catch { /* ignore */ }
+    setLoading(false);
+  };
+
+  useEffect(() => { load(days); }, [days]);
+
+  const daily = data?.daily || [];
+  const byPage = data?.by_page || [];
+  const maxDaily = Math.max(1, ...daily.map(d => d.unique));
+
+  return (
+    <div className="space-y-4" data-testid="page-analytics-tab">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Card className="border-border/40"><CardContent className="p-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Visite Totali</p>
+          <p className="text-2xl font-heading font-bold font-mono">{data?.total_views || 0}</p>
+          <p className="text-[10px] text-muted-foreground">Ultimi {days} giorni</p>
+        </CardContent></Card>
+        <Card className="border-border/40"><CardContent className="p-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Visitatori Unici</p>
+          <p className="text-2xl font-heading font-bold font-mono text-primary">{data?.total_unique || 0}</p>
+          <p className="text-[10px] text-muted-foreground">Per dispositivo/browser</p>
+        </CardContent></Card>
+        <Card className="border-border/40"><CardContent className="p-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Pagine viste</p>
+          <p className="text-2xl font-heading font-bold font-mono">{byPage.length}</p>
+          <p className="text-[10px] text-muted-foreground">URL distinti</p>
+        </CardContent></Card>
+        <Card className="border-border/40"><CardContent className="p-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Media/giorno</p>
+          <p className="text-2xl font-heading font-bold font-mono">{daily.length > 0 ? Math.round((data?.total_unique || 0) / daily.length) : 0}</p>
+          <p className="text-[10px] text-muted-foreground">Visitatori unici</p>
+        </CardContent></Card>
+      </div>
+
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-xs text-muted-foreground">Periodo:</span>
+        {PRESET_DAYS.map(d => (
+          <button
+            key={d}
+            onClick={() => setDays(d)}
+            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${days === d ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border/40 hover:bg-muted/40'}`}
+            data-testid={`days-${d}`}
+          >{d} giorni</button>
+        ))}
+      </div>
+
+      {/* Grafico giornaliero */}
+      {daily.length > 0 && (
+        <Card className="border-border/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-heading flex items-center gap-2">
+              <LineChart className="w-4 h-4 text-primary" /> Trend visite per giorno
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end justify-between gap-1 h-32" data-testid="daily-chart">
+              {daily.map(d => {
+                const h = Math.max(4, Math.round((d.unique / maxDaily) * 100));
+                const dt = new Date(d.date + 'T00:00:00');
+                const label = dt.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+                return (
+                  <div key={d.date} className="flex-1 flex flex-col items-center gap-1 min-w-0" title={`${d.date}: ${d.unique} unici / ${d.total} totali`}>
+                    <span className="text-[9px] font-mono text-muted-foreground">{d.unique}</span>
+                    <div className="w-full rounded-t-md transition-all" style={{ height: `${h}%`, background: 'var(--primary)', opacity: 0.85 }} />
+                    <span className="text-[9px] text-muted-foreground truncate w-full text-center">{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tabella pagine */}
+      <Card className="border-border/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-heading flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-primary" /> Pagine piu' visitate
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">Caricamento...</div>
+          ) : byPage.length === 0 ? (
+            <div className="p-10 text-center">
+              <BarChart3 className="w-10 h-10 mx-auto text-muted-foreground/40 mb-2" />
+              <p className="text-sm text-muted-foreground">Nessuna visita registrata. Il tracking parte da ora. Condividi i tuoi link e torna domani.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8">#</TableHead>
+                    <TableHead>Pagina</TableHead>
+                    <TableHead className="text-right">Visitatori unici</TableHead>
+                    <TableHead className="text-right">Visite totali</TableHead>
+                    <TableHead className="text-right">V/U</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {byPage.map((p, i) => {
+                    const ratio = p.unique_visitors > 0 ? (p.total_views / p.unique_visitors).toFixed(1) : '0.0';
+                    return (
+                      <TableRow key={p.path} data-testid={`page-row-${i}`}>
+                        <TableCell className="font-mono text-xs text-muted-foreground">{i + 1}</TableCell>
+                        <TableCell>
+                          <p className="text-sm font-medium">{pathLabel(p.path)}</p>
+                          <p className="text-[10px] font-mono text-muted-foreground">{p.path}</p>
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-bold text-primary">{p.unique_visitors}</TableCell>
+                        <TableCell className="text-right font-mono">{p.total_views}</TableCell>
+                        <TableCell className="text-right font-mono text-xs text-muted-foreground" title="Visite per utente">{ratio}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <p className="text-[10px] text-muted-foreground text-center">
+        Le statistiche tracciano le visite dei browser sui tuoi domini (calcolatore, shop, demo). Per analytics avanzati (sorgenti traffico, geolocalizzazione, dispositivi) integra Google Analytics dal tab "Codici".
+      </p>
+    </div>
+  );
+}
+
 export default function AdminPanelPage() {
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState(null);
@@ -1549,7 +1698,7 @@ export default function AdminPanelPage() {
       )}
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-9">
+        <TabsList className="grid w-full grid-cols-5 sm:grid-cols-10">
           <TabsTrigger value="users" data-testid="tab-users">
             <Users className="w-4 h-4 mr-1.5 hidden sm:inline" />Utenti
           </TabsTrigger>
@@ -1568,6 +1717,9 @@ export default function AdminPanelPage() {
           <TabsTrigger value="orders" data-testid="tab-orders">
             <Inbox className="w-4 h-4 mr-1.5 hidden sm:inline" />Richieste
           </TabsTrigger>
+          <TabsTrigger value="analytics" data-testid="tab-analytics">
+            <BarChart3 className="w-4 h-4 mr-1.5 hidden sm:inline" />Analytics
+          </TabsTrigger>
           <TabsTrigger value="emails" data-testid="tab-emails">
             <Mail className="w-4 h-4 mr-1.5 hidden sm:inline" />Email Log
           </TabsTrigger>
@@ -1582,6 +1734,11 @@ export default function AdminPanelPage() {
         {/* Orders/Inquiries Tab */}
         <TabsContent value="orders">
           <InquiriesTab />
+        </TabsContent>
+
+        {/* Page Analytics Tab */}
+        <TabsContent value="analytics">
+          <PageAnalyticsTab />
         </TabsContent>
 
         {/* Users Tab */}

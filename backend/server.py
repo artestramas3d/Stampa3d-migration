@@ -15,6 +15,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
+import hashlib
 import io
 import csv
 import uuid
@@ -3011,6 +3012,98 @@ async def admin_product_stats(current_user: dict = Depends(require_admin)):
     }
 
 
+# ========== ADMIN - PAGE ANALYTICS (Visite uniche per pagina) ==========
+
+class PageViewIn(BaseModel):
+    path: str
+    referrer: str = ""
+    visitor_id: Optional[str] = None  # ID stabile generato dal frontend (localStorage)
+
+@api_router.post("/track/page-view")
+async def track_page_view(view: PageViewIn, request: Request):
+    """Endpoint pubblico (no auth) per tracciare ogni navigazione del frontend.
+    Aggrega per (path, data) e conta visite totali + visitatori unici."""
+    path = (view.path or "/")[:120]
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # ID visitatore: usa quello passato dal frontend, altrimenti fallback su IP+UA
+    visitor = view.visitor_id
+    if not visitor:
+        ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "?").split(",")[0].strip()
+        ua = request.headers.get("user-agent", "")[:80]
+        visitor = hashlib.md5(f"{ip}|{ua}".encode()).hexdigest()[:16]
+
+    # Incremento visite totali
+    await db.page_views.update_one(
+        {"path": path, "date": today},
+        {"$inc": {"total": 1}, "$set": {"path": path, "date": today}},
+        upsert=True
+    )
+    # Tentativo di insert sulla collezione visitatori unici per (path, date, visitor)
+    try:
+        await db.page_views_unique.insert_one({"path": path, "date": today, "visitor": visitor, "created_at": datetime.now(timezone.utc).isoformat()})
+        await db.page_views.update_one({"path": path, "date": today}, {"$inc": {"unique": 1}})
+    except Exception:
+        # Duplicato => visitatore gia' contato oggi su questa pagina
+        pass
+    return {"ok": True}
+
+
+@api_router.get("/admin/page-stats")
+async def admin_page_stats(days: int = 7, current_user: dict = Depends(require_admin)):
+    """Restituisce statistiche per pagina degli ultimi N giorni (default 7)."""
+    days = max(1, min(90, days))
+    today = datetime.now(timezone.utc)
+    cutoff = (today - timedelta(days=days - 1)).strftime("%Y-%m-%d")
+    # Aggrega per path
+    pipeline = [
+        {"$match": {"date": {"$gte": cutoff}}},
+        {"$group": {
+            "_id": "$path",
+            "total_views": {"$sum": "$total"},
+            "unique_visitors": {"$sum": "$unique"},
+            "days_active": {"$sum": 1}
+        }},
+        {"$sort": {"unique_visitors": -1}},
+        {"$limit": 50}
+    ]
+    by_page = []
+    async for r in db.page_views.aggregate(pipeline):
+        by_page.append({
+            "path": r["_id"],
+            "total_views": r["total_views"],
+            "unique_visitors": r["unique_visitors"],
+            "days_active": r["days_active"]
+        })
+    # Trend giornaliero (totale visite + unici per giorno)
+    daily = []
+    cumulative_unique_today = 0
+    daily_pipeline = [
+        {"$match": {"date": {"$gte": cutoff}}},
+        {"$group": {"_id": "$date", "total": {"$sum": "$total"}, "unique": {"$sum": "$unique"}}},
+        {"$sort": {"_id": 1}}
+    ]
+    async for r in db.page_views.aggregate(daily_pipeline):
+        daily.append({"date": r["_id"], "total": r["total"], "unique": r["unique"]})
+
+    total_views = sum(p["total_views"] for p in by_page)
+    total_unique = sum(p["unique_visitors"] for p in by_page)
+    return {
+        "days": days,
+        "by_page": by_page,
+        "daily": daily,
+        "total_views": total_views,
+        "total_unique": total_unique
+    }
+
+
+@api_router.delete("/admin/page-stats")
+async def admin_page_stats_reset(current_user: dict = Depends(require_admin)):
+    """Reset completo delle statistiche page-view (con cautela)."""
+    await db.page_views.delete_many({})
+    await db.page_views_unique.delete_many({})
+    return {"message": "Statistiche resettate"}
+
+
 @api_router.delete("/quotes/{quote_id}")
 async def delete_quote(quote_id: str, current_user: dict = Depends(get_current_user)):
     result = await db.quotes.delete_one({"_id": ObjectId(quote_id), "user_id": current_user["id"]})
@@ -3176,6 +3269,13 @@ async def newsletter_scheduler():
 @app.on_event("startup")
 async def startup():
     await db.users.create_index("email", unique=True)
+    # Indice unique per page-view unique visitors per (path, date, visitor)
+    try:
+        await db.page_views_unique.create_index(
+            [("path", 1), ("date", 1), ("visitor", 1)], unique=True
+        )
+    except Exception:
+        pass
     # Make testuser admin + verified
     await db.users.update_one({"email": "testuser@example.com"}, {"$set": {"is_admin": True, "email_verified": True}})
     # Start newsletter scheduler
