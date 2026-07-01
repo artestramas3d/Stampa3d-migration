@@ -1411,7 +1411,6 @@ function PageAnalyticsTab() {
 
   const daily = data?.daily || [];
   const byPage = data?.by_page || [];
-  const maxDaily = Math.max(1, ...daily.map(d => d.unique));
 
   return (
     <div className="space-y-4" data-testid="page-analytics-tab">
@@ -1457,21 +1456,79 @@ function PageAnalyticsTab() {
             <CardTitle className="text-sm font-heading flex items-center gap-2">
               <LineChart className="w-4 h-4 text-primary" /> Trend visite per giorno
             </CardTitle>
+            <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-1">
+              <span className="inline-flex items-center gap-1">
+                <span className="w-3 h-3 rounded-sm" style={{ background: 'var(--primary)', opacity: 0.35 }} /> Totali
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-3 h-3 rounded-sm" style={{ background: 'var(--primary)' }} /> Unici
+              </span>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="flex items-end justify-between gap-1 h-32" data-testid="daily-chart">
+            <div className="flex items-end justify-between gap-1 h-40" data-testid="daily-chart">
               {daily.map(d => {
-                const h = Math.max(4, Math.round((d.unique / maxDaily) * 100));
+                const maxTotal = Math.max(1, ...daily.map(x => x.total));
+                const hTotal = Math.max(4, Math.round((d.total / maxTotal) * 100));
+                const hUnique = Math.max(2, Math.round((d.unique / maxTotal) * 100));
                 const dt = new Date(d.date + 'T00:00:00');
                 const label = dt.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
                 return (
-                  <div key={d.date} className="flex-1 flex flex-col items-center gap-1 min-w-0" title={`${d.date}: ${d.unique} unici / ${d.total} totali`}>
-                    <span className="text-[9px] font-mono text-muted-foreground">{d.unique}</span>
-                    <div className="w-full rounded-t-md transition-all" style={{ height: `${h}%`, background: 'var(--primary)', opacity: 0.85 }} />
+                  <div key={d.date} className="flex-1 flex flex-col items-center gap-1 min-w-0" title={`${d.date} — ${d.total} totali / ${d.unique} unici`}>
+                    <div className="flex flex-col items-center leading-tight">
+                      <span className="text-[10px] font-mono font-bold text-foreground" data-testid={`daily-total-${d.date}`}>{d.total}</span>
+                      <span className="text-[9px] font-mono text-primary" data-testid={`daily-unique-${d.date}`}>{d.unique}u</span>
+                    </div>
+                    <div className="w-full relative flex-1 flex items-end" style={{ height: '100px' }}>
+                      {/* Barra totali (sfondo, opacità bassa) */}
+                      <div
+                        className="absolute bottom-0 left-0 right-0 rounded-t-md transition-all"
+                        style={{ height: `${hTotal}%`, background: 'var(--primary)', opacity: 0.3 }}
+                      />
+                      {/* Barra unici (in primo piano, opacità piena) */}
+                      <div
+                        className="absolute bottom-0 left-1/4 right-1/4 rounded-t-md transition-all"
+                        style={{ height: `${hUnique}%`, background: 'var(--primary)', opacity: 0.9 }}
+                      />
+                    </div>
                     <span className="text-[9px] text-muted-foreground truncate w-full text-center">{label}</span>
                   </div>
                 );
               })}
+            </div>
+
+            {/* Tabella riassuntiva giornaliera */}
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-xs" data-testid="daily-summary-table">
+                <thead>
+                  <tr className="border-b border-border/40 text-muted-foreground">
+                    <th className="text-left py-1.5 font-medium">Giorno</th>
+                    <th className="text-right py-1.5 font-medium">Totali</th>
+                    <th className="text-right py-1.5 font-medium">Unici</th>
+                    <th className="text-right py-1.5 font-medium">Ripetute</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...daily].reverse().map(d => {
+                    const dt = new Date(d.date + 'T00:00:00');
+                    const label = dt.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: '2-digit' });
+                    return (
+                      <tr key={d.date} className="border-b border-border/20 hover:bg-muted/20">
+                        <td className="py-1.5 capitalize">{label}</td>
+                        <td className="text-right font-mono font-bold">{d.total}</td>
+                        <td className="text-right font-mono text-primary">{d.unique}</td>
+                        <td className="text-right font-mono text-muted-foreground">{Math.max(0, d.total - d.unique)}</td>
+                      </tr>
+                    );
+                  })}
+                  <tr className="font-bold bg-muted/30">
+                    <td className="py-1.5">Totale {days}gg</td>
+                    <td className="text-right font-mono">{daily.reduce((s, d) => s + (d.total || 0), 0)}</td>
+                    <td className="text-right font-mono text-primary">{daily.reduce((s, d) => s + (d.unique || 0), 0)}</td>
+                    <td className="text-right font-mono text-muted-foreground">{daily.reduce((s, d) => s + Math.max(0, (d.total || 0) - (d.unique || 0)), 0)}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </CardContent>
         </Card>
