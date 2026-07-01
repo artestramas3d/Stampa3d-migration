@@ -3259,7 +3259,11 @@ async def admin_affiliate_stats(days: int = 7, current_user: dict = Depends(requ
         })
 
     total_period = sum(d["clicks"] for d in daily)
-    total_all_time = sum(t["clicks_total"] for t in top)
+    # Totale all-time su TUTTI i link (non solo top-10)
+    all_time_pipeline = [{"$group": {"_id": None, "total": {"$sum": "$clicks"}}}]
+    total_all_time = 0
+    async for r in db.affiliate_links.aggregate(all_time_pipeline):
+        total_all_time = r.get("total", 0)
     return {
         "days": days,
         "daily": daily,

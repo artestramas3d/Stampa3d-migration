@@ -1684,14 +1684,14 @@ function AffiliateStatsCard() {
         <CardContent className="p-0">
           {loading ? (
             <div className="py-8 text-center text-xs text-muted-foreground">Caricamento...</div>
-          ) : top.length === 0 ? (
+          ) : top.length === 0 || top.every(t => (t.clicks_total || 0) === 0) ? (
             <div className="py-8 text-center">
               <TrendingUp className="w-8 h-8 mx-auto text-muted-foreground/40 mb-2" />
               <p className="text-xs text-muted-foreground">Nessun click ancora registrato.</p>
             </div>
           ) : (
             <div className="divide-y divide-border/40 max-h-64 overflow-y-auto">
-              {top.slice(0, 5).map((t, i) => (
+              {top.filter(t => (t.clicks_total || 0) > 0).slice(0, 5).map((t, i) => (
                 <div key={t.id} className="px-3 py-2 flex items-center gap-2" data-testid={`aff-top-${t.id}`}>
                   <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
                   <div className="flex-1 min-w-0">
