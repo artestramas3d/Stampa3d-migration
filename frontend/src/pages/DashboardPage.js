@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Skeleton } from '../components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { Button } from '../components/ui/button';
+import { AffiliateLinks } from '../components/AffiliateLinks';
 import { 
   TrendingUp, 
   Euro, 
@@ -305,6 +306,9 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Affiliate footer nella dashboard (opzionale, solo se admin configura link con placement=dashboard) */}
+      <AffiliateLinks placement="dashboard" />
     </div>
   );
 }

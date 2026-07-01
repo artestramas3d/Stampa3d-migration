@@ -9,7 +9,7 @@ import {
   getAdminUserProfile,
   getAdminInquiries, updateAdminInquiry, deleteAdminInquiry, getAdminProductStats,
   getAdminPageStats,
-  getAdminAffiliateLinks, createAffiliateLink, updateAffiliateLink, deleteAffiliateLink
+  getAdminAffiliateLinks, createAffiliateLink, updateAffiliateLink, deleteAffiliateLink, getAdminAffiliateStats
 } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -1598,7 +1598,122 @@ const PLACEMENT_LABELS = {
   shop_footer: 'Footer Shop pubblico',
   calculator: 'Calcolatore (utenti loggati)',
   demo: 'Demo pubblica',
+  filaments_low_stock: 'Filamenti — Avviso scorte basse (contestuale)',
+  dashboard: 'Dashboard utente (home dopo login)',
 };
+
+function AffiliateStatsCard() {
+  const [stats, setStats] = useState(null);
+  const [days, setDays] = useState(7);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    getAdminAffiliateStats(days).then(d => {
+      if (mounted) { setStats(d); setLoading(false); }
+    }).catch(() => setLoading(false));
+    return () => { mounted = false; };
+  }, [days]);
+
+  const daily = stats?.daily || [];
+  const top = stats?.top || [];
+  const maxClick = Math.max(1, ...daily.map(d => d.clicks));
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3" data-testid="affiliate-stats">
+      {/* Grafico click per giorno */}
+      <Card className="border-border/40">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-sm font-heading flex items-center gap-2">
+              <LineChart className="w-4 h-4 text-primary" /> Click affiliati per giorno
+            </CardTitle>
+            <div className="flex gap-1">
+              {[7, 14, 30].map(d => (
+                <button
+                  key={d}
+                  onClick={() => setDays(d)}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${days === d ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border/40'}`}
+                  data-testid={`aff-stats-days-${d}`}
+                >{d}gg</button>
+              ))}
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground pt-1">
+            Totale periodo: <strong className="text-primary font-mono">{stats?.total_clicks_period || 0}</strong> click
+          </p>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="py-8 text-center text-xs text-muted-foreground">Caricamento...</div>
+          ) : daily.length === 0 ? (
+            <div className="py-8 text-center">
+              <MousePointerClick className="w-8 h-8 mx-auto text-muted-foreground/40 mb-2" />
+              <p className="text-xs text-muted-foreground">Nessun click nel periodo. Condividi i tuoi link e torna qui!</p>
+            </div>
+          ) : (
+            <div className="flex items-end justify-between gap-1 h-28" data-testid="aff-daily-chart">
+              {daily.map(d => {
+                const h = Math.max(6, Math.round((d.clicks / maxClick) * 100));
+                const dt = new Date(d.date + 'T00:00:00');
+                const label = dt.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+                return (
+                  <div key={d.date} className="flex-1 flex flex-col items-center gap-1 min-w-0" title={`${d.date}: ${d.clicks} click`}>
+                    <span className="text-[10px] font-mono font-bold">{d.clicks}</span>
+                    <div className="w-full rounded-t-md" style={{ height: `${h}%`, background: 'var(--primary)', opacity: 0.85 }} />
+                    <span className="text-[9px] text-muted-foreground truncate w-full text-center">{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Top link cliccati */}
+      <Card className="border-border/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-heading flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" /> Top link cliccati
+          </CardTitle>
+          <p className="text-[10px] text-muted-foreground pt-1">
+            Ordinati per click totali (all-time: <strong className="text-primary font-mono">{stats?.total_clicks_all_time || 0}</strong>)
+          </p>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="py-8 text-center text-xs text-muted-foreground">Caricamento...</div>
+          ) : top.length === 0 ? (
+            <div className="py-8 text-center">
+              <TrendingUp className="w-8 h-8 mx-auto text-muted-foreground/40 mb-2" />
+              <p className="text-xs text-muted-foreground">Nessun click ancora registrato.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/40 max-h-64 overflow-y-auto">
+              {top.slice(0, 5).map((t, i) => (
+                <div key={t.id} className="px-3 py-2 flex items-center gap-2" data-testid={`aff-top-${t.id}`}>
+                  <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold truncate flex items-center gap-1.5">
+                      {t.title}
+                      {!t.is_active && <Badge variant="outline" className="text-[8px] px-1 py-0">off</Badge>}
+                    </p>
+                    <p className="text-[9px] text-muted-foreground truncate">{(t.placements || []).join(' · ')}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-mono font-bold text-primary">{t.clicks_total}</p>
+                    <p className="text-[9px] text-muted-foreground">+{t.clicks_period} ({days}gg)</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 function AffiliateLinksTab() {
   const [links, setLinks] = useState([]);
@@ -1668,6 +1783,9 @@ function AffiliateLinksTab() {
         </div>
         <Button size="sm" onClick={() => { resetForm(); setShowForm(true); }} data-testid="add-affiliate-btn"><Plus className="w-4 h-4 mr-1.5" />Nuovo Link</Button>
       </div>
+
+      {/* Widget statistiche (grafico click + top link) */}
+      <AffiliateStatsCard />
 
       {showForm && (
         <Card className="border-primary/40">

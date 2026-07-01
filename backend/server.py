@@ -3187,7 +3187,7 @@ async def admin_delete_affiliate(link_id: str, current_user: dict = Depends(requ
 @api_router.get("/affiliate-links/{placement}")
 async def get_affiliate_links_by_placement(placement: str):
     """Endpoint pubblico (no auth) per recuperare i link affiliati attivi per una posizione."""
-    valid = {"guida", "shop_footer", "calculator", "demo"}
+    valid = {"guida", "shop_footer", "calculator", "demo", "filaments_low_stock", "dashboard"}
     if placement not in valid:
         raise HTTPException(status_code=400, detail="Placement non valido")
     out = []
@@ -3214,6 +3214,59 @@ async def track_affiliate_click(link_id: str):
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     return {"url": doc.get("url", "")}
+
+
+@api_router.get("/admin/affiliate-links/stats")
+async def admin_affiliate_stats(days: int = 7, current_user: dict = Depends(require_admin)):
+    """Statistiche aggregate link affiliati: top link + click giornalieri + totali."""
+    days = max(1, min(int(days), 90))
+    cutoff_dt = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff_date = cutoff_dt.strftime("%Y-%m-%d")
+
+    # Click per giorno nel periodo
+    daily_pipeline = [
+        {"$match": {"date": {"$gte": cutoff_date}}},
+        {"$group": {"_id": "$date", "clicks": {"$sum": 1}}},
+        {"$sort": {"_id": 1}}
+    ]
+    daily = []
+    async for r in db.affiliate_clicks.aggregate(daily_pipeline):
+        daily.append({"date": r["_id"], "clicks": r["clicks"]})
+
+    # Top link nel periodo (per click nel range)
+    period_pipeline = [
+        {"$match": {"date": {"$gte": cutoff_date}}},
+        {"$group": {"_id": "$link_id", "clicks_period": {"$sum": 1}}},
+        {"$sort": {"clicks_period": -1}},
+        {"$limit": 10}
+    ]
+    period_counts = {}
+    async for r in db.affiliate_clicks.aggregate(period_pipeline):
+        period_counts[r["_id"]] = r["clicks_period"]
+
+    # Top link all-time (dai contatori sul documento)
+    top = []
+    async for doc in db.affiliate_links.find().sort("clicks", -1).limit(10):
+        lid = str(doc["_id"])
+        top.append({
+            "id": lid,
+            "title": doc.get("title", ""),
+            "url": doc.get("url", ""),
+            "placements": doc.get("placements", []),
+            "is_active": doc.get("is_active", True),
+            "clicks_total": doc.get("clicks", 0),
+            "clicks_period": period_counts.get(lid, 0),
+        })
+
+    total_period = sum(d["clicks"] for d in daily)
+    total_all_time = sum(t["clicks_total"] for t in top)
+    return {
+        "days": days,
+        "daily": daily,
+        "top": top,
+        "total_clicks_period": total_period,
+        "total_clicks_all_time": total_all_time,
+    }
 
 
 @api_router.delete("/quotes/{quote_id}")

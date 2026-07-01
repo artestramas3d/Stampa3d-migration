@@ -134,6 +134,7 @@ export const getAdminAffiliateLinks = () => api.get('/admin/affiliate-links').th
 export const createAffiliateLink = (data) => api.post('/admin/affiliate-links', data).then(r => r.data);
 export const updateAffiliateLink = (id, data) => api.put(`/admin/affiliate-links/${id}`, data).then(r => r.data);
 export const deleteAffiliateLink = (id) => api.delete(`/admin/affiliate-links/${id}`).then(r => r.data);
+export const getAdminAffiliateStats = (days = 7) => api.get(`/admin/affiliate-links/stats?days=${days}`).then(r => r.data);
 export const getAffiliateLinksByPlacement = (placement) => api.get(`/affiliate-links/${placement}`).then(r => r.data);
 export const trackAffiliateClick = (id) => api.post(`/affiliate-links/${id}/click`).then(r => r.data);
 

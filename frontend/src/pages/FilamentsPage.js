@@ -13,6 +13,7 @@ import { Plus, Pencil, Trash2, Cylinder, AlertTriangle, Download } from 'lucide-
 import { toast } from 'sonner';
 import { FilamentColorDot } from '../components/FilamentColorDot';
 import { DecimalInput } from '../components/DecimalInput';
+import { AffiliateLinks } from '../components/AffiliateLinks';
 
 const MATERIAL_TYPES = ['PLA', 'PETG', 'ABS', 'TPU', 'ASA', 'Nylon', 'PLA+', 'PETG-CF', 'Altro'];
 const LOW_STOCK_THRESHOLD = 200; // grams
@@ -298,6 +299,11 @@ export default function FilamentsPage() {
             )}
           </AlertDescription>
         </Alert>
+      )}
+
+      {/* Affiliate contestuali: mostra solo se ci sono scorte basse */}
+      {lowStockFilaments.length > 0 && (
+        <AffiliateLinks placement="filaments_low_stock" />
       )}
 
       {loading ? (
