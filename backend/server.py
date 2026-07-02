@@ -3111,6 +3111,7 @@ class AffiliateLinkCreate(BaseModel):
     url: str
     description: str = ""
     image_url: str = ""  # opzionale (es. logo del partner)
+    coupon_code: str = ""  # opzionale (es. ARTES10)
     placements: List[str] = ["guida"]  # guida, shop_footer, calculator, demo
     is_active: bool = True
     sort_order: int = 0
@@ -3120,6 +3121,7 @@ class AffiliateLinkUpdate(BaseModel):
     url: Optional[str] = None
     description: Optional[str] = None
     image_url: Optional[str] = None
+    coupon_code: Optional[str] = None
     placements: Optional[List[str]] = None
     is_active: Optional[bool] = None
     sort_order: Optional[int] = None
@@ -3132,6 +3134,7 @@ def _serialize_affiliate(doc: dict) -> dict:
         "url": doc.get("url", ""),
         "description": doc.get("description", ""),
         "image_url": doc.get("image_url", ""),
+        "coupon_code": doc.get("coupon_code", ""),
         "placements": doc.get("placements", []),
         "is_active": doc.get("is_active", True),
         "sort_order": doc.get("sort_order", 0),

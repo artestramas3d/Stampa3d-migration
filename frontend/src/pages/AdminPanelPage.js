@@ -1718,7 +1718,7 @@ function AffiliateStatsCard() {
 function AffiliateLinksTab() {
   const [links, setLinks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const initial = { title: '', url: '', description: '', image_url: '', placements: ['guida'], is_active: true, sort_order: 0 };
+  const initial = { title: '', url: '', description: '', image_url: '', coupon_code: '', placements: ['guida'], is_active: true, sort_order: 0 };
   const [form, setForm] = useState(initial);
   const [editId, setEditId] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -1758,6 +1758,7 @@ function AffiliateLinksTab() {
       url: l.url,
       description: l.description || '',
       image_url: l.image_url || '',
+      coupon_code: l.coupon_code || '',
       placements: l.placements?.length ? l.placements : ['guida'],
       is_active: l.is_active,
       sort_order: l.sort_order || 0,
@@ -1807,6 +1808,17 @@ function AffiliateLinksTab() {
             <div className="space-y-1">
               <Label className="text-xs">URL immagine/logo (opzionale)</Label>
               <Input value={form.image_url} onChange={e => setForm({...form, image_url: e.target.value})} placeholder="https://.../logo.png" className="h-9" data-testid="aff-image" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Codice coupon (opzionale)</Label>
+              <Input
+                value={form.coupon_code}
+                onChange={e => setForm({...form, coupon_code: e.target.value.toUpperCase().slice(0, 30)})}
+                placeholder="Es. ARTES10 · sconto 10% per i tuoi utenti"
+                className="h-9 font-mono uppercase tracking-wider"
+                data-testid="aff-coupon"
+              />
+              <p className="text-[10px] text-muted-foreground">Se presente, verrà mostrato accanto al link con pulsante &quot;Copia&quot;. Aumenta conversione fino a 3x.</p>
             </div>
             <div className="space-y-2">
               <Label className="text-xs">Mostra nelle pagine *</Label>
@@ -1865,6 +1877,11 @@ function AffiliateLinksTab() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-sm truncate">{l.title}</p>
+                      {l.coupon_code && (
+                        <Badge className="text-[9px] bg-primary/15 text-primary border-primary/30 font-mono">
+                          {l.coupon_code}
+                        </Badge>
+                      )}
                       {!l.is_active && <Badge variant="outline" className="text-[9px]">Disattivo</Badge>}
                       <Badge variant="outline" className="text-[9px] flex items-center gap-1"><MousePointerClick className="w-2.5 h-2.5" />{l.clicks || 0}</Badge>
                     </div>
