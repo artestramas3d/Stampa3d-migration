@@ -14,13 +14,14 @@ import { ScrollArea } from '../components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { 
   Calculator, Receipt, Save, AlertCircle, Package, Plus, Minus, Trash2, 
-  Palette, Copy, History, Euro, Percent, Clock, Upload, FileText, Download, Sparkles
+  Palette, Copy, History, Euro, Percent, Clock, Upload, FileText, Download, Sparkles, Printer
 } from 'lucide-react';
 import { AffiliateLinks } from '../components/AffiliateLinks';
 import { toast } from 'sonner';
 import { FilamentColorDot } from '../components/FilamentColorDot';
 import { DecimalInput } from '../components/DecimalInput';
 import { NumberSpinner } from '../components/NumberSpinner';
+import { downloadHtmlAsPdf } from '../lib/pdfExport';
 
 // Helper functions for time conversion
 const hoursToHM = (hours) => {
@@ -55,6 +56,8 @@ export default function CalculatorPage() {
   const [quotePreview, setQuotePreview] = useState('');
   const [showQuotePreview, setShowQuotePreview] = useState(false);
   const [generatingQuote, setGeneratingQuote] = useState(false);
+  const [calcQuoteNumber, setCalcQuoteNumber] = useState('');
+  const [downloadingCalcPdf, setDownloadingCalcPdf] = useState(false);
 
   // Separate state for hours and minutes
   const [printTimeH, setPrintTimeH] = useState(2);
@@ -433,6 +436,7 @@ export default function CalculatorPage() {
         valid_days: 30
       });
       setQuotePreview(res.html);
+      setCalcQuoteNumber(res.quote_number || '');
       setShowQuotePreview(true);
       toast.success(`Preventivo ${res.quote_number} generato`);
     } catch {
@@ -447,6 +451,20 @@ export default function CalculatorPage() {
     win.document.write(quotePreview);
     win.document.close();
     setTimeout(() => win.print(), 500);
+  };
+
+  const handleDownloadCalcPdf = async () => {
+    if (!quotePreview) return;
+    setDownloadingCalcPdf(true);
+    try {
+      const filename = `Preventivo_${calcQuoteNumber || 'documento'}.pdf`;
+      await downloadHtmlAsPdf(quotePreview, filename);
+      toast.success('PDF scaricato');
+    } catch {
+      toast.error('Errore nel download del PDF');
+    } finally {
+      setDownloadingCalcPdf(false);
+    }
   };
 
   if (loading) {
@@ -956,11 +974,17 @@ export default function CalculatorPage() {
       <Dialog open={showQuotePreview} onOpenChange={setShowQuotePreview}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
+            <DialogTitle className="flex items-center justify-between flex-wrap gap-2">
               Anteprima Preventivo
-              <Button size="sm" onClick={handlePrintQuote} data-testid="print-calc-quote-btn">
-                <Download className="w-3.5 h-3.5 mr-1.5" /> Stampa / Salva PDF
-              </Button>
+              <div className="flex gap-2 flex-wrap">
+                <Button size="sm" variant="outline" onClick={handleDownloadCalcPdf} disabled={downloadingCalcPdf} data-testid="download-calc-quote-pdf-btn">
+                  <Download className="w-3.5 h-3.5 mr-1.5" />
+                  {downloadingCalcPdf ? 'Generazione...' : 'Scarica PDF'}
+                </Button>
+                <Button size="sm" onClick={handlePrintQuote} data-testid="print-calc-quote-btn">
+                  <Printer className="w-3.5 h-3.5 mr-1.5" /> Stampa
+                </Button>
+              </div>
             </DialogTitle>
           </DialogHeader>
           <div className="border rounded-md p-4 bg-white text-black" dangerouslySetInnerHTML={{ __html: quotePreview }} />

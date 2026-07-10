@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSales, deleteSale, updateSalePaid, updateSale, exportSalesCSV, getClients, getAccessories, generateQuotePdf, getQuotesSalesMap } from '../lib/api';
+import { downloadHtmlAsPdf } from '../lib/pdfExport';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -36,6 +37,8 @@ export default function SalesPage() {
   const [quoteNotes, setQuoteNotes] = useState('');
   const [quoteValidDays, setQuoteValidDays] = useState(30);
   const [quotePreviewHtml, setQuotePreviewHtml] = useState('');
+  const [quoteNumber, setQuoteNumber] = useState('');
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [generatingQuote, setGeneratingQuote] = useState(false);
   const [clients, setClients] = useState([]);
   const [accessoriesList, setAccessoriesList] = useState([]);
@@ -138,6 +141,7 @@ export default function SalesPage() {
         sale_id: quoteSale.id,
       });
       setQuotePreviewHtml(res.html);
+      setQuoteNumber(res.quote_number || '');
       // Aggiorna mappa quote per far apparire il badge sulla riga
       try {
         const qMap = await getQuotesSalesMap();
@@ -156,6 +160,20 @@ export default function SalesPage() {
     win.document.write(quotePreviewHtml);
     win.document.close();
     setTimeout(() => win.print(), 500);
+  };
+
+  const handleDownloadQuotePdf = async () => {
+    if (!quotePreviewHtml) return;
+    setDownloadingPdf(true);
+    try {
+      const filename = `Preventivo_${quoteNumber || 'documento'}.pdf`;
+      await downloadHtmlAsPdf(quotePreviewHtml, filename);
+      toast.success('PDF scaricato');
+    } catch {
+      toast.error('Errore nel download del PDF');
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   const handleEditSale = (sale) => {
@@ -667,12 +685,16 @@ export default function SalesPage() {
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <p className="text-sm text-muted-foreground">Preventivo generato con successo. Anteprima sotto:</p>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setQuotePreviewHtml('')} data-testid="quote-back-btn">
+                <div className="flex gap-2 flex-wrap">
+                  <Button size="sm" variant="outline" onClick={() => { setQuotePreviewHtml(''); setQuoteNumber(''); }} data-testid="quote-back-btn">
                     <X className="w-3.5 h-3.5 mr-1" /> Modifica
                   </Button>
+                  <Button size="sm" variant="outline" onClick={handleDownloadQuotePdf} disabled={downloadingPdf} data-testid="download-quote-pdf-btn">
+                    <Download className="w-3.5 h-3.5 mr-1.5" />
+                    {downloadingPdf ? 'Generazione...' : 'Scarica PDF'}
+                  </Button>
                   <Button size="sm" onClick={handlePrintQuoteFromSale} data-testid="print-quote-from-sale-btn">
-                    <Download className="w-3.5 h-3.5 mr-1.5" /> Stampa / Salva PDF
+                    <Printer className="w-3.5 h-3.5 mr-1.5" /> Stampa
                   </Button>
                 </div>
               </div>
