@@ -20,6 +20,7 @@ import { AffiliateLinks } from '../components/AffiliateLinks';
 import { toast } from 'sonner';
 import { FilamentColorDot } from '../components/FilamentColorDot';
 import { DecimalInput } from '../components/DecimalInput';
+import { NumberSpinner } from '../components/NumberSpinner';
 
 // Helper functions for time conversion
 const hoursToHM = (hours) => {
@@ -614,18 +615,19 @@ export default function CalculatorPage() {
                 Tempo Stampa
               </Label>
               <div className="flex items-center gap-1">
-                <Input
-                  type="number" min="0"
+                <NumberSpinner
+                  min={0}
                   value={printTimeH}
-                  onChange={(e) => setPrintTimeH(parseInt(e.target.value) || 0)}
+                  onChange={(num) => setPrintTimeH(parseInt(num) || 0)}
                   className="h-8 w-16 font-mono text-xs text-center"
                   data-testid="print-time-h"
                 />
                 <span className="text-xs text-muted-foreground">h</span>
-                <Input
-                  type="number" min="0" max="59"
+                <NumberSpinner
+                  min={0}
+                  max={59}
                   value={printTimeM}
-                  onChange={(e) => setPrintTimeM(Math.min(59, parseInt(e.target.value) || 0))}
+                  onChange={(num) => setPrintTimeM(Math.min(59, parseInt(num) || 0))}
                   className="h-8 w-16 font-mono text-xs text-center"
                   data-testid="print-time-m"
                 />
@@ -638,18 +640,19 @@ export default function CalculatorPage() {
               <div className="space-y-1">
                 <Label className="text-xs">Design</Label>
                 <div className="flex items-center gap-1">
-                  <Input
-                    type="number" min="0"
+                  <NumberSpinner
+                    min={0}
                     value={designTimeH}
-                    onChange={(e) => setDesignTimeH(parseInt(e.target.value) || 0)}
+                    onChange={(num) => setDesignTimeH(parseInt(num) || 0)}
                     className="h-8 w-14 font-mono text-xs text-center"
                     data-testid="design-time-h"
                   />
                   <span className="text-xs text-muted-foreground">h</span>
-                  <Input
-                    type="number" min="0" max="59"
+                  <NumberSpinner
+                    min={0}
+                    max={59}
                     value={designTimeM}
-                    onChange={(e) => setDesignTimeM(Math.min(59, parseInt(e.target.value) || 0))}
+                    onChange={(num) => setDesignTimeM(Math.min(59, parseInt(num) || 0))}
                     className="h-8 w-14 font-mono text-xs text-center"
                     data-testid="design-time-m"
                   />
@@ -658,10 +661,10 @@ export default function CalculatorPage() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Quantità</Label>
-                <Input
-                  type="number" min="1"
+                <NumberSpinner
+                  min={1}
                   value={formData.quantity}
-                  onChange={(e) => setFormData({...formData, quantity: parseInt(e.target.value) || 1})}
+                  onChange={(num) => setFormData({...formData, quantity: parseInt(num) || 1})}
                   className="h-8 font-mono text-xs"
                   data-testid="quantity-input"
                 />
@@ -676,10 +679,12 @@ export default function CalculatorPage() {
               <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1">
                   <Label className="text-[10px] text-muted-foreground" title="Percentuale di stampe andate a buon fine. Es. 85% = 15% delle stampe falliscono">Tasso Successo (%)</Label>
-                  <Input
-                    type="number" min="1" max="100" step="1"
+                  <NumberSpinner
+                    min={1}
+                    max={100}
+                    step={1}
                     value={formData.yield_rate}
-                    onChange={(e) => setFormData({...formData, yield_rate: parseFloat(e.target.value) || 100})}
+                    onChange={(num) => setFormData({...formData, yield_rate: parseFloat(num) || 100})}
                     className="h-8 font-mono text-xs"
                     placeholder="100"
                     data-testid="yield-rate-input"
@@ -697,10 +702,12 @@ export default function CalculatorPage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[10px] text-muted-foreground" title="Aliquota IVA da applicare al prezzo finale (es. 22 per IVA 22%). 0 = nessuna IVA.">IVA (%)</Label>
-                  <Input
-                    type="number" min="0" max="100" step="1"
+                  <NumberSpinner
+                    min={0}
+                    max={100}
+                    step={1}
                     value={formData.vat_rate}
-                    onChange={(e) => setFormData({...formData, vat_rate: parseFloat(e.target.value) || 0})}
+                    onChange={(num) => setFormData({...formData, vat_rate: parseFloat(num) || 0})}
                     className="h-8 font-mono text-xs"
                     placeholder="0"
                     data-testid="vat-rate-input"

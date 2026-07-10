@@ -104,26 +104,17 @@
     background: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* Number input spinner arrows — segue il tema (chiaro/scuro) */
-input[type="number"] {
-    color-scheme: light dark;
-}
-
-.dark input[type="number"] {
-    color-scheme: dark;
-}
-
-/* Rende le frecce spinner visibili (chiare in dark, scure in light) */
+/* Rimuove completamente le frecce native (spinner) sugli input number.
+   Usiamo il componente <NumberSpinner /> per rendere frecce custom chiare/leggibili. */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
-    opacity: 1;
-    cursor: pointer;
-    filter: invert(0);
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
 }
-
-.dark input[type="number"]::-webkit-inner-spin-button,
-.dark input[type="number"]::-webkit-outer-spin-button {
-    filter: invert(1) brightness(1.2);
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
 }
 
 /* Custom animations */
