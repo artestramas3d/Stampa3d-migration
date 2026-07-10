@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSales, deleteSale, updateSalePaid, updateSale, exportSalesCSV, getClients, getAccessories } from '../lib/api';
+import { getSales, deleteSale, updateSalePaid, updateSale, exportSalesCSV, getClients, getAccessories, generateQuotePdf } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -10,7 +10,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
-import { Download, Trash2, Receipt, Search, CheckCircle, Clock, ArrowUpDown, Printer, Pencil, Plus, X, Truck } from 'lucide-react';
+import { Download, Trash2, Receipt, Search, CheckCircle, Clock, ArrowUpDown, Printer, Pencil, Plus, X, Truck, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { DecimalInput } from '../components/DecimalInput';
 
@@ -28,6 +28,15 @@ export default function SalesPage() {
   const [editClientId, setEditClientId] = useState('');
   const [editAccessories, setEditAccessories] = useState([]); // [{accessory_id, quantity}]
   const [editShipping, setEditShipping] = useState(0);
+  // Quote generation from existing sale
+  const [quoteSale, setQuoteSale] = useState(null); // sale in fase di generazione preventivo
+  const [quoteClientId, setQuoteClientId] = useState('none');
+  const [quoteQuantity, setQuoteQuantity] = useState(1);
+  const [quoteUnitPrice, setQuoteUnitPrice] = useState(0);
+  const [quoteNotes, setQuoteNotes] = useState('');
+  const [quoteValidDays, setQuoteValidDays] = useState(30);
+  const [quotePreviewHtml, setQuotePreviewHtml] = useState('');
+  const [generatingQuote, setGeneratingQuote] = useState(false);
   const [clients, setClients] = useState([]);
   const [accessoriesList, setAccessoriesList] = useState([]);
 
@@ -86,6 +95,54 @@ export default function SalesPage() {
       product_name: sale.product_name || ''
     }));
     navigate(`/calculator?${params.toString()}`);
+  };
+
+  const handleOpenQuoteDialog = (sale) => {
+    setQuoteSale(sale);
+    setQuoteClientId(sale.client_id || 'none');
+    setQuoteQuantity(1);
+    setQuoteUnitPrice(sale.sale_price || 0);
+    setQuoteNotes('');
+    setQuoteValidDays(30);
+    setQuotePreviewHtml('');
+  };
+
+  const handleGenerateQuoteFromSale = async () => {
+    if (!quoteSale) return;
+    if (!quoteUnitPrice || quoteUnitPrice <= 0) {
+      toast.error('Inserisci un prezzo unitario valido');
+      return;
+    }
+    setGeneratingQuote(true);
+    try {
+      const clientId = quoteClientId && quoteClientId !== 'none' ? quoteClientId : null;
+      const selectedClient = clientId ? clients.find(c => c.id === clientId) : null;
+      const items = [{
+        description: quoteSale.product_name || 'Stampa 3D personalizzata',
+        quantity: parseInt(quoteQuantity) || 1,
+        unit_price: parseFloat(quoteUnitPrice),
+      }];
+      const res = await generateQuotePdf({
+        client_id: clientId,
+        client_name: selectedClient ? `${selectedClient.name} ${selectedClient.surname || ''}`.trim() : '',
+        items,
+        notes: quoteNotes,
+        valid_days: parseInt(quoteValidDays) || 30,
+      });
+      setQuotePreviewHtml(res.html);
+      toast.success(`Preventivo ${res.quote_number} generato`);
+    } catch {
+      toast.error('Errore generazione preventivo');
+    } finally {
+      setGeneratingQuote(false);
+    }
+  };
+
+  const handlePrintQuoteFromSale = () => {
+    const win = window.open('', '_blank');
+    win.document.write(quotePreviewHtml);
+    win.document.close();
+    setTimeout(() => win.print(), 500);
   };
 
   const handleEditSale = (sale) => {
@@ -355,6 +412,16 @@ export default function SalesPage() {
                           <Button
                             size="icon"
                             variant="ghost"
+                            className="h-7 w-7 text-blue-500"
+                            onClick={() => handleOpenQuoteDialog(sale)}
+                            title="Genera preventivo PDF da questa vendita"
+                            data-testid={`quote-sale-${sale.id}`}
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
                             className="h-7 w-7"
                             onClick={() => handleEditSale(sale)}
                             title="Modifica"
@@ -490,6 +557,97 @@ export default function SalesPage() {
               Salva Modifiche
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: genera preventivo PDF da vendita esistente */}
+      <Dialog open={!!quoteSale} onOpenChange={(v) => { if (!v) { setQuoteSale(null); setQuotePreviewHtml(''); } }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" data-testid="quote-from-sale-dialog">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Genera Preventivo da Vendita
+            </DialogTitle>
+          </DialogHeader>
+
+          {!quotePreviewHtml ? (
+            <div className="space-y-4">
+              <div className="p-3 rounded-md bg-muted/40 border border-border/40">
+                <p className="text-xs text-muted-foreground">Vendita di riferimento</p>
+                <p className="text-sm font-semibold">{quoteSale?.product_name || 'Prodotto senza nome'}</p>
+                <p className="text-[11px] text-muted-foreground font-mono">
+                  {quoteSale?.created_at ? new Date(quoteSale.created_at).toLocaleDateString('it-IT') : ''}
+                  {quoteSale?.sale_price ? ` · Prezzo originale: €${quoteSale.sale_price.toFixed(2)}` : ''}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Cliente</Label>
+                  <Select value={quoteClientId} onValueChange={setQuoteClientId}>
+                    <SelectTrigger className="h-9" data-testid="quote-client-select">
+                      <SelectValue placeholder="Nessun cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nessun cliente</SelectItem>
+                      {clients.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name} {c.surname || ''}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Validità (giorni)</Label>
+                  <Input type="number" min="1" value={quoteValidDays} onChange={e => setQuoteValidDays(e.target.value)} className="h-9" data-testid="quote-valid-days" />
+                </div>
+                <div>
+                  <Label className="text-xs">Quantità</Label>
+                  <Input type="number" min="1" value={quoteQuantity} onChange={e => setQuoteQuantity(e.target.value)} className="h-9" data-testid="quote-quantity" />
+                </div>
+                <div>
+                  <Label className="text-xs">Prezzo unitario (€)</Label>
+                  <DecimalInput value={quoteUnitPrice} onChange={setQuoteUnitPrice} className="h-9" data-testid="quote-unit-price" />
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs">Note (opzionale)</Label>
+                <Input value={quoteNotes} onChange={e => setQuoteNotes(e.target.value)} placeholder="Es. IVA esclusa, spedizione compresa..." className="h-9" data-testid="quote-notes" />
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Totale preventivo: </span>
+                  <span className="font-mono font-bold text-primary">
+                    €{((parseInt(quoteQuantity) || 0) * (parseFloat(quoteUnitPrice) || 0)).toFixed(2)}
+                  </span>
+                </div>
+                <Button
+                  onClick={handleGenerateQuoteFromSale}
+                  disabled={generatingQuote}
+                  data-testid="generate-quote-from-sale-btn"
+                >
+                  <FileText className="w-4 h-4 mr-1.5" />
+                  {generatingQuote ? 'Generazione...' : 'Genera Preventivo PDF'}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-muted-foreground">Preventivo generato con successo. Anteprima sotto:</p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setQuotePreviewHtml('')} data-testid="quote-back-btn">
+                    <X className="w-3.5 h-3.5 mr-1" /> Modifica
+                  </Button>
+                  <Button size="sm" onClick={handlePrintQuoteFromSale} data-testid="print-quote-from-sale-btn">
+                    <Download className="w-3.5 h-3.5 mr-1.5" /> Stampa / Salva PDF
+                  </Button>
+                </div>
+              </div>
+              <div className="border rounded-md p-4 bg-white text-black max-h-[60vh] overflow-y-auto" dangerouslySetInnerHTML={{ __html: quotePreviewHtml }} />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
