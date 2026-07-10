@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSales, deleteSale, updateSalePaid, updateSale, exportSalesCSV, getClients, getAccessories, generateQuotePdf } from '../lib/api';
+import { getSales, deleteSale, updateSalePaid, updateSale, exportSalesCSV, getClients, getAccessories, generateQuotePdf, getQuotesSalesMap } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -39,6 +39,7 @@ export default function SalesPage() {
   const [generatingQuote, setGeneratingQuote] = useState(false);
   const [clients, setClients] = useState([]);
   const [accessoriesList, setAccessoriesList] = useState([]);
+  const [quotesMap, setQuotesMap] = useState({}); // {sale_id: [{quote_number, created_at}, ...]}
 
   useEffect(() => {
     loadSales();
@@ -46,10 +47,16 @@ export default function SalesPage() {
 
   const loadSales = async () => {
     try {
-      const [data, clientsData, accData] = await Promise.all([getSales(), getClients(), getAccessories()]);
+      const [data, clientsData, accData, qMap] = await Promise.all([
+        getSales(),
+        getClients(),
+        getAccessories(),
+        getQuotesSalesMap().catch(() => ({}))
+      ]);
       setSales(data);
       setClients(clientsData);
       setAccessoriesList(accData);
+      setQuotesMap(qMap || {});
     } catch (err) {
       toast.error('Errore nel caricamento vendite');
     } finally {
@@ -128,8 +135,14 @@ export default function SalesPage() {
         items,
         notes: quoteNotes,
         valid_days: parseInt(quoteValidDays) || 30,
+        sale_id: quoteSale.id,
       });
       setQuotePreviewHtml(res.html);
+      // Aggiorna mappa quote per far apparire il badge sulla riga
+      try {
+        const qMap = await getQuotesSalesMap();
+        setQuotesMap(qMap || {});
+      } catch { /* ignore */ }
       toast.success(`Preventivo ${res.quote_number} generato`);
     } catch {
       toast.error('Errore generazione preventivo');
@@ -412,12 +425,20 @@ export default function SalesPage() {
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-7 w-7 text-blue-500"
+                            className={`h-7 w-7 relative ${quotesMap[sale.id]?.length ? 'text-emerald-500' : 'text-blue-500'}`}
                             onClick={() => handleOpenQuoteDialog(sale)}
-                            title="Genera preventivo PDF da questa vendita"
+                            title={quotesMap[sale.id]?.length
+                              ? `Preventivo già generato (${quotesMap[sale.id].length}): ${quotesMap[sale.id][0].quote_number}. Clicca per generarne un altro.`
+                              : 'Genera preventivo PDF da questa vendita'}
                             data-testid={`quote-sale-${sale.id}`}
                           >
                             <FileText className="w-3.5 h-3.5" />
+                            {quotesMap[sale.id]?.length > 0 && (
+                              <span
+                                className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-background"
+                                data-testid={`quote-indicator-${sale.id}`}
+                              />
+                            )}
                           </Button>
                           <Button
                             size="icon"
@@ -579,6 +600,16 @@ export default function SalesPage() {
                   {quoteSale?.created_at ? new Date(quoteSale.created_at).toLocaleDateString('it-IT') : ''}
                   {quoteSale?.sale_price ? ` · Prezzo originale: €${quoteSale.sale_price.toFixed(2)}` : ''}
                 </p>
+                {quoteSale && quotesMap[quoteSale.id]?.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-border/40">
+                    <p className="text-[11px] text-emerald-500 font-medium">
+                      ⚠️ Preventivi già generati per questa vendita: <strong>{quotesMap[quoteSale.id].length}</strong>
+                    </p>
+                    <p className="text-[10px] text-muted-foreground font-mono truncate">
+                      Ultimo: {quotesMap[quoteSale.id][0].quote_number}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

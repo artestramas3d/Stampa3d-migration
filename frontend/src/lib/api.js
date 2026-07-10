@@ -169,6 +169,7 @@ export const updateBusinessSettings = (data) => api.put('/business-settings', da
 // Quotes
 export const generateQuotePdf = (data) => api.post('/quotes/generate-pdf', data).then(r => r.data);
 export const getQuotes = () => api.get('/quotes').then(r => r.data);
+export const getQuotesSalesMap = () => api.get('/quotes/sales-map').then(r => r.data);
 export const deleteQuote = (id) => api.delete(`/quotes/${id}`).then(r => r.data);
 export const updateQuote = (id, data) => api.put(`/quotes/${id}`, data).then(r => r.data);
 export const sendQuoteEmail = (data) => api.post('/quotes/send-email', data).then(r => r.data);

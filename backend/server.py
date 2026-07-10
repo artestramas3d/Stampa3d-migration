@@ -2750,6 +2750,7 @@ class QuoteCreate(BaseModel):
     items: List[QuoteItem]
     notes: str = ""
     valid_days: int = 30
+    sale_id: Optional[str] = None  # Se generato da una vendita esistente
 
 @api_router.post("/quotes/generate-pdf")
 async def generate_quote_pdf(quote: QuoteCreate, current_user: dict = Depends(get_current_user)):
@@ -2785,6 +2786,7 @@ async def generate_quote_pdf(quote: QuoteCreate, current_user: dict = Depends(ge
         "subtotal": round(subtotal, 2),
         "notes": quote.notes,
         "valid_until": valid_until,
+        "sale_id": quote.sale_id,
         "created_at": now.isoformat()
     }
     await db.quotes.insert_one(quote_doc)
@@ -2883,6 +2885,25 @@ async def get_quotes(current_user: dict = Depends(get_current_user)):
         del doc["_id"]
         quotes.append(doc)
     return quotes
+
+
+@api_router.get("/quotes/sales-map")
+async def get_quotes_sales_map(current_user: dict = Depends(get_current_user)):
+    """Ritorna un mapping sale_id -> [quote_number, ...] per l'utente corrente.
+    Serve al frontend per mostrare quali vendite hanno gia' un preventivo associato."""
+    result = {}
+    async for doc in db.quotes.find(
+        {"user_id": current_user["id"], "sale_id": {"$ne": None, "$exists": True}},
+        {"sale_id": 1, "quote_number": 1, "created_at": 1}
+    ).sort("created_at", -1):
+        sid = doc.get("sale_id")
+        if not sid:
+            continue
+        result.setdefault(sid, []).append({
+            "quote_number": doc.get("quote_number", ""),
+            "created_at": doc.get("created_at", "")
+        })
+    return result
 
 # ========== DEMO VISIT COUNTER ==========
 @api_router.post("/public/demo-visit")
