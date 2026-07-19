@@ -890,6 +890,7 @@ function ProductsTab() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [exportDialog, setExportDialog] = useState(false);
   const [showPricesInPdf, setShowPricesInPdf] = useState(true);
+  const [showAllPhotosInPdf, setShowAllPhotosInPdf] = useState(true);
   const [exportTitle, setExportTitle] = useState('Listino Prodotti');
   const [exporting, setExporting] = useState(false);
 
@@ -938,19 +939,28 @@ function ProductsTab() {
 
     const rowsHtml = catNames.map(cat => {
       const items = grouped[cat].map(p => {
-        const photo = p.photos?.[0] || p.photo || '';
+        const allPhotos = (p.photos && p.photos.length) ? p.photos : (p.photo ? [p.photo] : []);
+        const mainPhoto = allPhotos[0] || '';
+        const extraPhotos = showAllPhotosInPdf ? allPhotos.slice(1) : []; // dalla 2a in poi, solo se toggle attivo
         const colors = (p.color_options || []).join(', ');
         const sizes = (p.size_options || []).join(', ');
         const desc = (p.description || '').slice(0, 200);
         const priceCell = showPricesInPdf
-          ? `<td style="text-align:right;font-weight:700;font-size:12px;color:#f97316;white-space:nowrap;">€ ${parseFloat(p.price || 0).toFixed(2)}</td>`
-          : `<td style="text-align:right;font-style:italic;color:#666;font-size:10px;white-space:nowrap;">Su richiesta</td>`;
+          ? `<td style="text-align:right;font-weight:700;font-size:12px;color:#f97316;white-space:nowrap;vertical-align:top;padding:8px 6px;">€ ${parseFloat(p.price || 0).toFixed(2)}</td>`
+          : `<td style="text-align:right;font-style:italic;color:#666;font-size:10px;white-space:nowrap;vertical-align:top;padding:8px 6px;">Su richiesta</td>`;
+        const photoCell = mainPhoto
+          ? `<img src="${mainPhoto}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:4px;border:1px solid #e5e5e5;display:block;" />`
+          : `<div style="width:64px;height:64px;background:#f3f3f3;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:9px;">no foto</div>`;
+        const extraGrid = extraPhotos.length
+          ? `<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:2px;max-width:88px;">
+               ${extraPhotos.map(ph => `<img src="${ph}" alt="" style="width:28px;height:28px;object-fit:cover;border-radius:2px;border:1px solid #e5e5e5;display:block;" />`).join('')}
+             </div>`
+          : '';
         return `
           <tr style="border-bottom:1px solid #e5e5e5;page-break-inside:avoid;">
-            <td style="width:70px;padding:8px 6px;vertical-align:top;">
-              ${photo
-                ? `<img src="${photo}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:4px;border:1px solid #e5e5e5;" />`
-                : `<div style="width:64px;height:64px;background:#f3f3f3;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:10px;">no foto</div>`}
+            <td style="width:96px;padding:8px 6px;vertical-align:top;">
+              ${photoCell}
+              ${extraGrid}
             </td>
             <td style="padding:8px 10px;vertical-align:top;">
               <div style="font-weight:700;font-size:13px;color:#222;margin-bottom:3px;">${p.name || ''}</div>
@@ -958,6 +968,7 @@ function ProductsTab() {
               <div style="font-size:9.5px;color:#444;">
                 ${colors ? `<div><strong>Colori:</strong> ${colors}</div>` : ''}
                 ${sizes ? `<div><strong>Dimensioni:</strong> ${sizes}</div>` : ''}
+                ${allPhotos.length > 1 ? `<div style="color:#999;font-style:italic;margin-top:2px;">${allPhotos.length} foto disponibili</div>` : ''}
               </div>
             </td>
             ${priceCell}
@@ -1304,6 +1315,21 @@ function ProductsTab() {
                 checked={showPricesInPdf}
                 onCheckedChange={setShowPricesInPdf}
                 data-testid="toggle-prices-listino"
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-border/40 bg-muted/20 px-3 py-2">
+              <div className="min-w-0">
+                <Label className="text-sm font-medium">Includi tutte le foto</Label>
+                <p className="text-[10px] text-muted-foreground">
+                  {showAllPhotosInPdf
+                    ? 'Foto principale + miniature delle foto aggiuntive'
+                    : 'Solo la foto principale (PDF più compatto)'}
+                </p>
+              </div>
+              <Switch
+                checked={showAllPhotosInPdf}
+                onCheckedChange={setShowAllPhotosInPdf}
+                data-testid="toggle-photos-listino"
               />
             </div>
             <div className="rounded-md bg-muted/30 border border-border/40 p-3">

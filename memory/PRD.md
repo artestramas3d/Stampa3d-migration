@@ -75,8 +75,8 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
     - Selezionare prodotti con **checkbox** in alto a sinistra di ogni card (card evidenziata con ring primary se selezionata)
     - Pulsante **"Seleziona tutti"** quando nessuna selezione + **"Deseleziona"** quando c'è selezione
     - **Badge "N selezionati"** nel titolo + Pulsante **"Esporta Listino PDF (N)"** contestuale
-    - Dialog export con: titolo custom, **toggle "Mostra prezzi nel PDF"** (globale, sostituisce con "Su richiesta"), riepilogo categorie con badge conteggio, pulsante "Scarica PDF"
-    - PDF ricco: header arancione con brand + data, prodotti raggruppati per categoria con divisore arancione, per ogni prodotto foto piccola (64x64) + nome bold + descrizione + colori + dimensioni + prezzo/su richiesta a destra, footer con nota
+    - Dialog export con: titolo custom, **toggle "Mostra prezzi nel PDF"** (globale, sostituisce con "Su richiesta"), **toggle "Includi tutte le foto"** (foto principale 64x64 + miniature 28x28 delle aggiuntive), riepilogo categorie con badge conteggio, pulsante "Scarica PDF"
+    - PDF ricco: header arancione con brand + data, prodotti raggruppati per categoria con divisore arancione, per ogni prodotto foto principale + strip miniature (se abilitato) + nome bold + descrizione + colori + dimensioni + contatore "N foto disponibili" + prezzo/su richiesta a destra, footer con nota
     - Client-side via `downloadHtmlAsPdf` (usa iframe con background bianco forzato — riuso dello stesso pattern del preventivo)
 
 ## Note Importanti
