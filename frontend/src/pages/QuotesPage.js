@@ -8,8 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Building2, FileText, Plus, Trash2, Eye, Download, Save, ImagePlus, Send, Pencil, Mail } from 'lucide-react';
+import { Badge } from '../components/ui/badge';
+import { Building2, FileText, Plus, Trash2, Eye, Download, Save, ImagePlus, Send, Pencil, Mail, Printer } from 'lucide-react';
 import { DecimalInput } from '../components/DecimalInput';
+import { downloadHtmlAsPdf } from '../lib/pdfExport';
 import { toast } from 'sonner';
 
 export default function QuotesPage() {
@@ -20,7 +22,9 @@ export default function QuotesPage() {
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
+  const [previewQuoteNumber, setPreviewQuoteNumber] = useState('');
   const [showPreview, setShowPreview] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(null);
   const [emailTo, setEmailTo] = useState('');
   const [editingQuote, setEditingQuote] = useState(null);
@@ -72,6 +76,7 @@ export default function QuotesPage() {
     try {
       const res = await generateQuotePdf(quoteForm);
       setPreviewHtml(res.html);
+      setPreviewQuoteNumber(res.quote_number || '');
       setShowPreview(true);
       toast.success(`Preventivo ${res.quote_number} generato`);
       setQuotes(await getQuotes());
@@ -84,6 +89,20 @@ export default function QuotesPage() {
     win.document.write(previewHtml);
     win.document.close();
     setTimeout(() => win.print(), 500);
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!previewHtml) return;
+    setDownloadingPdf(true);
+    try {
+      const filename = `Preventivo_${previewQuoteNumber || 'documento'}.pdf`;
+      await downloadHtmlAsPdf(previewHtml, filename);
+      toast.success('PDF scaricato');
+    } catch {
+      toast.error('Errore nel download del PDF');
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   const handleDeleteQuote = async (id) => {
@@ -339,11 +358,17 @@ export default function QuotesPage() {
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
+            <DialogTitle className="flex items-center justify-between flex-wrap gap-2">
               Anteprima Preventivo
-              <Button size="sm" onClick={handlePrint} data-testid="print-quote-btn">
-                <Download className="w-3.5 h-3.5 mr-1.5" /> Stampa / Salva PDF
-              </Button>
+              <div className="flex gap-2 flex-wrap">
+                <Button size="sm" variant="outline" onClick={handleDownloadPdf} disabled={downloadingPdf} data-testid="download-quote-pdf-btn">
+                  <Download className="w-3.5 h-3.5 mr-1.5" />
+                  {downloadingPdf ? 'Generazione...' : 'Scarica PDF'}
+                </Button>
+                <Button size="sm" onClick={handlePrint} data-testid="print-quote-btn">
+                  <Printer className="w-3.5 h-3.5 mr-1.5" /> Stampa
+                </Button>
+              </div>
             </DialogTitle>
           </DialogHeader>
           <div className="border rounded-md p-4 bg-white text-black" dangerouslySetInnerHTML={{ __html: previewHtml }} />
