@@ -25,10 +25,12 @@ import {
   Users, Mail, Send, Shield, ShieldCheck, Trash2, CheckCircle,
   XCircle, Newspaper, Copy, Settings2, Bug, Image, Calendar, Clock, Wrench, X, Globe, MessageSquare, Plus,
   ShoppingBag, Pencil, ImagePlus, Eye, EyeOff, Package, ExternalLink, UserCircle, Code,
-  Inbox, Phone, Palette, Ruler, Sparkles, FileText, BarChart3, TrendingUp, LineChart, Link2, MousePointerClick, Save
+  Inbox, Phone, Palette, Ruler, Sparkles, FileText, BarChart3, TrendingUp, LineChart, Link2, MousePointerClick, Save, Check, Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Switch } from '../components/ui/switch';
+import { Checkbox } from '../components/ui/checkbox';
+import { downloadHtmlAsPdf } from '../lib/pdfExport';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 
 function SiteSettingsTab() {
@@ -884,6 +886,19 @@ function ProductsTab() {
   const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
 
+  // Multi-selezione per esportazione Listino PDF
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [exportDialog, setExportDialog] = useState(false);
+  const [showPricesInPdf, setShowPricesInPdf] = useState(true);
+  const [exportTitle, setExportTitle] = useState('Listino Prodotti');
+  const [exporting, setExporting] = useState(false);
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+  const clearSelection = () => setSelectedIds([]);
+  const selectAll = () => setSelectedIds(products.map(p => p.id));
+
   useEffect(() => { load(); }, []);
 
   const load = async () => {
@@ -907,6 +922,84 @@ function ProductsTab() {
   // CSV string -> array (es. "Rosso, Blu, Verde" -> ["Rosso","Blu","Verde"])
   const parseCsv = (s) => (s || '').split(',').map(x => x.trim()).filter(Boolean);
   const formatCsv = (arr) => (arr || []).join(', ');
+
+  // Genera HTML listino PDF con prodotti selezionati raggruppati per categoria
+  const buildListinoHtml = () => {
+    const selected = products.filter(p => selectedIds.includes(p.id));
+    const grouped = {};
+    selected.forEach(p => {
+      const cat = p.category || 'Senza categoria';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(p);
+    });
+    const catNames = Object.keys(grouped).sort();
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    const rowsHtml = catNames.map(cat => {
+      const items = grouped[cat].map(p => {
+        const photo = p.photos?.[0] || p.photo || '';
+        const colors = (p.color_options || []).join(', ');
+        const sizes = (p.size_options || []).join(', ');
+        const desc = (p.description || '').slice(0, 200);
+        const priceCell = showPricesInPdf
+          ? `<td style="text-align:right;font-weight:700;font-size:12px;color:#f97316;white-space:nowrap;">€ ${parseFloat(p.price || 0).toFixed(2)}</td>`
+          : `<td style="text-align:right;font-style:italic;color:#666;font-size:10px;white-space:nowrap;">Su richiesta</td>`;
+        return `
+          <tr style="border-bottom:1px solid #e5e5e5;page-break-inside:avoid;">
+            <td style="width:70px;padding:8px 6px;vertical-align:top;">
+              ${photo
+                ? `<img src="${photo}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:4px;border:1px solid #e5e5e5;" />`
+                : `<div style="width:64px;height:64px;background:#f3f3f3;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:10px;">no foto</div>`}
+            </td>
+            <td style="padding:8px 10px;vertical-align:top;">
+              <div style="font-weight:700;font-size:13px;color:#222;margin-bottom:3px;">${p.name || ''}</div>
+              ${desc ? `<div style="font-size:10px;color:#666;line-height:1.35;margin-bottom:5px;">${desc}</div>` : ''}
+              <div style="font-size:9.5px;color:#444;">
+                ${colors ? `<div><strong>Colori:</strong> ${colors}</div>` : ''}
+                ${sizes ? `<div><strong>Dimensioni:</strong> ${sizes}</div>` : ''}
+              </div>
+            </td>
+            ${priceCell}
+          </tr>`;
+      }).join('');
+      return `
+        <div style="margin-top:14px;page-break-inside:avoid;">
+          <h2 style="font-size:14px;font-weight:700;color:#f97316;margin:0 0 6px 0;padding-bottom:4px;border-bottom:2px solid #f97316;text-transform:uppercase;letter-spacing:0.5px;">${cat}</h2>
+          <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
+            <tbody>${items}</tbody>
+          </table>
+        </div>`;
+    }).join('');
+
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${exportTitle}</title></head>
+      <body style="font-family:Arial,sans-serif;color:#222;margin:0;padding:20px;background:#fff;">
+        <div style="border-bottom:3px solid #f97316;padding-bottom:10px;margin-bottom:14px;">
+          <h1 style="font-size:22px;font-weight:800;color:#f97316;margin:0;">${exportTitle}</h1>
+          <div style="font-size:10px;color:#666;margin-top:4px;">Aggiornato al ${dateStr} · ${selected.length} prodotti${showPricesInPdf ? '' : ' · prezzi su richiesta'}</div>
+        </div>
+        ${rowsHtml || '<p style="text-align:center;color:#999;">Nessun prodotto selezionato.</p>'}
+        <div style="margin-top:24px;padding-top:10px;border-top:1px solid #e5e5e5;font-size:9px;color:#999;text-align:center;">
+          Artes&amp;Tramas 3D · Listino generato automaticamente · I prezzi possono variare in base a personalizzazioni e quantità
+        </div>
+      </body></html>`;
+  };
+
+  const handleExportListino = async () => {
+    if (selectedIds.length === 0) { toast.error('Seleziona almeno un prodotto'); return; }
+    setExporting(true);
+    try {
+      const html = buildListinoHtml();
+      const dateSlug = new Date().toISOString().slice(0, 10);
+      await downloadHtmlAsPdf(html, `Listino_${dateSlug}.pdf`);
+      toast.success('Listino PDF scaricato');
+      setExportDialog(false);
+    } catch {
+      toast.error('Errore nella generazione del listino');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const openNew = () => { setForm(initialForm); setEditing(null); setDialogOpen(true); };
   const openEdit = (p) => {
@@ -955,11 +1048,31 @@ function ProductsTab() {
     <div className="space-y-4">
       <Card className="border-border/40">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-base font-heading flex items-center gap-2">
               <ShoppingBag className="w-4 h-4" /> Prodotti Vetrina ({products.length})
+              {selectedIds.length > 0 && (
+                <Badge className="bg-primary/15 text-primary border-primary/30 ml-2" data-testid="selection-count-badge">
+                  {selectedIds.length} selezionati
+                </Badge>
+              )}
             </CardTitle>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              {selectedIds.length > 0 && (
+                <>
+                  <Button variant="ghost" size="sm" onClick={clearSelection} data-testid="clear-selection-btn">
+                    <X className="w-3.5 h-3.5 mr-1" />Deseleziona
+                  </Button>
+                  <Button variant="default" size="sm" onClick={() => setExportDialog(true)} data-testid="open-export-listino-btn">
+                    <FileText className="w-3.5 h-3.5 mr-1.5" />Esporta Listino PDF ({selectedIds.length})
+                  </Button>
+                </>
+              )}
+              {products.length > 0 && selectedIds.length === 0 && (
+                <Button variant="outline" size="sm" onClick={selectAll} data-testid="select-all-btn">
+                  <Check className="w-3.5 h-3.5 mr-1" />Seleziona tutti
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={() => {
                 const host = window.location.hostname;
                 const shopUrl = host.endsWith('artestramas3d.it') ? 'https://shop.artestramas3d.it' : '/listino';
@@ -1101,7 +1214,21 @@ function ProductsTab() {
                 const photo = p.photos?.[0] || p.photo;
                 const photoCount = p.photos?.length || (p.photo ? 1 : 0);
                 return (
-                  <Card key={p.id} className="border-border/40 overflow-hidden group" data-testid={`product-card-${p.id}`}>
+                  <Card
+                    key={p.id}
+                    className={`border-border/40 overflow-hidden group relative transition-all ${selectedIds.includes(p.id) ? 'ring-2 ring-primary shadow-md' : ''}`}
+                    data-testid={`product-card-${p.id}`}
+                  >
+                    <div
+                      className="absolute top-2 left-2 z-10 bg-background/95 backdrop-blur-sm rounded p-1 shadow-sm cursor-pointer hover:bg-primary/10 transition-colors"
+                      onClick={(e) => { e.stopPropagation(); toggleSelect(p.id); }}
+                      data-testid={`select-product-${p.id}`}
+                    >
+                      <Checkbox
+                        checked={selectedIds.includes(p.id)}
+                        className="h-4 w-4 pointer-events-none"
+                      />
+                    </div>
                     {photo ? (
                       <div className="aspect-square bg-muted/30 overflow-hidden relative">
                         <img src={photo} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -1141,6 +1268,74 @@ function ProductsTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog: Esporta Listino PDF */}
+      <Dialog open={exportDialog} onOpenChange={setExportDialog}>
+        <DialogContent className="max-w-lg" data-testid="export-listino-dialog">
+          <DialogHeader>
+            <DialogTitle className="font-heading flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" /> Esporta Listino PDF
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Genera un PDF con i {selectedIds.length} prodotti selezionati, raggruppati per categoria.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Titolo del listino</Label>
+              <Input
+                value={exportTitle}
+                onChange={(e) => setExportTitle(e.target.value)}
+                placeholder="Listino Prodotti"
+                className="h-9"
+                data-testid="listino-title-input"
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-border/40 bg-muted/20 px-3 py-2">
+              <div className="min-w-0">
+                <Label className="text-sm font-medium">Mostra prezzi nel PDF</Label>
+                <p className="text-[10px] text-muted-foreground">
+                  {showPricesInPdf
+                    ? 'I prezzi saranno visibili accanto ad ogni prodotto'
+                    : 'I prezzi saranno sostituiti da "Su richiesta"'}
+                </p>
+              </div>
+              <Switch
+                checked={showPricesInPdf}
+                onCheckedChange={setShowPricesInPdf}
+                data-testid="toggle-prices-listino"
+              />
+            </div>
+            <div className="rounded-md bg-muted/30 border border-border/40 p-3">
+              <p className="text-[11px] font-medium mb-1.5">Riepilogo categorie</p>
+              <div className="flex flex-wrap gap-1.5">
+                {Array.from(new Set(products.filter(p => selectedIds.includes(p.id)).map(p => p.category || 'Senza categoria'))).sort().map(cat => {
+                  const count = products.filter(p => selectedIds.includes(p.id) && (p.category || 'Senza categoria') === cat).length;
+                  return (
+                    <Badge key={cat} variant="outline" className="text-[10px]">
+                      {cat} · {count}
+                    </Badge>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
+              <Button variant="outline" size="sm" onClick={() => setExportDialog(false)} data-testid="cancel-export-btn">
+                Annulla
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleExportListino}
+                disabled={exporting || selectedIds.length === 0}
+                data-testid="confirm-export-listino-btn"
+              >
+                <Download className="w-3.5 h-3.5 mr-1.5" />
+                {exporting ? 'Generazione...' : 'Scarica PDF'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

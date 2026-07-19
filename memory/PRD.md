@@ -71,6 +71,13 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
 60. **Fix CSV Input Varianti + Title Tab Shop** (19/07/2026):
     - **Fix input varianti** (`AdminPanelPage` Gestione Vetrina): `parseCsv` faceva `filter(Boolean)` che rimuoveva stringhe vuote → digitando "Rosso," il valore diventava `["Rosso"]` → `formatCsv` produceva "Rosso" senza virgola → cursore ripristinava e impediva la digitazione. Fix: creato componente `CsvInput.js` con state locale raw (stringa), commit dell'array al parent solo su `onBlur`. Applicato a Colori/Materiali/Dimensioni.
     - **Fix title tab browser sul dominio shop**: aggiunto `document.title` dinamico basato su hostname in `PublicListinoPage` e `PublicProductDetailPage`: `shop.*` → "{brand} | Shop Stampa 3D", `listino.*` → "{brand} | Listino Prodotti", altro → "{brand} | Vetrina Prodotti". Nel PDP il title diventa "{nome prodotto} | {brand}" per SEO. Prima il tab mostrava sempre "Artes&Tramas | Calcolatore Stampa 3D" (dal `<title>` statico dell'index.html) anche sul dominio shop.
+61. **Esporta Listino PDF** (19/07/2026): Nella Gestione Vetrina admin ora può:
+    - Selezionare prodotti con **checkbox** in alto a sinistra di ogni card (card evidenziata con ring primary se selezionata)
+    - Pulsante **"Seleziona tutti"** quando nessuna selezione + **"Deseleziona"** quando c'è selezione
+    - **Badge "N selezionati"** nel titolo + Pulsante **"Esporta Listino PDF (N)"** contestuale
+    - Dialog export con: titolo custom, **toggle "Mostra prezzi nel PDF"** (globale, sostituisce con "Su richiesta"), riepilogo categorie con badge conteggio, pulsante "Scarica PDF"
+    - PDF ricco: header arancione con brand + data, prodotti raggruppati per categoria con divisore arancione, per ogni prodotto foto piccola (64x64) + nome bold + descrizione + colori + dimensioni + prezzo/su richiesta a destra, footer con nota
+    - Client-side via `downloadHtmlAsPdf` (usa iframe con background bianco forzato — riuso dello stesso pattern del preventivo)
 
 ## Note Importanti
 - SMTP REALE: smtps.aruba.it, preventivi e inquiry prodotti a info@artestramas3d.it
