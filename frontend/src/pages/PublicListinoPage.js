@@ -158,6 +158,19 @@ export default function PublicListinoPage() {
     getPublicListino().then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
+  // Aggiorna il <title> del browser in base al dominio (shop vs listino)
+  useEffect(() => {
+    const host = typeof window !== 'undefined' ? window.location.hostname : '';
+    const brand = data?.site?.brand_name || 'Artes&Tramas';
+    if (host.startsWith('shop.')) {
+      document.title = `${brand} | Shop Stampa 3D`;
+    } else if (host.startsWith('listino.')) {
+      document.title = `${brand} | Listino Prodotti`;
+    } else {
+      document.title = `${brand} | Vetrina Prodotti`;
+    }
+  }, [data]);
+
   const closeModal = () => setModal(null);
 
   useEffect(() => {

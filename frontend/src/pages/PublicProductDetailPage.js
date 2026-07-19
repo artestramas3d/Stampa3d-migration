@@ -187,6 +187,16 @@ export default function PublicProductDetailPage() {
   const brand = data?.brand_name || 'Artes&Tramas';
   const photos = product?.photos?.length ? product.photos : (product?.photo ? [product.photo] : []);
 
+  // Aggiorna il <title> del browser con il nome del prodotto (SEO + UX tab)
+  useEffect(() => {
+    if (product?.name) {
+      document.title = `${product.name} | ${brand}`;
+    } else {
+      const host = typeof window !== 'undefined' ? window.location.hostname : '';
+      document.title = host.startsWith('shop.') ? `${brand} | Shop Stampa 3D` : `${brand} | Prodotto`;
+    }
+  }, [product, brand]);
+
   const prevPhoto = useCallback(() => setPhotoIdx(i => (i - 1 + photos.length) % photos.length), [photos.length]);
   const nextPhoto = useCallback(() => setPhotoIdx(i => (i + 1) % photos.length), [photos.length]);
 

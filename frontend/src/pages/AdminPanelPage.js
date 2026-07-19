@@ -16,6 +16,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Textarea } from '../components/ui/textarea';
+import { CsvInput } from '../components/CsvInput';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
@@ -1016,15 +1017,15 @@ function ProductsTab() {
                       <div className="grid grid-cols-1 gap-2">
                         <div className="space-y-1">
                           <Label className="text-[10px] text-muted-foreground">Colori</Label>
-                          <Input value={formatCsv(form.color_options)} onChange={e => setForm({...form, color_options: parseCsv(e.target.value)})} placeholder="Rosso, Blu, Nero, Bianco..." className="h-9" data-testid="product-colors" />
+                          <CsvInput value={form.color_options} onChange={(arr) => setForm({...form, color_options: arr})} placeholder="Rosso, Blu, Nero, Bianco..." className="h-9" data-testid="product-colors" />
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[10px] text-muted-foreground">Materiali</Label>
-                          <Input value={formatCsv(form.material_options)} onChange={e => setForm({...form, material_options: parseCsv(e.target.value)})} placeholder="PLA, PETG, ABS, Resin..." className="h-9" data-testid="product-material-options" />
+                          <CsvInput value={form.material_options} onChange={(arr) => setForm({...form, material_options: arr})} placeholder="PLA, PETG, ABS, Resin..." className="h-9" data-testid="product-material-options" />
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[10px] text-muted-foreground">Dimensioni</Label>
-                          <Input value={formatCsv(form.size_options)} onChange={e => setForm({...form, size_options: parseCsv(e.target.value)})} placeholder="S, M, L, XL oppure 5cm, 10cm..." className="h-9" data-testid="product-sizes" />
+                          <CsvInput value={form.size_options} onChange={(arr) => setForm({...form, size_options: arr})} placeholder="S, M, L, XL oppure 5cm, 10cm..." className="h-9" data-testid="product-sizes" />
                         </div>
                       </div>
                       <p className="text-[10px] text-muted-foreground">Il cliente potra' scegliere una variante. Il prezzo finale sara' confermato via email.</p>
