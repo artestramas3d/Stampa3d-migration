@@ -31,6 +31,7 @@ import { toast } from 'sonner';
 import { Switch } from '../components/ui/switch';
 import { Checkbox } from '../components/ui/checkbox';
 import { downloadHtmlAsPdf } from '../lib/pdfExport';
+import { compressImageBase64 } from '../lib/imageCompress';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 
 function SiteSettingsTab() {
@@ -925,8 +926,26 @@ function ProductsTab() {
   const formatCsv = (arr) => (arr || []).join(', ');
 
   // Genera HTML listino PDF con prodotti selezionati raggruppati per categoria
-  const buildListinoHtml = () => {
+  const buildListinoHtml = async () => {
     const selected = products.filter(p => selectedIds.includes(p.id));
+
+    // Precomprimo tutte le foto in parallelo (main + extra) per non ripetere lavoro
+    // main: 512px @ q=0.8 · extra thumb: 128px @ q=0.7
+    const compressed = new Map(); // dataUrlOriginale -> dataUrlCompresso
+    const compressTasks = [];
+    selected.forEach(p => {
+      const all = (p.photos && p.photos.length) ? p.photos : (p.photo ? [p.photo] : []);
+      all.forEach((ph, idx) => {
+        if (!ph || compressed.has(ph)) return;
+        const opts = idx === 0 ? { maxWidth: 512, quality: 0.8 } : { maxWidth: 128, quality: 0.7 };
+        compressTasks.push(
+          compressImageBase64(ph, opts).then(out => compressed.set(ph, out))
+        );
+      });
+    });
+    await Promise.all(compressTasks);
+    const c = (ph) => compressed.get(ph) || ph;
+
     const grouped = {};
     selected.forEach(p => {
       const cat = p.category || 'Senza categoria';
@@ -940,8 +959,8 @@ function ProductsTab() {
     const rowsHtml = catNames.map(cat => {
       const items = grouped[cat].map(p => {
         const allPhotos = (p.photos && p.photos.length) ? p.photos : (p.photo ? [p.photo] : []);
-        const mainPhoto = allPhotos[0] || '';
-        const extraPhotos = showAllPhotosInPdf ? allPhotos.slice(1) : []; // dalla 2a in poi, solo se toggle attivo
+        const mainPhoto = allPhotos[0] ? c(allPhotos[0]) : '';
+        const extraPhotos = showAllPhotosInPdf ? allPhotos.slice(1).map(c) : []; // dalla 2a in poi, solo se toggle attivo
         const colors = (p.color_options || []).join(', ');
         const sizes = (p.size_options || []).join(', ');
         const desc = (p.description || '').slice(0, 200);
@@ -1000,7 +1019,7 @@ function ProductsTab() {
     if (selectedIds.length === 0) { toast.error('Seleziona almeno un prodotto'); return; }
     setExporting(true);
     try {
-      const html = buildListinoHtml();
+      const html = await buildListinoHtml();
       const dateSlug = new Date().toISOString().slice(0, 10);
       await downloadHtmlAsPdf(html, `Listino_${dateSlug}.pdf`);
       toast.success('Listino PDF scaricato');
