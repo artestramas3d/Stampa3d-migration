@@ -44,7 +44,10 @@ function ProductCard({ p, index, primary }) {
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-bold text-gray-800 text-lg group-hover:underline">{p.name}</h3>
           {p.show_price !== false ? (
-            <span className="text-xl font-bold shrink-0" style={{ color: primary }}>&euro;{parseFloat(p.price).toFixed(2)}</span>
+            <div className="text-right shrink-0">
+              {p.price_from && <div className="text-[10px] text-gray-500 italic leading-none">a partire da</div>}
+              <span className="text-xl font-bold" style={{ color: primary }}>&euro;{parseFloat(p.price).toFixed(2)}</span>
+            </div>
           ) : (
             <span className="text-[11px] font-semibold shrink-0 px-2 py-1 rounded-full text-right whitespace-nowrap" style={{ color: primary, background: `${primary}15` }} data-testid={`ask-price-${index}`}>Scrivici per il prezzo</span>
           )}
@@ -110,7 +113,10 @@ function InquiryForm({ isCustom, onClose, selectedProduct, primary, onSubmit }) 
                 )}
                 <div>
                   <p className="font-semibold text-sm text-gray-800">{selectedProduct.name}</p>
-                  <p className="font-bold text-sm" style={{ color: primary }}>&euro;{parseFloat(selectedProduct.price).toFixed(2)}</p>
+                  <p className="font-bold text-sm" style={{ color: primary }}>
+                    {selectedProduct.price_from && <span className="text-[10px] text-gray-500 italic font-normal mr-1">a partire da</span>}
+                    &euro;{parseFloat(selectedProduct.price).toFixed(2)}
+                  </p>
                 </div>
               </div>
             )}

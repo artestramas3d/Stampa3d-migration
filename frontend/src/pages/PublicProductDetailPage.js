@@ -280,8 +280,9 @@ export default function PublicProductDetailPage() {
             <div className="flex items-baseline gap-3">
               {product.show_price !== false ? (
                 <>
+                  {product.price_from && <p className="text-sm text-gray-500 italic">a partire da</p>}
                   <p className="text-3xl font-bold" style={{ color: primary }}>€{parseFloat(product.price).toFixed(2)}</p>
-                  <p className="text-xs text-gray-500">prezzo base · varianti su richiesta</p>
+                  <p className="text-xs text-gray-500">{product.price_from ? '· personalizzazione influisce sul prezzo finale' : 'prezzo base · varianti su richiesta'}</p>
                 </>
               ) : (
                 <div className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold" style={{ color: primary, background: `${primary}15` }} data-testid="ask-price-detail">

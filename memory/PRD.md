@@ -79,6 +79,13 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
     - PDF ricco: header arancione con brand + data, prodotti raggruppati per categoria con divisore arancione, per ogni prodotto foto principale + strip miniature (se abilitato) + nome bold + descrizione + colori + dimensioni + contatore "N foto disponibili" + prezzo/su richiesta a destra, footer con nota
     - **Compressione automatica delle immagini** via `lib/imageCompress.js`: foto principali ridimensionate a max 512px JPEG q=0.8, miniature a max 128px q=0.7, sfondo bianco per PNG con trasparenza. Deduplicazione delle foto ripetute e fallback all'originale se il compresso è più grande. Risparmio misurato: **93.8%** su PNG 800x800 (857KB → 53KB). Un listino con 20 prodotti × 5 foto passa da ~85MB a ~5MB.
     - Client-side via `downloadHtmlAsPdf` (usa iframe con background bianco forzato — riuso dello stesso pattern del preventivo)
+62. **Prezzo "a partire da"** (20/07/2026): Nuovo campo `price_from: bool` sul modello Product (backend + frontend). Nel form Admin nuovo toggle "Prezzo variabile ('a partire da')" mostrato solo se il prezzo è visibile, con anteprima dinamica del testo. Quando attivo:
+    - **Card admin Gestione Vetrina**: sopra il prezzo compare "a partire da" in corsivo
+    - **Vetrina pubblica** (`PublicListinoPage`): stessa presentazione
+    - **Pagina dettaglio prodotto** (`PublicProductDetailPage`): "a partire da" prima del prezzo grande + nota "personalizzazione influisce sul prezzo finale"
+    - **PDF listino**: micro-testo "a partire da" sopra il prezzo arancione
+    - **Modal richiesta ordine**: prefisso mostrato anche nel riepilogo
+    - Utile per prodotti personalizzabili (cake topper, lampade custom) dove il prezzo finale dipende da varianti e complessità.
 
 ## Note Importanti
 - SMTP REALE: smtps.aruba.it, preventivi e inquiry prodotti a info@artestramas3d.it

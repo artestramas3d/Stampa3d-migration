@@ -1923,6 +1923,7 @@ class ProductCreate(BaseModel):
     is_customizable: bool = False
     custom_field_label: str = ""  # es. "Nome da incidere", "Dedica"
     show_price: bool = True  # Se False, nel pubblico esce "Scrivici per sapere il prezzo"
+    price_from: bool = False  # Se True, il prezzo e' visualizzato come "a partire da X"
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
@@ -1940,6 +1941,7 @@ class ProductUpdate(BaseModel):
     is_customizable: Optional[bool] = None
     custom_field_label: Optional[str] = None
     show_price: Optional[bool] = None
+    price_from: Optional[bool] = None
 
 
 def _slugify(text: str) -> str:
@@ -1971,6 +1973,7 @@ def _serialize_product(doc: dict, include_long: bool = True) -> dict:
         "is_customizable": doc.get("is_customizable", False),
         "custom_field_label": doc.get("custom_field_label", ""),
         "show_price": doc.get("show_price", True),
+        "price_from": doc.get("price_from", False),
         "created_at": doc.get("created_at", ""),
     }
     if include_long:
@@ -2016,6 +2019,7 @@ async def create_product(product: ProductCreate, current_user: dict = Depends(ge
         "is_customizable": product.is_customizable,
         "custom_field_label": product.custom_field_label,
         "show_price": product.show_price,
+        "price_from": product.price_from,
         "views": 0,
         "created_at": datetime.now(timezone.utc).isoformat()
     }

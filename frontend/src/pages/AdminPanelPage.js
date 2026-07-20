@@ -880,7 +880,7 @@ function ContactRequestsTab() {
 
 function ProductsTab() {
   const [products, setProducts] = useState([]);
-  const initialForm = { name: '', description: '', description_long: '', price: '', category: '', materials: '', photos: [], is_public: true, color_options: [], material_options: [], size_options: [], is_customizable: false, custom_field_label: '', show_price: true };
+  const initialForm = { name: '', description: '', description_long: '', price: '', category: '', materials: '', photos: [], is_public: true, color_options: [], material_options: [], size_options: [], is_customizable: false, custom_field_label: '', show_price: true, price_from: false };
   const [form, setForm] = useState(initialForm);
   const [editing, setEditing] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -965,7 +965,12 @@ function ProductsTab() {
         const sizes = (p.size_options || []).join(', ');
         const desc = (p.description || '').slice(0, 200);
         const priceCell = showPricesInPdf
-          ? `<td style="text-align:right;font-weight:700;font-size:12px;color:#f97316;white-space:nowrap;vertical-align:top;padding:8px 6px;">€ ${parseFloat(p.price || 0).toFixed(2)}</td>`
+          ? (p.show_price === false
+              ? `<td style="text-align:right;font-style:italic;color:#666;font-size:10px;white-space:nowrap;vertical-align:top;padding:8px 6px;">Su richiesta</td>`
+              : `<td style="text-align:right;font-weight:700;font-size:12px;color:#f97316;white-space:nowrap;vertical-align:top;padding:8px 6px;">
+                   ${p.price_from ? `<div style="font-size:9px;font-weight:400;font-style:italic;color:#666;margin-bottom:2px;">a partire da</div>` : ''}
+                   € ${parseFloat(p.price || 0).toFixed(2)}
+                 </td>`)
           : `<td style="text-align:right;font-style:italic;color:#666;font-size:10px;white-space:nowrap;vertical-align:top;padding:8px 6px;">Su richiesta</td>`;
         const photoCell = mainPhoto
           ? `<img src="${mainPhoto}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:4px;border:1px solid #e5e5e5;display:block;" />`
@@ -1049,6 +1054,7 @@ function ProductsTab() {
       is_customizable: p.is_customizable || false,
       custom_field_label: p.custom_field_label || '',
       show_price: p.show_price !== false,
+      price_from: p.price_from || false,
     });
     setEditing(p.id);
     setDialogOpen(true);
@@ -1223,6 +1229,25 @@ function ProductsTab() {
                         <p className="text-[10px] text-muted-foreground">Se disattivato, sul prodotto apparira': "Scrivici per sapere il prezzo"</p>
                       </div>
                     </div>
+                    {form.show_price && (
+                      <div className="flex items-center gap-3 p-3 rounded-md bg-muted/30">
+                        <Switch
+                          checked={form.price_from}
+                          onCheckedChange={v => setForm({...form, price_from: v})}
+                          data-testid="product-price-from-toggle"
+                        />
+                        <div>
+                          <p className="text-sm font-medium">
+                            {form.price_from ? 'Prezzo variabile ("a partire da")' : 'Prezzo fisso'}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {form.price_from
+                              ? `Nella vetrina verra' mostrato "a partire da €${parseFloat(form.price || 0).toFixed(2)}"`
+                              : `Il prezzo verra' mostrato senza prefisso (utile per prodotti standard non personalizzabili)`}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                     <Button onClick={handleSave} disabled={saving} className="w-full" data-testid="save-product-btn">
                       {saving ? 'Salvataggio...' : editing ? 'Aggiorna' : 'Aggiungi'}
                     </Button>
@@ -1275,7 +1300,10 @@ function ProductsTab() {
                           <h3 className="font-medium text-sm truncate">{p.name}</h3>
                           {p.category && <Badge variant="outline" className="text-[10px] mt-1">{p.category}</Badge>}
                         </div>
-                        <p className="font-heading font-bold text-primary shrink-0">&euro;{parseFloat(p.price).toFixed(2)}</p>
+                        <div className="text-right shrink-0">
+                          {p.price_from && <div className="text-[9px] text-muted-foreground italic leading-none">a partire da</div>}
+                          <p className="font-heading font-bold text-primary">&euro;{parseFloat(p.price).toFixed(2)}</p>
+                        </div>
                       </div>
                       <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">
                         <Badge className={p.is_public ? 'bg-emerald-500/20 text-emerald-500 text-[10px]' : 'bg-muted text-muted-foreground text-[10px]'}>
