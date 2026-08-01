@@ -217,7 +217,7 @@ async def get_current_user(request: Request) -> dict:
         user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
         if not user:
             raise HTTPException(status_code=401, detail="Utente non trovato")
-        return {"id": str(user["_id"]), "email": user["email"], "name": user.get("name", ""), "is_admin": user.get("is_admin", False), "email_verified": user.get("email_verified", True)}
+        return {"id": str(user["_id"]), "email": user["email"], "name": user.get("name", ""), "is_admin": user.get("is_admin", False), "is_shop_owner": user.get("is_shop_owner", False), "email_verified": user.get("email_verified", True)}
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token scaduto")
     except jwt.InvalidTokenError:
@@ -409,7 +409,7 @@ async def login(user: UserLogin, response: Response):
     await db.users.update_one({"_id": db_user["_id"]}, {"$set": {"last_login": datetime.now(timezone.utc).isoformat()}})
     response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
-    return {"id": user_id, "email": email, "name": db_user.get("name", ""), "is_admin": db_user.get("is_admin", False), "email_verified": db_user.get("email_verified", True)}
+    return {"id": user_id, "email": email, "name": db_user.get("name", ""), "is_admin": db_user.get("is_admin", False), "is_shop_owner": db_user.get("is_shop_owner", False), "email_verified": db_user.get("email_verified", True)}
 
 @api_router.post("/auth/logout")
 async def logout(response: Response):
@@ -1286,6 +1286,12 @@ async def require_admin(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Accesso non autorizzato")
     return current_user
 
+# Shop owner guard: solo chi gestisce lo shop/vetrina (proprietario del negozio)
+async def require_shop_owner(current_user: dict = Depends(get_current_user)):
+    if not current_user.get("is_shop_owner"):
+        raise HTTPException(status_code=403, detail="Accesso riservato al proprietario dello shop")
+    return current_user
+
 # Profile endpoints
 class ProfileUpdate(BaseModel):
     name: Optional[str] = None
@@ -1529,6 +1535,7 @@ async def admin_get_users(current_user: dict = Depends(require_admin)):
             "email": doc.get("email", ""),
             "name": doc.get("name", ""),
             "is_admin": doc.get("is_admin", False),
+            "is_shop_owner": doc.get("is_shop_owner", False),
             "email_verified": doc.get("email_verified", False),
             "created_at": doc.get("created_at", ""),
             "last_login": doc.get("last_login", "")
