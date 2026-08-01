@@ -185,4 +185,10 @@ export const exportClientsCSV = () => `${API}/export/clients`;
 // Public site scripts (no auth)
 export const getPublicSiteScripts = () => api.get('/public/site-scripts').then(r => r.data);
 
+// Shop Settings
+export const getPublicShopSettings = () => api.get('/public/shop-settings').then(r => r.data);
+export const getAdminShopSettings = () => api.get('/admin/shop-settings').then(r => r.data);
+export const updateShopSettings = (data) => api.put('/admin/shop-settings', data).then(r => r.data);
+export const toggleShopOwner = (userId) => api.post(`/admin/toggle-shop-owner/${userId}`).then(r => r.data);
+
 export default api;

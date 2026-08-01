@@ -9,7 +9,8 @@ import {
   getAdminUserProfile,
   getAdminInquiries, updateAdminInquiry, deleteAdminInquiry, getAdminProductStats,
   getAdminPageStats,
-  getAdminAffiliateLinks, createAffiliateLink, updateAffiliateLink, deleteAffiliateLink, getAdminAffiliateStats
+  getAdminAffiliateLinks, createAffiliateLink, updateAffiliateLink, deleteAffiliateLink, getAdminAffiliateStats,
+  getAdminShopSettings, updateShopSettings
 } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -25,11 +26,12 @@ import {
   Users, Mail, Send, Shield, ShieldCheck, Trash2, CheckCircle,
   XCircle, Newspaper, Copy, Settings2, Bug, Image, Calendar, Clock, Wrench, X, Globe, MessageSquare, Plus,
   ShoppingBag, Pencil, ImagePlus, Eye, EyeOff, Package, ExternalLink, UserCircle, Code,
-  Inbox, Phone, Palette, Ruler, Sparkles, FileText, BarChart3, TrendingUp, LineChart, Link2, MousePointerClick, Save, Check, Download
+  Inbox, Phone, Palette, Ruler, Sparkles, FileText, BarChart3, TrendingUp, LineChart, Link2, MousePointerClick, Save, Check, Download, Building2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Switch } from '../components/ui/switch';
 import { Checkbox } from '../components/ui/checkbox';
+import { useAuth } from '../context/AuthContext';
 import { downloadHtmlAsPdf } from '../lib/pdfExport';
 import { compressImageBase64 } from '../lib/imageCompress';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
@@ -1871,6 +1873,174 @@ const PLACEMENT_LABELS = {
   dashboard: 'Dashboard utente (home dopo login)',
 };
 
+function ShopSettingsTab() {
+  const [data, setData] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getAdminShopSettings()
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => { toast.error('Errore caricamento impostazioni'); setLoading(false); });
+  }, []);
+
+  const set = (k, v) => setData(prev => ({ ...prev, [k]: v }));
+
+  const handleSave = async () => {
+    if (!data) return;
+    setSaving(true);
+    try {
+      await updateShopSettings(data);
+      toast.success('Impostazioni salvate');
+    } catch {
+      toast.error('Errore salvataggio');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading || !data) {
+    return <div className="p-6 text-center text-sm text-muted-foreground">Caricamento...</div>;
+  }
+
+  return (
+    <div className="space-y-4" data-testid="shop-settings-tab">
+      <Card className="border-border/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-heading flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" /> Hero &amp; Landing Shop
+          </CardTitle>
+          <p className="text-[10px] text-muted-foreground">Prima cosa che i visitatori vedono su shop.artestramas3d.it</p>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1 sm:col-span-2">
+            <Label className="text-xs">Titolo hero</Label>
+            <Input value={data.hero_title || ''} onChange={e => set('hero_title', e.target.value)} className="h-9" data-testid="ss-hero-title" />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <Label className="text-xs">Sottotitolo hero</Label>
+            <Textarea value={data.hero_subtitle || ''} onChange={e => set('hero_subtitle', e.target.value)} rows={2} className="text-sm" data-testid="ss-hero-subtitle" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Etichetta pulsante CTA</Label>
+            <Input value={data.hero_cta_label || ''} onChange={e => set('hero_cta_label', e.target.value)} placeholder="Scopri i prodotti" className="h-9" data-testid="ss-hero-cta" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">URL immagine hero (opzionale)</Label>
+            <Input value={data.hero_image_url || ''} onChange={e => set('hero_image_url', e.target.value)} placeholder="https://..." className="h-9" data-testid="ss-hero-image" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-heading flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-primary" /> Info azienda
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Nome azienda</Label>
+            <Input value={data.company_name || ''} onChange={e => set('company_name', e.target.value)} className="h-9" data-testid="ss-company-name" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Partita IVA</Label>
+            <Input value={data.vat_number || ''} onChange={e => set('vat_number', e.target.value)} className="h-9" data-testid="ss-vat" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Email pubblica</Label>
+            <Input type="email" value={data.email || ''} onChange={e => set('email', e.target.value)} className="h-9" data-testid="ss-email" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Telefono</Label>
+            <Input value={data.phone || ''} onChange={e => set('phone', e.target.value)} className="h-9" data-testid="ss-phone" />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <Label className="text-xs">Indirizzo</Label>
+            <Input value={data.address || ''} onChange={e => set('address', e.target.value)} className="h-9" data-testid="ss-address" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-heading">Social &amp; Contatti</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Instagram (URL o @username)</Label>
+            <Input value={data.social_instagram || ''} onChange={e => set('social_instagram', e.target.value)} className="h-9" data-testid="ss-instagram" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Facebook</Label>
+            <Input value={data.social_facebook || ''} onChange={e => set('social_facebook', e.target.value)} className="h-9" data-testid="ss-facebook" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">TikTok</Label>
+            <Input value={data.social_tiktok || ''} onChange={e => set('social_tiktok', e.target.value)} className="h-9" data-testid="ss-tiktok" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">WhatsApp (numero con prefisso, es. +39...)</Label>
+            <Input value={data.social_whatsapp || ''} onChange={e => set('social_whatsapp', e.target.value)} className="h-9" data-testid="ss-whatsapp" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-heading">Testi &amp; policy</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs">About / Chi siamo</Label>
+            <Textarea value={data.about_text || ''} onChange={e => set('about_text', e.target.value)} rows={3} className="text-sm" data-testid="ss-about" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Informazioni spedizioni</Label>
+            <Textarea value={data.shipping_info || ''} onChange={e => set('shipping_info', e.target.value)} rows={2} className="text-sm" data-testid="ss-shipping" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Politica di reso</Label>
+            <Textarea value={data.returns_info || ''} onChange={e => set('returns_info', e.target.value)} rows={2} className="text-sm" data-testid="ss-returns" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">URL termini &amp; condizioni</Label>
+              <Input value={data.terms_url || ''} onChange={e => set('terms_url', e.target.value)} className="h-9" data-testid="ss-terms-url" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">URL privacy policy</Label>
+              <Input value={data.privacy_url || ''} onChange={e => set('privacy_url', e.target.value)} className="h-9" data-testid="ss-privacy-url" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-heading">Categorie in evidenza (home shop)</CardTitle>
+          <p className="text-[10px] text-muted-foreground">Separa con virgola. Appariranno nella grid categorie della home.</p>
+        </CardHeader>
+        <CardContent>
+          <CsvInput
+            value={data.featured_categories || []}
+            onChange={(arr) => set('featured_categories', arr)}
+            placeholder="Cake Topper, Portachiavi, Lampade LED, Idee Regalo, Personalizzati"
+            className="h-9"
+            data-testid="ss-featured-categories"
+          />
+        </CardContent>
+      </Card>
+
+      <div className="sticky bottom-2 flex justify-end">
+        <Button onClick={handleSave} disabled={saving} size="lg" data-testid="shop-settings-save-btn">
+          <Save className="w-4 h-4 mr-2" /> {saving ? 'Salvataggio...' : 'Salva Impostazioni'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function AffiliateStatsCard() {
   const [stats, setStats] = useState(null);
   const [days, setDays] = useState(7);
@@ -2174,6 +2344,8 @@ function AffiliateLinksTab() {
 }
 
 export default function AdminPanelPage() {
+  const { user } = useAuth();
+  const isShopOwner = !!user?.is_shop_owner;
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState(null);
   const [emailLogs, setEmailLogs] = useState([]);
@@ -2342,9 +2514,16 @@ export default function AdminPanelPage() {
           <TabsTrigger value="users" data-testid="tab-users">
             <Users className="w-4 h-4 mr-1.5 hidden sm:inline" />Utenti
           </TabsTrigger>
-          <TabsTrigger value="vetrina" data-testid="tab-vetrina">
-            <ShoppingBag className="w-4 h-4 mr-1.5 hidden sm:inline" />Gestione Vetrina
-          </TabsTrigger>
+          {isShopOwner && (
+            <TabsTrigger value="vetrina" data-testid="tab-vetrina">
+              <ShoppingBag className="w-4 h-4 mr-1.5 hidden sm:inline" />Gestione Vetrina
+            </TabsTrigger>
+          )}
+          {isShopOwner && (
+            <TabsTrigger value="shop-settings" data-testid="tab-shop-settings">
+              <Settings2 className="w-4 h-4 mr-1.5 hidden sm:inline" />Impostazioni Shop
+            </TabsTrigger>
+          )}
           <TabsTrigger value="newsletter" data-testid="tab-newsletter">
             <Newspaper className="w-4 h-4 mr-1.5 hidden sm:inline" />Newsletter
           </TabsTrigger>
@@ -2563,6 +2742,10 @@ export default function AdminPanelPage() {
         {/* Vetrina Tab (solo Prodotti) */}
         <TabsContent value="vetrina">
           <ProductsTab />
+        </TabsContent>
+
+        <TabsContent value="shop-settings">
+          <ShopSettingsTab />
         </TabsContent>
 
         {/* Newsletter Tab */}

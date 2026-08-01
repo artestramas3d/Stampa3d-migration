@@ -1559,6 +1559,18 @@ async def admin_toggle_admin(user_id: str, current_user: dict = Depends(require_
     await db.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"is_admin": new_admin}})
     return {"message": f"Admin {'attivato' if new_admin else 'disattivato'}", "is_admin": new_admin}
 
+
+@api_router.post("/admin/toggle-shop-owner/{user_id}")
+async def admin_toggle_shop_owner(user_id: str, current_user: dict = Depends(require_admin)):
+    """Attiva/disattiva flag proprietario shop. Solo un altro shop_owner puo' promuovere.
+    In prima implementazione permettiamo a qualsiasi admin di promuovere."""
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+    new_val = not user.get("is_shop_owner", False)
+    await db.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"is_shop_owner": new_val}})
+    return {"message": f"Shop owner {'attivato' if new_val else 'disattivato'}", "is_shop_owner": new_val}
+
 @api_router.delete("/admin/users/{user_id}")
 async def admin_delete_user(user_id: str, current_user: dict = Depends(require_admin)):
     if user_id == current_user["id"]:
@@ -1999,7 +2011,7 @@ async def get_products(current_user: dict = Depends(get_current_user)):
     return result
 
 @api_router.post("/products")
-async def create_product(product: ProductCreate, current_user: dict = Depends(get_current_user)):
+async def create_product(product: ProductCreate, current_user: dict = Depends(require_shop_owner)):
     photos = product.photos if product.photos else ([product.photo] if product.photo else [])
     slug = _slugify(product.name)
     # Unicita' slug
@@ -2035,7 +2047,7 @@ async def create_product(product: ProductCreate, current_user: dict = Depends(ge
     return _serialize_product(doc)
 
 @api_router.put("/products/{product_id}")
-async def update_product(product_id: str, product: ProductUpdate, current_user: dict = Depends(get_current_user)):
+async def update_product(product_id: str, product: ProductUpdate, current_user: dict = Depends(require_shop_owner)):
     update_data = {k: v for k, v in product.model_dump().items() if v is not None}
     # Se cambia il nome, rigenera lo slug
     if "name" in update_data:
@@ -2051,7 +2063,7 @@ async def update_product(product_id: str, product: ProductUpdate, current_user: 
     return {"message": "Prodotto aggiornato"}
 
 @api_router.delete("/products/{product_id}")
-async def delete_product(product_id: str, current_user: dict = Depends(get_current_user)):
+async def delete_product(product_id: str, current_user: dict = Depends(require_shop_owner)):
     q = {"_id": ObjectId(product_id)}
     if not current_user.get("is_admin"):
         q["user_id"] = current_user["id"]
@@ -3314,6 +3326,83 @@ async def delete_quote(quote_id: str, current_user: dict = Depends(get_current_u
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Preventivo non trovato")
     return {"message": "Preventivo eliminato"}
+
+
+# ========== SHOP SETTINGS (impostazioni globali del negozio) ==========
+class ShopSettingsModel(BaseModel):
+    # Hero
+    hero_title: Optional[str] = None
+    hero_subtitle: Optional[str] = None
+    hero_image_url: Optional[str] = None
+    hero_cta_label: Optional[str] = None
+    # Info aziendali
+    company_name: Optional[str] = None
+    vat_number: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    # Social
+    social_instagram: Optional[str] = None
+    social_facebook: Optional[str] = None
+    social_tiktok: Optional[str] = None
+    social_whatsapp: Optional[str] = None
+    # Testi editabili
+    about_text: Optional[str] = None
+    shipping_info: Optional[str] = None
+    returns_info: Optional[str] = None
+    terms_url: Optional[str] = None
+    privacy_url: Optional[str] = None
+    # Featured
+    featured_categories: Optional[List[str]] = None
+
+
+SHOP_SETTINGS_DEFAULTS = {
+    "hero_title": "Idee 3D fatte a mano per te",
+    "hero_subtitle": "Cake topper, portachiavi, lampade e regali personalizzati stampati in 3D con cura artigianale.",
+    "hero_image_url": "",
+    "hero_cta_label": "Scopri i prodotti",
+    "company_name": "Artes&Tramas 3D",
+    "vat_number": "",
+    "email": "info@artestramas3d.it",
+    "phone": "",
+    "address": "",
+    "social_instagram": "",
+    "social_facebook": "",
+    "social_tiktok": "",
+    "social_whatsapp": "",
+    "about_text": "Siamo un piccolo laboratorio artigianale specializzato in stampa 3D personalizzata. Ogni pezzo e' curato nei dettagli e realizzato con materiali di qualita'.",
+    "shipping_info": "Spediamo in tutta Italia in 3-5 giorni lavorativi. Spedizione gratuita sopra i 50 €.",
+    "returns_info": "Prodotti personalizzati non rimborsabili salvo difetto di fabbricazione.",
+    "terms_url": "",
+    "privacy_url": "",
+    "featured_categories": ["Cake Topper", "Portachiavi", "Lampade LED", "Idee Regalo", "Personalizzati"],
+}
+
+
+@api_router.get("/public/shop-settings")
+async def public_shop_settings():
+    """Impostazioni pubbliche del negozio (senza dati sensibili). Usato dallo Shop pubblico."""
+    doc = await db.shop_settings.find_one({"_id": "singleton"}) or {}
+    out = {**SHOP_SETTINGS_DEFAULTS, **{k: v for k, v in doc.items() if k != "_id"}}
+    return out
+
+
+@api_router.get("/admin/shop-settings")
+async def admin_get_shop_settings(current_user: dict = Depends(require_shop_owner)):
+    doc = await db.shop_settings.find_one({"_id": "singleton"}) or {}
+    return {**SHOP_SETTINGS_DEFAULTS, **{k: v for k, v in doc.items() if k != "_id"}}
+
+
+@api_router.put("/admin/shop-settings")
+async def admin_update_shop_settings(settings: ShopSettingsModel, current_user: dict = Depends(require_shop_owner)):
+    update = {k: v for k, v in settings.model_dump().items() if v is not None}
+    await db.shop_settings.update_one(
+        {"_id": "singleton"},
+        {"$set": update},
+        upsert=True
+    )
+    doc = await db.shop_settings.find_one({"_id": "singleton"}) or {}
+    return {**SHOP_SETTINGS_DEFAULTS, **{k: v for k, v in doc.items() if k != "_id"}}
 
 @api_router.put("/quotes/{quote_id}")
 async def update_quote(quote_id: str, quote: QuoteCreate, current_user: dict = Depends(get_current_user)):

@@ -86,6 +86,12 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
     - **PDF listino**: micro-testo "a partire da" sopra il prezzo arancione
     - **Modal richiesta ordine**: prefisso mostrato anche nel riepilogo
     - Utile per prodotti personalizzabili (cake topper, lampade custom) dove il prezzo finale dipende da varianti e complessità.
+63. **Fase 1 Separazione Shop** (01/08/2026): Iniziata separazione tra SaaS calcolatore (multi-tenant) e Shop e-commerce (single-owner Federico):
+    - **Backend**: nuovo campo `is_shop_owner: bool` sul modello User + dependency `require_shop_owner` + esposizione in `get_current_user`/`login`/`register`/`admin/users`. Endpoint `POST /api/products`, `PUT /api/products/{id}`, `DELETE /api/products/{id}` protetti da `require_shop_owner` (invece di `get_current_user`/`require_admin`). Nuovo endpoint `POST /api/admin/toggle-shop-owner/{user_id}` per gestire il flag. Nuovo modello **ShopSettings** (collection `shop_settings`, `_id: "singleton"`) con hero/company/social/policies/featured_categories + 3 endpoint: `GET /api/public/shop-settings` (no auth), `GET /api/admin/shop-settings` (shop_owner), `PUT /api/admin/shop-settings` (shop_owner).
+    - **Utenti**: creato `artestramas3d@gmail.com` come admin + shop_owner + email_verified. Aggiornato `/app/memory/test_credentials.md`.
+    - **Frontend**: `AdminPanelPage` usa `useAuth().user.is_shop_owner` per mostrare/nascondere i tab **"Gestione Vetrina"** e nuovo tab **"Impostazioni Shop"**. Nuovo componente `ShopSettingsTab` con 5 card editabili (Hero, Info azienda, Social, Testi & policy, Categorie in evidenza) + pulsante Save sticky. `testuser` (admin ma non shop_owner) ora NON vede i tab shop ✓ verificato con screenshot.
+    - **API frontend**: `getAdminShopSettings`, `updateShopSettings`, `getPublicShopSettings`, `toggleShopOwner` aggiunte a `lib/api.js`.
+    - Prossime fasi: FASE 2 (HomeShopPage + ShopLayout con branding dedicato), FASE 3 (SEO/OpenGraph), FASE 4 (sicurezza `/admin` nascosto).
 
 ## Note Importanti
 - SMTP REALE: smtps.aruba.it, preventivi e inquiry prodotti a info@artestramas3d.it
