@@ -120,6 +120,11 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
     - **Noindex globale su Layout SaaS**: aggiunto `<SeoHead noindex>` dentro `Layout.js` → tutte le pagine dietro autenticazione (dashboard, calculator, filaments, sales, settings, admin) hanno automaticamente `robots="noindex, nofollow"`. Google non le indicizzerà mai anche in caso di link accidentali.
     - `/login` accessibile sul dominio shop ma non linkato pubblicamente (solo per l'accesso privato del proprietario).
     - Testato con Playwright: `/calculator?__shop=1` → 404 shop ✓, `/admin?__shop=1` senza auth → 404 shop (no leak) ✓, meta robots corretto ✓.
+67. **Editor Visuale In-Place per HomeShopPage** (02/08/2026):
+    - Nuovo componente `/components/InlineEditor.jsx` con: `useShopEditor` hook, `EditableField` wrapper (ring arancione + pulsante "Modifica" al hover), `EditModal` (portale React con supporto text/textarea/image + upload compressione client-side + fallback URL), `EditorToolbar` (pill flottante bottom-right "Modifica sito"/"Editor ON").
+    - **Visibile solo per `is_shop_owner`**. Editabili direttamente dalla home: titolo hero, sottotitolo, CTA label, immagine hero, immagini categorie (mappate su `settings.category_images`), testo "Chi siamo".
+    - `HomeShopPage.js` usa `getAdminShopSettings()` se owner (per avere anche campi privati) e chiama `updateShopSettings` on save. Toast "Modifiche salvate" via sonner.
+    - Test manuale Playwright: login → home → clic "Modifica sito" → hover H1 → clic "Modifica" → modal precompilato → salva → h1 aggiornato ✓, modal categoria "Cake Topper" apre correttamente ✓.
 
 ## Note Importanti
 - SMTP REALE: smtps.aruba.it, preventivi e inquiry prodotti a info@artestramas3d.it

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getPublicListino, getPublicShopSettings } from '../lib/api';
+import { getPublicListino, getPublicShopSettings, getAdminShopSettings } from '../lib/api';
 import { ShoppingBag, ArrowRight, Sparkles, Package, Instagram, Facebook, Mail, Phone, MapPin, MessageCircle, Truck, RefreshCw, Star } from 'lucide-react';
 import { SeoHead } from '../components/SeoHead';
+import { useAuth } from '../context/AuthContext';
+import { EditableField, EditModal, EditorToolbar, useShopEditor } from '../components/InlineEditor';
 
 /**
  * Home dedicata dello Shop (shop.artestramas3d.it/).
@@ -10,14 +12,20 @@ import { SeoHead } from '../components/SeoHead';
  * "come funziona", about, footer editabile.
  */
 export default function HomeShopPage() {
+  const { user } = useAuth();
   const [settings, setSettings] = useState(null);
   const [products, setProducts] = useState([]);
   const [primary, setPrimary] = useState('#f97316');
   const [brand, setBrand] = useState('Artes&Tramas');
   const [loading, setLoading] = useState(true);
+  const [editField, setEditField] = useState(null); // { key, label, type, value, transform? }
+
+  const { isOwner, editMode, setEditMode, saving, save } = useShopEditor({ user, settings, setSettings });
 
   useEffect(() => {
-    Promise.all([getPublicShopSettings(), getPublicListino()])
+    // Se sono owner, uso il fetch admin per avere anche i campi non pubblicati
+    const fetchSettings = user?.is_shop_owner ? getAdminShopSettings() : getPublicShopSettings();
+    Promise.all([fetchSettings, getPublicListino()])
       .then(([s, l]) => {
         setSettings(s);
         setProducts(l?.products || []);
@@ -26,7 +34,7 @@ export default function HomeShopPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [user?.is_shop_owner]);
 
   if (loading) {
     return <div className="min-h-screen bg-white flex items-center justify-center text-gray-500">Caricamento...</div>;
@@ -121,21 +129,41 @@ export default function HomeShopPage() {
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider" style={{ color: primary, background: `${primary}15` }}>
             <Sparkles className="w-3 h-3" /> Stampa 3D artigianale
           </span>
-          <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight text-gray-900">
-            {settings?.hero_title || 'Idee 3D fatte a mano per te'}
-          </h1>
-          <p className="text-base sm:text-lg text-gray-600 leading-relaxed">
-            {settings?.hero_subtitle}
-          </p>
+          <EditableField
+            active={editMode}
+            label="titolo hero"
+            onEdit={() => setEditField({ key: 'hero_title', label: 'Titolo hero', type: 'text', value: settings?.hero_title || '' })}
+          >
+            <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight text-gray-900">
+              {settings?.hero_title || 'Idee 3D fatte a mano per te'}
+            </h1>
+          </EditableField>
+          <EditableField
+            active={editMode}
+            label="sottotitolo hero"
+            onEdit={() => setEditField({ key: 'hero_subtitle', label: 'Sottotitolo hero', type: 'textarea', value: settings?.hero_subtitle || '' })}
+          >
+            <p className="text-base sm:text-lg text-gray-600 leading-relaxed min-h-[1.5em]">
+              {settings?.hero_subtitle || <span className="text-gray-300 italic">(nessun sottotitolo)</span>}
+            </p>
+          </EditableField>
           <div className="flex flex-wrap gap-3 pt-2">
-            <Link
-              to="/listino"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-white shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
-              style={{ background: primary }}
-              data-testid="shop-hero-cta"
+            <EditableField
+              active={editMode}
+              label="etichetta pulsante"
+              onEdit={() => setEditField({ key: 'hero_cta_label', label: 'Etichetta pulsante', type: 'text', value: settings?.hero_cta_label || '' })}
+              position="top-right"
             >
-              {settings?.hero_cta_label || 'Scopri i prodotti'} <ArrowRight className="w-4 h-4" />
-            </Link>
+              <Link
+                to="/listino"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-white shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
+                style={{ background: primary }}
+                data-testid="shop-hero-cta"
+                onClick={(e) => { if (editMode) e.preventDefault(); }}
+              >
+                {settings?.hero_cta_label || 'Scopri i prodotti'} <ArrowRight className="w-4 h-4" />
+              </Link>
+            </EditableField>
             <a
               href="#categorie"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold border-2 hover:bg-gray-50 transition-colors"
@@ -145,7 +173,12 @@ export default function HomeShopPage() {
             </a>
           </div>
         </div>
-        <div className="relative">
+        <EditableField
+          active={editMode}
+          label="immagine hero"
+          onEdit={() => setEditField({ key: 'hero_image_url', label: 'Immagine hero', type: 'image', value: settings?.hero_image_url || '' })}
+          className="relative"
+        >
           {settings?.hero_image_url ? (
             <img src={settings.hero_image_url} alt="" className="w-full aspect-square rounded-2xl object-cover shadow-xl" />
           ) : (
@@ -153,7 +186,7 @@ export default function HomeShopPage() {
               <Package className="w-32 h-32" style={{ color: primary, opacity: 0.4 }} />
             </div>
           )}
-        </div>
+        </EditableField>
       </section>
 
       {/* Categorie */}
@@ -168,29 +201,43 @@ export default function HomeShopPage() {
               const count = categoryCounts[cat] || 0;
               const catImg = (settings?.category_images || {})[cat];
               return (
-                <Link
+                <EditableField
                   key={cat}
-                  to={`/listino?cat=${encodeURIComponent(cat)}`}
-                  className="group relative aspect-square rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all hover:-translate-y-1"
-                  style={catImg ? {} : { background: `linear-gradient(135deg, ${primary}30, ${primary}08)` }}
-                  data-testid={`cat-${cat.toLowerCase().replace(/\s+/g, '-')}`}
+                  active={editMode}
+                  label={`immagine ${cat}`}
+                  position="top-left"
+                  onEdit={() => setEditField({
+                    key: '__category_image__',
+                    catName: cat,
+                    label: `Immagine categoria "${cat}"`,
+                    type: 'image',
+                    value: catImg || '',
+                  })}
                 >
-                  {catImg && (
-                    <>
-                      <img src={catImg} alt={cat} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                      <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.15) 60%, transparent 100%)' }} />
-                    </>
-                  )}
-                  <div className={`absolute inset-0 flex flex-col p-4 text-center ${catImg ? 'items-start justify-end' : 'items-center justify-center'}`}>
-                    {!catImg && <Package className="w-8 h-8 mb-2" style={{ color: primary }} />}
-                    <div className={`font-bold ${catImg ? 'text-white text-left drop-shadow-md text-base' : 'text-gray-800 text-sm'}`}>{cat}</div>
-                    {count > 0 && (
-                      <div className={`text-[11px] mt-0.5 ${catImg ? 'text-gray-100' : 'text-gray-500'}`}>
-                        {count} prodott{count === 1 ? 'o' : 'i'}
-                      </div>
+                  <Link
+                    to={`/listino?cat=${encodeURIComponent(cat)}`}
+                    className="group relative aspect-square rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 block"
+                    style={catImg ? {} : { background: `linear-gradient(135deg, ${primary}30, ${primary}08)` }}
+                    data-testid={`cat-${cat.toLowerCase().replace(/\s+/g, '-')}`}
+                    onClick={(e) => { if (editMode) e.preventDefault(); }}
+                  >
+                    {catImg && (
+                      <>
+                        <img src={catImg} alt={cat} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                        <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.15) 60%, transparent 100%)' }} />
+                      </>
                     )}
-                  </div>
-                </Link>
+                    <div className={`absolute inset-0 flex flex-col p-4 text-center ${catImg ? 'items-start justify-end' : 'items-center justify-center'}`}>
+                      {!catImg && <Package className="w-8 h-8 mb-2" style={{ color: primary }} />}
+                      <div className={`font-bold ${catImg ? 'text-white text-left drop-shadow-md text-base' : 'text-gray-800 text-sm'}`}>{cat}</div>
+                      {count > 0 && (
+                        <div className={`text-[11px] mt-0.5 ${catImg ? 'text-gray-100' : 'text-gray-500'}`}>
+                          {count} prodott{count === 1 ? 'o' : 'i'}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                </EditableField>
               );
             })}
           </div>
@@ -203,7 +250,7 @@ export default function HomeShopPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-3xl font-bold text-gray-900">In evidenza</h2>
-              <p className="text-sm text-gray-500 mt-1">I prodotti piu' amati dai nostri clienti</p>
+              <p className="text-sm text-gray-500 mt-1">I prodotti piu&apos; amati dai nostri clienti</p>
             </div>
             <Link to="/listino" className="text-sm font-semibold hover:underline" style={{ color: primary }}>
               Vedi tutti <ArrowRight className="inline w-3.5 h-3.5" />
@@ -269,12 +316,21 @@ export default function HomeShopPage() {
       </section>
 
       {/* About */}
-      {settings?.about_text && (
+      {(settings?.about_text || editMode) && (
         <section id="about" className="max-w-4xl mx-auto px-4 py-12 text-center">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider mb-4" style={{ color: primary, background: `${primary}15` }}>
             <Star className="w-3 h-3" /> Chi siamo
           </div>
-          <p className="text-lg text-gray-700 leading-relaxed">{settings.about_text}</p>
+          <EditableField
+            active={editMode}
+            label="chi siamo"
+            position="top-right"
+            onEdit={() => setEditField({ key: 'about_text', label: 'Testo "Chi siamo"', type: 'textarea', value: settings?.about_text || '' })}
+          >
+            <p className="text-lg text-gray-700 leading-relaxed min-h-[1.5em]">
+              {settings?.about_text || <span className="text-gray-300 italic">(nessun testo &mdash; clicca &quot;Modifica&quot;)</span>}
+            </p>
+          </EditableField>
         </section>
       )}
 
@@ -361,6 +417,31 @@ export default function HomeShopPage() {
           © {new Date().getFullYear()} {settings?.company_name || brand}. Tutti i diritti riservati.
         </div>
       </footer>
+
+      <EditorToolbar isOwner={isOwner} editMode={editMode} setEditMode={setEditMode} saving={saving} />
+      <EditModal
+        key={editField ? (editField.key + (editField.catName || '')) : 'closed'}
+        open={!!editField}
+        onClose={() => setEditField(null)}
+        label={editField?.label || ''}
+        type={editField?.type || 'text'}
+        value={editField?.value ?? ''}
+        saving={saving}
+        onSave={async (newVal) => {
+          if (!editField) return;
+          try {
+            if (editField.key === '__category_image__') {
+              const newMap = { ...(settings?.category_images || {}) };
+              if (newVal) newMap[editField.catName] = newVal;
+              else delete newMap[editField.catName];
+              await save({ category_images: newMap });
+            } else {
+              await save({ [editField.key]: newVal });
+            }
+            setEditField(null);
+          } catch { /* toast già mostrato */ }
+        }}
+      />
     </div>
   );
 }
