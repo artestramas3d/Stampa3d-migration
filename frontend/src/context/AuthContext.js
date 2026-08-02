@@ -1,7 +1,9 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+// Path relativo: funziona su qualsiasi dominio (calcolatore.*, shop.*, listino.*)
+// via nginx `location /api/` che proxa al backend, senza problemi CORS cross-subdomain.
+const API = '/api';
 
 const AuthContext = createContext(null);
 
