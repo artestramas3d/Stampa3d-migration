@@ -113,6 +113,13 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
     - **`/app/frontend/public/robots.txt`**: Allow su rotte pubbliche shop + Disallow su tutte le rotte SaaS (admin, login, calculator, filaments, sales, ecc.) + Sitemap URL.
     - **`index.html`** arricchito con fallback meta description + theme-color + og:type/site_name/locale (per il primo render prima che Helmet subentri).
     - Testato: title/OG/JSON-LD/canonical tutti presenti nel DOM ✓. Sitemap XML risponde con content-type XML e host corretto ✓.
+66. **Fase 4 Separazione Shop — Hardening Security** (02/08/2026):
+    - Nuova pagina `/pages/NotFoundShopPage.js`: **404 elegante brandizzato shop** con header Artes&Tramas, icona Package, pulsanti "Torna alla Home" + "Vedi tutti i prodotti", meta `noindex, nofollow` per non essere indicizzata.
+    - **Nuovo componente `ShopAdminGate`** in `App.js`: sul dominio shop, `/admin` mostra 404 se l'utente non è loggato (invece di redirect al login pubblico che rivelerebbe l'esistenza della route). Se loggato → Admin Panel normale.
+    - **Rotte SaaS bloccate sul dominio shop**: `/calculator`, `/filaments`, `/sales`, `/purchases`, `/settings`, `/dashboard`, ecc. → mostrano il 404 shop (route `path="*"` catch-all).
+    - **Noindex globale su Layout SaaS**: aggiunto `<SeoHead noindex>` dentro `Layout.js` → tutte le pagine dietro autenticazione (dashboard, calculator, filaments, sales, settings, admin) hanno automaticamente `robots="noindex, nofollow"`. Google non le indicizzerà mai anche in caso di link accidentali.
+    - `/login` accessibile sul dominio shop ma non linkato pubblicamente (solo per l'accesso privato del proprietario).
+    - Testato con Playwright: `/calculator?__shop=1` → 404 shop ✓, `/admin?__shop=1` senza auth → 404 shop (no leak) ✓, meta robots corretto ✓.
 
 ## Note Importanti
 - SMTP REALE: smtps.aruba.it, preventivi e inquiry prodotti a info@artestramas3d.it

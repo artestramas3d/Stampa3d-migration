@@ -24,6 +24,7 @@ import ProfilePage from "./pages/ProfilePage";
 import BugReportPage from "./pages/BugReportPage";
 import PublicListinoPage from "./pages/PublicListinoPage";
 import HomeShopPage from "./pages/HomeShopPage";
+import NotFoundShopPage from "./pages/NotFoundShopPage";
 import PublicProductDetailPage from "./pages/PublicProductDetailPage";
 import { PageTracker } from "./components/PageTracker";
 import LandingPage from "./pages/LandingPage";
@@ -67,8 +68,22 @@ function PublicRoute({ children }) {
   if (user) {
     return <Navigate to="/" replace />;
   }
-
   return children;
+}
+
+function ShopAdminGate({ children }) {
+  // Nel dominio shop, /admin richiede login. Se non loggato mostra 404 shop
+  // (invece di rivelare l'esistenza di una route admin).
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-muted-foreground">...</div>
+      </div>
+    );
+  }
+  if (!user) return <NotFoundShopPage />;
+  return <Layout>{children}</Layout>;
 }
 
 function AppRoutes() {
@@ -87,10 +102,13 @@ function AppRoutes() {
           <Route path="/shop/prodotto/:slug" element={<PublicProductDetailPage />} />
           <Route path="/prodotto/:slug" element={<PublicProductDetailPage />} />
           <Route path="/listino" element={<PublicListinoPage />} />
-          <Route path="/admin" element={<ProtectedRoute><AdminPanelPage /></ProtectedRoute>} />
+          {/* /admin: 404 se non loggato, admin panel se autorizzato */}
+          <Route path="/admin" element={<ShopAdminGate><AdminPanelPage /></ShopAdminGate>} />
+          {/* /login accessibile per il proprietario ma non linkato */}
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/" element={<HomeShopPage />} />
-          <Route path="*" element={<HomeShopPage />} />
+          {/* Qualsiasi altra rotta (calculator, filaments, sales, ecc.) -> 404 shop */}
+          <Route path="*" element={<NotFoundShopPage />} />
         </Routes>
       </>
     );

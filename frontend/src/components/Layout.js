@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLang } from '../context/LangContext';
+import { SeoHead } from './SeoHead';
 import { getActiveBanners, resendVerification, getSiteSettings } from '../lib/api';
 import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
@@ -231,6 +232,9 @@ export default function Layout({ children }) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col" data-testid="main-layout">
+      {/* Noindex per tutte le pagine dietro Layout (SaaS) — evita Google indicizzi dashboard/calculator */}
+      <SeoHead title="Artes&Tramas | Area riservata" description="Area riservata utenti registrati." noindex />
+
       {/* Header Banner */}
       <BannerSlot banners={banners} position="header" />
 
