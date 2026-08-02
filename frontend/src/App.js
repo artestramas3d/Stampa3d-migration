@@ -22,6 +22,7 @@ import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ProfilePage from "./pages/ProfilePage";
 import BugReportPage from "./pages/BugReportPage";
 import PublicListinoPage from "./pages/PublicListinoPage";
+import HomeShopPage from "./pages/HomeShopPage";
 import PublicProductDetailPage from "./pages/PublicProductDetailPage";
 import { PageTracker } from "./components/PageTracker";
 import LandingPage from "./pages/LandingPage";
@@ -70,9 +71,11 @@ function PublicRoute({ children }) {
 }
 
 function AppRoutes() {
-  // Se il dominio è shop/listino, mostra direttamente lo Shop pubblico (no login)
+  // Se il dominio è shop/listino, mostra direttamente lo Shop pubblico (no login).
+  // Il flag ?__shop=1 forza la modalita' shop anche dal preview per testing.
   const host = typeof window !== 'undefined' ? window.location.hostname : '';
-  const isShopDomain = host === 'shop.artestramas3d.it' || host === 'listino.artestramas3d.it';
+  const forceShop = typeof window !== 'undefined' && window.location.search.includes('__shop=1');
+  const isShopDomain = host === 'shop.artestramas3d.it' || host === 'listino.artestramas3d.it' || forceShop;
 
   if (isShopDomain) {
     return (
@@ -82,7 +85,11 @@ function AppRoutes() {
           <Route path="/cookie-policy" element={<CookiePolicyPage />} />
           <Route path="/shop/prodotto/:slug" element={<PublicProductDetailPage />} />
           <Route path="/prodotto/:slug" element={<PublicProductDetailPage />} />
-          <Route path="*" element={<PublicListinoPage />} />
+          <Route path="/listino" element={<PublicListinoPage />} />
+          <Route path="/admin" element={<ProtectedRoute><AdminPanelPage /></ProtectedRoute>} />
+          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+          <Route path="/" element={<HomeShopPage />} />
+          <Route path="*" element={<HomeShopPage />} />
         </Routes>
       </>
     );

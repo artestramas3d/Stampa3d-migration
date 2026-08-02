@@ -157,6 +157,14 @@ export default function PublicListinoPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [priceMax, setPriceMax] = useState(null); // null = no filter
+
+  // Precompila il filtro dalla query string ?cat=NomeCategoria (usato dalla HomeShopPage)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const cat = params.get('cat');
+    if (cat) setFilter(cat);
+  }, []);
   const [sort, setSort] = useState('default'); // default | price_asc | price_desc | name
   const [modal, setModal] = useState(null); // null | 'custom'
 

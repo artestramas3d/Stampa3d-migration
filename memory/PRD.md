@@ -92,6 +92,17 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
     - **Frontend**: `AdminPanelPage` usa `useAuth().user.is_shop_owner` per mostrare/nascondere i tab **"Gestione Vetrina"** e nuovo tab **"Impostazioni Shop"**. Nuovo componente `ShopSettingsTab` con 5 card editabili (Hero, Info azienda, Social, Testi & policy, Categorie in evidenza) + pulsante Save sticky. `testuser` (admin ma non shop_owner) ora NON vede i tab shop ✓ verificato con screenshot.
     - **API frontend**: `getAdminShopSettings`, `updateShopSettings`, `getPublicShopSettings`, `toggleShopOwner` aggiunte a `lib/api.js`.
     - Prossime fasi: FASE 2 (HomeShopPage + ShopLayout con branding dedicato), FASE 3 (SEO/OpenGraph), FASE 4 (sicurezza `/admin` nascosto).
+64. **Fase 2 Separazione Shop — HomeShopPage** (02/08/2026): Creata home dedicata `/pages/HomeShopPage.js` per il dominio shop:
+    - **Header shop** con logo brand + "SHOP 3D", nav (Prodotti/Categorie/Chi siamo/Contatti), CTA "Contattaci" arancione. Nessun riferimento al calcolatore SaaS.
+    - **Hero** editabile (titolo, sottotitolo, CTA label, immagine) letto da `shop_settings`. Placeholder gradient elegante se immagine mancante.
+    - **Grid categorie** dinamica da `featured_categories` + conteggio prodotti per categoria. Link a `/listino?cat=X`.
+    - **Prodotti in evidenza** — top 6 per views con card foto + prezzo (supporto "a partire da" + "Su richiesta").
+    - **Come funziona** — 3 step (Scegli / Personalizza / Ricevi).
+    - **About** editabile da settings.
+    - **Footer completo** con 4 colonne (brand+social, contatti, info spedizione/reso, legale P.IVA/terms/privacy/cookie).
+    - **Routing** (`App.js`): sul dominio shop `/` mostra HomeShop, `/listino` la lista completa, `/prodotto/:slug` PDP. Aggiunta flag `?__shop=1` per testing dal preview. Route `/admin` accessibile solo se il proprietario la conosce (non linkata da nessuna parte pubblica).
+    - **Filtro categoria via query string** in PublicListinoPage: `useEffect` precompila il filtro da `?cat=X`.
+    - Testato con settings custom (P.IVA, contatti, social) → tutti i campi appaiono correttamente nella home.
 
 ## Note Importanti
 - SMTP REALE: smtps.aruba.it, preventivi e inquiry prodotti a info@artestramas3d.it
