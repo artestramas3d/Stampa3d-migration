@@ -166,18 +166,29 @@ export default function HomeShopPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {featured.map((cat) => {
               const count = categoryCounts[cat] || 0;
+              const catImg = (settings?.category_images || {})[cat];
               return (
                 <Link
                   key={cat}
                   to={`/listino?cat=${encodeURIComponent(cat)}`}
                   className="group relative aspect-square rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all hover:-translate-y-1"
-                  style={{ background: `linear-gradient(135deg, ${primary}30, ${primary}08)` }}
+                  style={catImg ? {} : { background: `linear-gradient(135deg, ${primary}30, ${primary}08)` }}
                   data-testid={`cat-${cat.toLowerCase().replace(/\s+/g, '-')}`}
                 >
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
-                    <Package className="w-8 h-8 mb-2" style={{ color: primary }} />
-                    <div className="font-bold text-sm text-gray-800">{cat}</div>
-                    {count > 0 && <div className="text-[11px] text-gray-500 mt-0.5">{count} prodott{count === 1 ? 'o' : 'i'}</div>}
+                  {catImg && (
+                    <>
+                      <img src={catImg} alt={cat} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.15) 60%, transparent 100%)' }} />
+                    </>
+                  )}
+                  <div className={`absolute inset-0 flex flex-col p-4 text-center ${catImg ? 'items-start justify-end' : 'items-center justify-center'}`}>
+                    {!catImg && <Package className="w-8 h-8 mb-2" style={{ color: primary }} />}
+                    <div className={`font-bold ${catImg ? 'text-white text-left drop-shadow-md text-base' : 'text-gray-800 text-sm'}`}>{cat}</div>
+                    {count > 0 && (
+                      <div className={`text-[11px] mt-0.5 ${catImg ? 'text-gray-100' : 'text-gray-500'}`}>
+                        {count} prodott{count === 1 ? 'o' : 'i'}
+                      </div>
+                    )}
                   </div>
                 </Link>
               );

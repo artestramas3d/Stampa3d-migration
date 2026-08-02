@@ -2032,6 +2032,72 @@ function ShopSettingsTab() {
         </CardContent>
       </Card>
 
+      <Card className="border-border/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-heading">Immagini delle categorie</CardTitle>
+          <p className="text-[10px] text-muted-foreground">Carica una foto per ogni categoria in evidenza. Appariranno come sfondo delle card nella home shop.</p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {(data.featured_categories || []).map(cat => {
+              const img = (data.category_images || {})[cat];
+              const handleFile = (e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                if (f.size > 2 * 1024 * 1024) { toast.error('Immagine troppo grande (max 2MB)'); return; }
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  const b64 = ev.target.result;
+                  // Comprimo prima di salvare
+                  compressImageBase64(b64, { maxWidth: 600, quality: 0.8 }).then(compressed => {
+                    set('category_images', { ...(data.category_images || {}), [cat]: compressed });
+                    toast.success(`Immagine "${cat}" caricata`);
+                  });
+                };
+                reader.readAsDataURL(f);
+              };
+              const clearImg = () => {
+                const copy = { ...(data.category_images || {}) };
+                delete copy[cat];
+                set('category_images', copy);
+              };
+              return (
+                <div key={cat} className="rounded-md border border-border/40 p-2 space-y-2" data-testid={`cat-img-${cat}`}>
+                  <div className="text-xs font-semibold">{cat}</div>
+                  <div className="aspect-video bg-muted rounded overflow-hidden relative flex items-center justify-center">
+                    {img ? (
+                      <img src={img} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">Nessuna immagine</span>
+                    )}
+                  </div>
+                  <div className="flex gap-1">
+                    <label className="flex-1 cursor-pointer">
+                      <input type="file" accept="image/*" className="hidden" onChange={handleFile} data-testid={`upload-cat-${cat}`} />
+                      <div className="text-[10px] text-center py-1.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                        {img ? 'Sostituisci' : 'Carica'}
+                      </div>
+                    </label>
+                    {img && (
+                      <button
+                        type="button"
+                        onClick={clearImg}
+                        className="text-[10px] px-2 py-1.5 rounded bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+                      >
+                        Rimuovi
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {(data.featured_categories || []).length === 0 && (
+              <div className="col-span-full text-xs text-muted-foreground text-center py-4">Aggiungi prima almeno una categoria sopra.</div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="sticky bottom-2 flex justify-end">
         <Button onClick={handleSave} disabled={saving} size="lg" data-testid="shop-settings-save-btn">
           <Save className="w-4 h-4 mr-2" /> {saving ? 'Salvataggio...' : 'Salva Impostazioni'}

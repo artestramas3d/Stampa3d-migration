@@ -3354,6 +3354,8 @@ class ShopSettingsModel(BaseModel):
     privacy_url: Optional[str] = None
     # Featured
     featured_categories: Optional[List[str]] = None
+    # Immagini categoria (base64): {"Cake Topper": "data:image/jpeg;base64,..."}
+    category_images: Optional[dict] = None
 
 
 SHOP_SETTINGS_DEFAULTS = {
@@ -3376,6 +3378,7 @@ SHOP_SETTINGS_DEFAULTS = {
     "terms_url": "",
     "privacy_url": "",
     "featured_categories": ["Cake Topper", "Portachiavi", "Lampade LED", "Idee Regalo", "Personalizzati"],
+    "category_images": {},
 }
 
 
