@@ -295,11 +295,18 @@ export default function PublicProductDetailPage() {
 
           {/* Info + configuratore */}
           <div className="space-y-5">
-            {product.category && (
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full text-xs font-medium" style={{ background: `${primary}15`, color: primary }}>
-                  <Tag className="w-3 h-3 inline mr-1" />{product.category}
-                </span>
+            {(product.category || product.subcategory) && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {product.category && (
+                  <span className="px-3 py-1 rounded-full text-xs font-medium" style={{ background: `${primary}15`, color: primary }}>
+                    <Tag className="w-3 h-3 inline mr-1" />{product.category}
+                  </span>
+                )}
+                {product.subcategory && (
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                    {product.subcategory}
+                  </span>
+                )}
               </div>
             )}
 

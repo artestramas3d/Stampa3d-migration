@@ -56,6 +56,7 @@ function ProductCard({ p, index, primary }) {
         {p.description && <p className="text-sm text-gray-500 mt-2 line-clamp-2">{p.description}</p>}
         <div className="flex items-center gap-2 mt-2 flex-wrap">
           {p.category && <span className="px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ background: `${primary}15`, color: primary }}>{p.category}</span>}
+          {p.subcategory && <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600">{p.subcategory}</span>}
           {p.materials && <span className="text-[11px] text-gray-400">{p.materials}</span>}
         </div>
         <div
@@ -157,14 +158,17 @@ export default function PublicListinoPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
+  const [subFilter, setSubFilter] = useState('');
   const [priceMax, setPriceMax] = useState(null); // null = no filter
 
-  // Precompila il filtro dalla query string ?cat=NomeCategoria (usato dalla HomeShopPage)
+  // Precompila i filtri dalla query string ?cat=X&subcat=Y (usato dalla HomeShopPage)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const cat = params.get('cat');
+    const sub = params.get('subcat');
     if (cat) setFilter(cat);
+    if (sub) setSubFilter(sub);
   }, []);
   const [sort, setSort] = useState('default'); // default | price_asc | price_desc | name
   const [modal, setModal] = useState(null); // null | 'custom'
@@ -212,8 +216,13 @@ export default function PublicListinoPage() {
   const primary = data.primary_color || '#f97316';
   const products = data.products || [];
   const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+  // Sottocategorie disponibili per la categoria attualmente selezionata
+  const subcategories = filter
+    ? [...new Set(products.filter(p => p.category === filter).map(p => p.subcategory).filter(Boolean))]
+    : [];
   const maxProductPrice = Math.max(0, ...products.map(p => parseFloat(p.price) || 0));
   let filtered = filter ? products.filter(p => p.category === filter) : products;
+  if (subFilter) filtered = filtered.filter(p => p.subcategory === subFilter);
   if (priceMax != null) filtered = filtered.filter(p => parseFloat(p.price) <= priceMax);
   if (sort === 'price_asc') filtered = [...filtered].sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
   else if (sort === 'price_desc') filtered = [...filtered].sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
@@ -248,9 +257,18 @@ export default function PublicListinoPage() {
       <div className="max-w-6xl mx-auto px-4 pt-5 pb-2">
         {categories.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-3" data-testid="category-filters">
-            <button onClick={() => setFilter('')} className="px-4 py-1.5 rounded-full text-sm font-medium transition-colors" style={!filter ? { background: primary, color: 'white' } : { background: '#e5e7eb', color: '#555' }}>Tutti</button>
+            <button onClick={() => { setFilter(''); setSubFilter(''); }} className="px-4 py-1.5 rounded-full text-sm font-medium transition-colors" style={!filter ? { background: primary, color: 'white' } : { background: '#e5e7eb', color: '#555' }}>Tutti</button>
             {categories.map(cat => (
-              <button key={cat} onClick={() => setFilter(cat)} className="px-4 py-1.5 rounded-full text-sm font-medium transition-colors" style={filter === cat ? { background: primary, color: 'white' } : { background: '#e5e7eb', color: '#555' }}>{cat}</button>
+              <button key={cat} onClick={() => { setFilter(cat); setSubFilter(''); }} className="px-4 py-1.5 rounded-full text-sm font-medium transition-colors" style={filter === cat ? { background: primary, color: 'white' } : { background: '#e5e7eb', color: '#555' }}>{cat}</button>
+            ))}
+          </div>
+        )}
+        {filter && subcategories.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mb-3 pl-3 border-l-2" style={{ borderColor: `${primary}66` }} data-testid="subcategory-filters">
+            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Sotto&#8209;categoria:</span>
+            <button onClick={() => setSubFilter('')} className="px-3 py-1 rounded-full text-xs font-medium transition-colors" style={!subFilter ? { background: primary, color: 'white' } : { background: 'white', color: '#555', border: '1px solid #e5e7eb' }}>Tutte</button>
+            {subcategories.map(sub => (
+              <button key={sub} onClick={() => setSubFilter(sub)} className="px-3 py-1 rounded-full text-xs font-medium transition-colors" style={subFilter === sub ? { background: primary, color: 'white' } : { background: 'white', color: '#555', border: '1px solid #e5e7eb' }} data-testid={`subcat-${sub.toLowerCase().replace(/\s+/g, '-')}`}>{sub}</button>
             ))}
           </div>
         )}

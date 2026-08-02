@@ -1942,6 +1942,7 @@ class ProductCreate(BaseModel):
     description_long: str = ""  # Descrizione estesa (pagina dettaglio)
     price: float
     category: str = ""
+    subcategory: str = ""
     materials: str = ""  # Legacy stringa; nuove varianti in `material_options`
     photos: List[str] = []  # list of base64 images
     photo: Optional[str] = None  # legacy single photo
@@ -1962,6 +1963,7 @@ class ProductUpdate(BaseModel):
     description_long: Optional[str] = None
     price: Optional[float] = None
     category: Optional[str] = None
+    subcategory: Optional[str] = None
     materials: Optional[str] = None
     photos: Optional[List[str]] = None
     photo: Optional[str] = None
@@ -1994,6 +1996,7 @@ def _serialize_product(doc: dict, include_long: bool = True) -> dict:
         "description": doc.get("description", ""),
         "price": doc.get("price", 0),
         "category": doc.get("category", ""),
+        "subcategory": doc.get("subcategory", ""),
         "materials": doc.get("materials", ""),
         "photos": photos,
         "photo": photos[0] if photos else "",
@@ -2040,6 +2043,7 @@ async def create_product(product: ProductCreate, current_user: dict = Depends(re
         "description_long": product.description_long,
         "price": product.price,
         "category": product.category,
+        "subcategory": product.subcategory,
         "materials": product.materials,
         "photos": photos,
         "photo": photos[0] if photos else "",
@@ -3368,6 +3372,8 @@ class ShopSettingsModel(BaseModel):
     featured_categories: Optional[List[str]] = None
     # Immagini categoria (base64): {"Cake Topper": "data:image/jpeg;base64,..."}
     category_images: Optional[dict] = None
+    # Immagini sottocategoria (base64): {"Compleanno": "data:..."}
+    subcategory_images: Optional[dict] = None
 
 
 SHOP_SETTINGS_DEFAULTS = {
@@ -3391,6 +3397,7 @@ SHOP_SETTINGS_DEFAULTS = {
     "privacy_url": "",
     "featured_categories": ["Cake Topper", "Portachiavi", "Lampade LED", "Idee Regalo", "Personalizzati"],
     "category_images": {},
+    "subcategory_images": {},
 }
 
 

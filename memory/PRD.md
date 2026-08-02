@@ -128,7 +128,14 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
 68. **Fix `/admin` shop → login + Cookie cross-subdomain** (02/08/2026):
     - `ShopAdminGate` ora renderizza `<LoginPage />` invece di 404 quando l'utente non è loggato su `/admin` (shop domain). Dopo il login il pannello admin appare sulla stessa route senza reindirizzamenti.
     - Aggiunte env vars **opzionali** in `backend/.env`: `COOKIE_DOMAIN` (es. `.artestramas3d.it` per condividere sessione tra `calcolatore.*` e `shop.*`) e `COOKIE_SECURE` (`true` in HTTPS). Helper `_cookie_kwargs()` centralizza la config, usato dai 4 `set_cookie` e 2 `delete_cookie`.
+    - `AuthContext.js` ora usa path relativo `/api` invece di `${REACT_APP_BACKEND_URL}/api` per evitare preflight CORS quando la UI viene servita sul dominio shop e chiama il backend.
     - Testato: `/admin?__shop=1` senza cookie → mostra login ✓, dopo login → Pannello Admin ✓.
+69. **Sottocategorie prodotti** (02/08/2026):
+    - Backend: nuovo campo `subcategory: str` nel modello `Product` (Create/Update/serialize). Nuovo campo `subcategory_images: dict` in `ShopSettings` (immagini future).
+    - Admin: form prodotto con nuovo input "Sottocategoria" + `<datalist>` con auto-suggest delle sotto già usate per la categoria selezionata (`currentSubcategories` calcolato dinamicamente). Badge sottocategoria nella card lista.
+    - PublicListinoPage: seconda riga di chip filtro "Sotto-categoria" che appare solo quando una categoria è selezionata. Reset automatico del filtro sub quando cambia la categoria. Query string estesa `?cat=X&subcat=Y`.
+    - PublicProductDetailPage: badge categoria + badge sottocategoria affiancati.
+    - Test manuale Playwright: creazione 2 prodotti con stessa categoria e sub diverse ✓, filtro combinato mostra correttamente 1 risultato ✓, "Tutte" mostra tutti ✓.
 
 ## Note Importanti
 - SMTP REALE: smtps.aruba.it, preventivi e inquiry prodotti a info@artestramas3d.it

@@ -882,7 +882,7 @@ function ContactRequestsTab() {
 
 function ProductsTab() {
   const [products, setProducts] = useState([]);
-  const initialForm = { name: '', description: '', description_long: '', price: '', category: '', materials: '', photos: [], is_public: true, color_options: [], material_options: [], size_options: [], is_customizable: false, custom_field_label: '', show_price: true, price_from: false };
+  const initialForm = { name: '', description: '', description_long: '', price: '', category: '', subcategory: '', materials: '', photos: [], is_public: true, color_options: [], material_options: [], size_options: [], is_customizable: false, custom_field_label: '', show_price: true, price_from: false };
   const [form, setForm] = useState(initialForm);
   const [editing, setEditing] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -1047,6 +1047,7 @@ function ProductsTab() {
       description_long: p.description_long || '',
       price: p.price,
       category: p.category,
+      subcategory: p.subcategory || '',
       materials: p.materials || '',
       photos,
       is_public: p.is_public,
@@ -1081,6 +1082,13 @@ function ProductsTab() {
   };
 
   const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+  // Sottocategorie disponibili per la categoria selezionata (auto-suggest)
+  const currentSubcategories = [...new Set(
+    products
+      .filter(p => (p.category || '') === (form.category || ''))
+      .map(p => p.subcategory)
+      .filter(Boolean)
+  )];
 
   return (
     <div className="space-y-4">
@@ -1142,11 +1150,16 @@ function ProductsTab() {
                         <Input type="number" step="0.01" value={form.price} onChange={e => setForm({...form, price: e.target.value})} className="h-9" data-testid="product-price" />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs">Categoria</Label>
                         <Input value={form.category} onChange={e => setForm({...form, category: e.target.value})} list="admin-categories" className="h-9" data-testid="product-category" />
                         <datalist id="admin-categories">{categories.map(c => <option key={c} value={c} />)}</datalist>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Sottocategoria</Label>
+                        <Input value={form.subcategory} onChange={e => setForm({...form, subcategory: e.target.value})} list="admin-subcategories" placeholder="es. Compleanno, Anniversario" className="h-9" data-testid="product-subcategory" />
+                        <datalist id="admin-subcategories">{currentSubcategories.map(s => <option key={s} value={s} />)}</datalist>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">Materiali</Label>
@@ -1300,7 +1313,10 @@ function ProductsTab() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <h3 className="font-medium text-sm truncate">{p.name}</h3>
-                          {p.category && <Badge variant="outline" className="text-[10px] mt-1">{p.category}</Badge>}
+                          <div className="flex gap-1 flex-wrap mt-1">
+                            {p.category && <Badge variant="outline" className="text-[10px]">{p.category}</Badge>}
+                            {p.subcategory && <Badge variant="secondary" className="text-[10px]">{p.subcategory}</Badge>}
+                          </div>
                         </div>
                         <div className="text-right shrink-0">
                           {p.price_from && <div className="text-[9px] text-muted-foreground italic leading-none">a partire da</div>}
