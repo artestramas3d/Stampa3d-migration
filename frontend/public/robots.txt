@@ -1,0 +1,28 @@
+User-agent: *
+Allow: /
+Allow: /listino
+Allow: /prodotto/
+Allow: /shop/prodotto/
+
+Disallow: /admin
+Disallow: /admin/
+Disallow: /login
+Disallow: /register
+Disallow: /dashboard
+Disallow: /calculator
+Disallow: /filaments
+Disallow: /accessories
+Disallow: /sales
+Disallow: /purchases
+Disallow: /settings
+Disallow: /banners
+Disallow: /profile
+Disallow: /bug-report
+Disallow: /clients
+Disallow: /quotes
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-email
+
+# Sitemap
+Sitemap: https://shop.artestramas3d.it/sitemap.xml

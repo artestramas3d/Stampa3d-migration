@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getPublicListino, sendProductInquiry } from '../lib/api';
 import { Package, X, ChevronLeft, ChevronRight, Send, ShoppingBag, Wrench, ArrowRight, SlidersHorizontal } from 'lucide-react';
 import { PublicBannerSlot } from '../components/PublicBannerSlot';
+import { SeoHead } from '../components/SeoHead';
 import { AffiliateLinks } from '../components/AffiliateLinks';
 
 function ProductCard({ p, index, primary }) {
@@ -220,6 +221,13 @@ export default function PublicListinoPage() {
 
   return (
     <div className="min-h-screen" style={{ background: '#fafafa' }} data-testid="public-listino-page">
+      <SeoHead
+        title={filter ? `${filter} · ${data.brand_name || 'Artes&Tramas'}` : `Catalogo Prodotti · ${data.brand_name || 'Artes&Tramas'}`}
+        description={filter ? `Scopri i nostri ${filter.toLowerCase()} personalizzati in stampa 3D artigianale.` : 'Sfoglia tutti i nostri prodotti: cake topper, portachiavi, lampade LED e regali personalizzati stampati in 3D.'}
+        image={products[0]?.photos?.[0] || products[0]?.photo || ''}
+        type="website"
+        siteName={data.brand_name || 'Artes&Tramas'}
+      />
       {/* Header */}
       <header className="text-white py-12 px-6 text-center relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${primary}, ${primary}dd)` }}>
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight" style={{ fontFamily: "'Inter', sans-serif" }}>

@@ -3387,6 +3387,28 @@ async def public_shop_settings():
     return out
 
 
+@api_router.get("/public/sitemap.xml")
+async def public_sitemap(request: Request):
+    """Sitemap XML dinamica: home + listino + tutti i prodotti pubblici."""
+    host = request.headers.get("host", "shop.artestramas3d.it")
+    scheme = "https"
+    base = f"{scheme}://{host}"
+    urls = [
+        f"{base}/",
+        f"{base}/listino",
+    ]
+    async for p in db.products.find({"is_public": True}, {"slug": 1, "_id": 1, "updated_at": 1, "created_at": 1}):
+        slug = p.get("slug") or str(p.get("_id"))
+        urls.append(f"{base}/shop/prodotto/{slug}")
+
+    xml_parts = ['<?xml version="1.0" encoding="UTF-8"?>',
+                 '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for u in urls:
+        xml_parts.append(f'  <url><loc>{u}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>')
+    xml_parts.append('</urlset>')
+    return Response(content="\n".join(xml_parts), media_type="application/xml")
+
+
 @api_router.get("/admin/shop-settings")
 async def admin_get_shop_settings(current_user: dict = Depends(require_shop_owner)):
     doc = await db.shop_settings.find_one({"_id": "singleton"}) or {}

@@ -1,5 +1,6 @@
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { LangProvider } from "./context/LangContext";
@@ -132,18 +133,20 @@ function AppRoutes() {
 
 function App() {
   return (
-    <ThemeProvider>
-      <LangProvider>
-        <AuthProvider>
-          <BrowserRouter>
-            <AppRoutes />
-            <CookieBanner />
-            <PublicScripts />
-            <Toaster position="top-right" richColors />
-          </BrowserRouter>
-        </AuthProvider>
-      </LangProvider>
-    </ThemeProvider>
+    <HelmetProvider>
+      <ThemeProvider>
+        <LangProvider>
+          <AuthProvider>
+            <BrowserRouter>
+              <AppRoutes />
+              <CookieBanner />
+              <PublicScripts />
+              <Toaster position="top-right" richColors />
+            </BrowserRouter>
+          </AuthProvider>
+        </LangProvider>
+      </ThemeProvider>
+    </HelmetProvider>
   );
 }
 

@@ -103,6 +103,16 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
     - **Routing** (`App.js`): sul dominio shop `/` mostra HomeShop, `/listino` la lista completa, `/prodotto/:slug` PDP. Aggiunta flag `?__shop=1` per testing dal preview. Route `/admin` accessibile solo se il proprietario la conosce (non linkata da nessuna parte pubblica).
     - **Filtro categoria via query string** in PublicListinoPage: `useEffect` precompila il filtro da `?cat=X`.
     - Testato con settings custom (P.IVA, contatti, social) → tutti i campi appaiono correttamente nella home.
+65. **Fase 3 Separazione Shop — SEO/Open Graph** (02/08/2026):
+    - Installato **`react-helmet-async`** + wrapping `<HelmetProvider>` in `App.js`.
+    - Nuovo componente riusabile `/components/SeoHead.js` con supporto: title, description, canonical, robots (noindex opz), Open Graph (type/title/description/image/url/site_name/locale it_IT), Twitter Card (summary_large_image quando c'è image), JSON-LD structured data.
+    - **HomeShopPage**: `<SeoHead>` con titolo dinamico "{hero_title} · {brand}", description dal hero_subtitle/about_text, immagine dall'hero o dal primo prodotto in evidenza, **JSON-LD schema Store** (name, description, url, email, telephone, address, sameAs con tutti i social).
+    - **PublicProductDetailPage**: `<SeoHead>` con titolo "{nome prodotto} · {brand}", description dalla descrizione prodotto, prima foto come og:image, **JSON-LD schema Product** completo (name, description, image array, brand, category, Offer con priceCurrency EUR + availability InStock + condition NewCondition). Richiesto per apparire nei Rich Snippet Google Shopping.
+    - **PublicListinoPage**: `<SeoHead>` con titolo dinamico "{Categoria filtrata} · {brand}" o "Catalogo Prodotti · {brand}", description contextual, prima foto prodotto come og:image.
+    - **Backend nuovo endpoint** `GET /api/public/sitemap.xml`: sitemap XML dinamica con host detection dai request headers. Include `/`, `/listino`, e tutti i `/shop/prodotto/{slug}` dei prodotti `is_public=true`.
+    - **`/app/frontend/public/robots.txt`**: Allow su rotte pubbliche shop + Disallow su tutte le rotte SaaS (admin, login, calculator, filaments, sales, ecc.) + Sitemap URL.
+    - **`index.html`** arricchito con fallback meta description + theme-color + og:type/site_name/locale (per il primo render prima che Helmet subentri).
+    - Testato: title/OG/JSON-LD/canonical tutti presenti nel DOM ✓. Sitemap XML risponde con content-type XML e host corretto ✓.
 
 ## Note Importanti
 - SMTP REALE: smtps.aruba.it, preventivi e inquiry prodotti a info@artestramas3d.it

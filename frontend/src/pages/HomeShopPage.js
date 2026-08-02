@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getPublicListino, getPublicShopSettings } from '../lib/api';
 import { ShoppingBag, ArrowRight, Sparkles, Package, Instagram, Facebook, Mail, Phone, MapPin, MessageCircle, Truck, RefreshCw, Star } from 'lucide-react';
+import { SeoHead } from '../components/SeoHead';
 
 /**
  * Home dedicata dello Shop (shop.artestramas3d.it/).
@@ -54,8 +55,37 @@ export default function HomeShopPage() {
     return prefix + raw.replace(/^@|^\+/, '');
   };
 
+  // JSON-LD Organization + LocalBusiness (per Google Knowledge Panel)
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Store',
+    name: settings?.company_name || brand,
+    description: settings?.about_text,
+    url: typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.host}` : '',
+    email: settings?.email,
+    telephone: settings?.phone,
+    address: settings?.address ? {
+      '@type': 'PostalAddress',
+      streetAddress: settings.address,
+      addressCountry: 'IT'
+    } : undefined,
+    sameAs: socialLinks.map(s => normalizeSocial(settings[s.key], s.prefix)).filter(Boolean),
+  };
+
+  const seoTitle = `${settings?.hero_title || 'Prodotti Stampa 3D'} · ${settings?.company_name || brand}`;
+  const seoDesc = settings?.hero_subtitle || settings?.about_text || 'Cake topper, portachiavi e regali personalizzati in stampa 3D artigianale.';
+  const seoImg = settings?.hero_image_url || (topProducts?.[0]?.photos?.[0]) || (topProducts?.[0]?.photo) || '';
+
   return (
     <div className="min-h-screen bg-white text-gray-900">
+      <SeoHead
+        title={seoTitle}
+        description={seoDesc}
+        image={seoImg}
+        type="website"
+        siteName={settings?.company_name || brand}
+        jsonLd={jsonLd}
+      />
       {/* Header shop */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
@@ -310,8 +340,8 @@ export default function HomeShopPage() {
             <div className="text-white font-semibold text-sm mb-3">Legale</div>
             <ul className="space-y-2 text-xs">
               {settings?.vat_number && <li>P. IVA: <span className="font-mono">{settings.vat_number}</span></li>}
-              {settings?.terms_url && <li><a href={settings.terms_url} className="hover:text-white transition-colors" target="_blank" rel="noopener">Termini e condizioni</a></li>}
-              {settings?.privacy_url && <li><a href={settings.privacy_url} className="hover:text-white transition-colors" target="_blank" rel="noopener">Privacy Policy</a></li>}
+              {settings?.terms_url && <li><a href={settings.terms_url} className="hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">Termini e condizioni</a></li>}
+              {settings?.privacy_url && <li><a href={settings.privacy_url} className="hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">Privacy Policy</a></li>}
               <li><Link to="/cookie-policy" className="hover:text-white transition-colors">Cookie Policy</Link></li>
             </ul>
           </div>

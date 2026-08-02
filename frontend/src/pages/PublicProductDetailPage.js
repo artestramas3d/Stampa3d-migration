@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getPublicProduct, sendProductInquiry } from '../lib/api';
 import { PublicBannerSlot } from '../components/PublicBannerSlot';
+import { SeoHead } from '../components/SeoHead';
 import {
   Package, ChevronLeft, ChevronRight, X, Send, ShoppingBag,
   FileText, Tag, Palette, Ruler, Sparkles, ArrowLeft, Check, MessageCircle, Mail
@@ -200,6 +201,28 @@ export default function PublicProductDetailPage() {
   const prevPhoto = useCallback(() => setPhotoIdx(i => (i - 1 + photos.length) % photos.length), [photos.length]);
   const nextPhoto = useCallback(() => setPhotoIdx(i => (i + 1) % photos.length), [photos.length]);
 
+  // JSON-LD Product per Google Shopping / Rich snippet
+  const productJsonLd = product ? {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    description: (product.description_long || product.description || '').slice(0, 500),
+    image: photos.slice(0, 5),
+    brand: { '@type': 'Brand', name: brand },
+    category: product.category,
+    offers: (product.show_price !== false && product.price) ? {
+      '@type': 'Offer',
+      priceCurrency: 'EUR',
+      price: parseFloat(product.price).toFixed(2),
+      availability: 'https://schema.org/InStock',
+      itemCondition: 'https://schema.org/NewCondition',
+    } : undefined,
+  } : null;
+
+  const seoTitle = product ? `${product.name} · ${brand}` : `Prodotto · ${brand}`;
+  const seoDesc = product ? ((product.description || product.description_long || '').slice(0, 200) || `${product.name} — stampa 3D artigianale`) : '';
+  const seoImg = photos[0] || '';
+
   if (loading) {
     return <div className="min-h-screen bg-[#fafafa] flex items-center justify-center"><div className="animate-pulse text-gray-400 text-lg">Caricamento...</div></div>;
   }
@@ -216,6 +239,14 @@ export default function PublicProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#fafafa]" data-testid="product-detail-page">
+      <SeoHead
+        title={seoTitle}
+        description={seoDesc}
+        image={seoImg}
+        type="product"
+        siteName={brand}
+        jsonLd={productJsonLd}
+      />
       {/* Top bar */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
