@@ -177,6 +177,17 @@ db = client[os.environ['DB_NAME']]
 JWT_SECRET = os.environ.get("JWT_SECRET", secrets.token_hex(32))
 JWT_ALGORITHM = "HS256"
 
+# Cookie domain (opzionale). Se impostato a ".artestramas3d.it" i cookie di sessione
+# sono condivisi tra `calcolatore.artestramas3d.it` e `shop.artestramas3d.it`.
+COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN") or None
+COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "false").lower() == "true"
+
+def _cookie_kwargs():
+    kw = {"httponly": True, "secure": COOKIE_SECURE, "samesite": "lax", "path": "/"}
+    if COOKIE_DOMAIN:
+        kw["domain"] = COOKIE_DOMAIN
+    return kw
+
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
@@ -393,8 +404,8 @@ async def register(user: UserRegister, response: Response):
     
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
+    response.set_cookie(key="access_token", value=access_token, max_age=3600, **_cookie_kwargs())
+    response.set_cookie(key="refresh_token", value=refresh_token, max_age=604800, **_cookie_kwargs())
     return {"id": user_id, "email": email, "name": user.name, "is_admin": False, "email_verified": False}
 
 @api_router.post("/auth/login")
@@ -407,14 +418,15 @@ async def login(user: UserLogin, response: Response):
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
     await db.users.update_one({"_id": db_user["_id"]}, {"$set": {"last_login": datetime.now(timezone.utc).isoformat()}})
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
+    response.set_cookie(key="access_token", value=access_token, max_age=3600, **_cookie_kwargs())
+    response.set_cookie(key="refresh_token", value=refresh_token, max_age=604800, **_cookie_kwargs())
     return {"id": user_id, "email": email, "name": db_user.get("name", ""), "is_admin": db_user.get("is_admin", False), "is_shop_owner": db_user.get("is_shop_owner", False), "email_verified": db_user.get("email_verified", True)}
 
 @api_router.post("/auth/logout")
 async def logout(response: Response):
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/")
+    _dom = {"domain": COOKIE_DOMAIN} if COOKIE_DOMAIN else {}
+    response.delete_cookie("access_token", path="/", **_dom)
+    response.delete_cookie("refresh_token", path="/", **_dom)
     return {"message": "Disconnesso"}
 
 @api_router.get("/auth/me")

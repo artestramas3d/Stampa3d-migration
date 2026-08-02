@@ -125,6 +125,10 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
     - **Visibile solo per `is_shop_owner`**. Editabili direttamente dalla home: titolo hero, sottotitolo, CTA label, immagine hero, immagini categorie (mappate su `settings.category_images`), testo "Chi siamo".
     - `HomeShopPage.js` usa `getAdminShopSettings()` se owner (per avere anche campi privati) e chiama `updateShopSettings` on save. Toast "Modifiche salvate" via sonner.
     - Test manuale Playwright: login → home → clic "Modifica sito" → hover H1 → clic "Modifica" → modal precompilato → salva → h1 aggiornato ✓, modal categoria "Cake Topper" apre correttamente ✓.
+68. **Fix `/admin` shop → login + Cookie cross-subdomain** (02/08/2026):
+    - `ShopAdminGate` ora renderizza `<LoginPage />` invece di 404 quando l'utente non è loggato su `/admin` (shop domain). Dopo il login il pannello admin appare sulla stessa route senza reindirizzamenti.
+    - Aggiunte env vars **opzionali** in `backend/.env`: `COOKIE_DOMAIN` (es. `.artestramas3d.it` per condividere sessione tra `calcolatore.*` e `shop.*`) e `COOKIE_SECURE` (`true` in HTTPS). Helper `_cookie_kwargs()` centralizza la config, usato dai 4 `set_cookie` e 2 `delete_cookie`.
+    - Testato: `/admin?__shop=1` senza cookie → mostra login ✓, dopo login → Pannello Admin ✓.
 
 ## Note Importanti
 - SMTP REALE: smtps.aruba.it, preventivi e inquiry prodotti a info@artestramas3d.it

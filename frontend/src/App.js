@@ -72,8 +72,8 @@ function PublicRoute({ children }) {
 }
 
 function ShopAdminGate({ children }) {
-  // Nel dominio shop, /admin richiede login. Se non loggato mostra 404 shop
-  // (invece di rivelare l'esistenza di una route admin).
+  // Nel dominio shop, /admin richiede login. Se non loggato mostra la pagina di login
+  // (in questo modo il proprietario puo' accedere senza dover conoscere /login).
   const { user, loading } = useAuth();
   if (loading) {
     return (
@@ -82,7 +82,7 @@ function ShopAdminGate({ children }) {
       </div>
     );
   }
-  if (!user) return <NotFoundShopPage />;
+  if (!user) return <LoginPage />;
   return <Layout>{children}</Layout>;
 }
 
