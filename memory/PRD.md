@@ -143,6 +143,11 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
     - Modello **Consumabile**: nome, tipo (Lama/Tappetino/Penna/Punta/Rullo/Foglio protettivo/Personalizzato), prezzo, `life_uses`, `cost_per_use` auto.
     - Frontend: nuova pagina `/cricut` (`CricutPage.js`) con 3 tab, nuova voce sidebar "Cricut" con icona Scissors tra Vendite e Acquisti. Card grid con hover actions, dialog form completo, preview live dei calcoli, badge stock basso.
     - Testato Playwright: creazione materiale HTV Siser Rosso (€2.50/foglio) ✓, creazione Cricut Maker €400/3000h (€0.1333/h ammort + €0.0090/h energia) ✓, creazione Lama Fine Point €15/200 usi (€0.075/uso) ✓.
+71. **Modulo Cricut — Fase 2: Calcolatore Preventivo** (06/08/2026):
+    - Backend: nuova collezione `cricut_projects` + 6 endpoint CRUD (list/get/create/update/delete/**duplicate**). Helper `_compute_cricut_project` ricalcola sempre sui prezzi correnti di materiali/macchine/consumabili → i preventivi restano coerenti anche se aggiorno il magazzino.
+    - Modello **Progetto**: info (nome, cliente, categoria, data, note), materiale principale + `extra_materials[]`, 6 tempi (prep/taglio/spellicolatura/TT/pressatura/assemblaggio) + `labor_rate_hour`, macchina + ore, `consumables[]` (multi), 6 voci confezione, 4 costi indiretti (marketplace %, pagamento %, generali €, IVA %), `margin_percent` OR `manual_sale_price`.
+    - Frontend: pagina `/cricut/calculator` (create) e `/cricut/calculator/:pid` (edit) con **7 sezioni** in card + **riepilogo sticky** che si aggiorna live. Compute JS mirror del backend. Tab "Preventivi" in `/cricut` con lista card + Duplica + Elimina, click card = apri editor.
+    - Testato end-to-end: progetto "T-shirt logo" con HTV + Maker + Lama + Sacchetto + commissioni → €7.29 produzione + €0.77 indiretti + margine 50% = **€10.93 prezzo, €2.88 profitto (26.33% effettivo)** ✓.
 
 ## Note Importanti
 - SMTP REALE: smtps.aruba.it, preventivi e inquiry prodotti a info@artestramas3d.it

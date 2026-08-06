@@ -1104,6 +1104,294 @@ async def get_cricut_meta():
         "consumable_types": CRICUT_CONSUMABLE_TYPES,
     }
 
+# ----- Progetti / Preventivi Cricut -----
+class CricutConsumableUsage(BaseModel):
+    consumable_id: str
+    uses: float = 1.0
+
+class CricutExtraMaterial(BaseModel):
+    material_id: str
+    qty: float = 0.0
+
+class CricutProjectCreate(BaseModel):
+    name: str
+    client: str = ""
+    category: str = ""
+    date: str = ""
+    notes: str = ""
+    # Materiale principale
+    material_id: str = ""
+    material_qty: float = 0.0
+    material_dimensions: str = ""
+    # Lavorazione (minuti)
+    time_prep_min: float = 0
+    time_cut_min: float = 0
+    time_weeding_min: float = 0
+    time_transfer_min: float = 0
+    time_press_min: float = 0
+    time_assembly_min: float = 0
+    labor_rate_hour: float = 15.0
+    # Macchina
+    machine_id: str = ""
+    machine_hours: float = 0.0
+    # Consumabili
+    consumables: List[CricutConsumableUsage] = []
+    # Materiali extra
+    extra_materials: List[CricutExtraMaterial] = []
+    # Confezione (importi diretti in €)
+    pkg_bag: float = 0
+    pkg_box: float = 0
+    pkg_cardstock: float = 0
+    pkg_label: float = 0
+    pkg_thank_card: float = 0
+    pkg_ribbon: float = 0
+    # Costi indiretti
+    marketplace_fee_percent: float = 0
+    payment_fee_percent: float = 0
+    overhead_fixed: float = 0
+    vat_percent: float = 0
+    # Prezzo
+    margin_percent: float = 50
+    manual_sale_price: Optional[float] = None
+
+class CricutProjectUpdate(CricutProjectCreate):
+    name: Optional[str] = None
+    labor_rate_hour: Optional[float] = None
+    margin_percent: Optional[float] = None
+
+async def _compute_cricut_project(doc: dict, user_id: str) -> dict:
+    """Ricalcola tutti i totali basandosi sui prezzi correnti di materiali/macchine/consumabili."""
+    # Fetch mappings
+    mat_ids = [doc.get("material_id")] + [e.get("material_id") for e in (doc.get("extra_materials") or [])]
+    mat_ids = [ObjectId(i) for i in mat_ids if i]
+    mat_map = {}
+    if mat_ids:
+        async for m in db.cricut_materials.find({"_id": {"$in": mat_ids}, "user_id": user_id}):
+            mat_map[str(m["_id"])] = m
+
+    cons_ids = [ObjectId(c.get("consumable_id")) for c in (doc.get("consumables") or []) if c.get("consumable_id")]
+    cons_map = {}
+    if cons_ids:
+        async for c in db.cricut_consumables.find({"_id": {"$in": cons_ids}, "user_id": user_id}):
+            cons_map[str(c["_id"])] = c
+
+    machine = None
+    mid = doc.get("machine_id")
+    if mid:
+        machine = await db.cricut_machines.find_one({"_id": ObjectId(mid), "user_id": user_id})
+
+    # ---- Costo materiale principale ----
+    def material_cost(material_doc, qty):
+        if not material_doc or not qty:
+            return 0.0, 0.0
+        price = float(material_doc.get("purchase_price", 0) or 0)
+        pqty = float(material_doc.get("purchase_qty", 1) or 1)
+        unit = price / pqty if pqty > 0 else 0
+        waste = float(material_doc.get("waste_percent", 0) or 0)
+        cost_no_waste = unit * float(qty or 0)
+        cost_with_waste = cost_no_waste * (1 + waste / 100.0)
+        return cost_no_waste, cost_with_waste
+
+    main_mat = mat_map.get(doc.get("material_id"))
+    mcost_no_waste, mcost = material_cost(main_mat, doc.get("material_qty", 0))
+
+    # ---- Extra materials ----
+    extras_cost = 0.0
+    extras_detail = []
+    for e in (doc.get("extra_materials") or []):
+        em = mat_map.get(e.get("material_id"))
+        if not em:
+            continue
+        _, c = material_cost(em, e.get("qty", 0))
+        extras_cost += c
+        extras_detail.append({
+            "material_id": e.get("material_id"),
+            "name": em.get("name", ""),
+            "qty": float(e.get("qty", 0) or 0),
+            "cost": round(c, 4),
+        })
+    total_material_cost = mcost + extras_cost
+
+    # ---- Lavorazione ----
+    total_min = sum(float(doc.get(k, 0) or 0) for k in [
+        "time_prep_min", "time_cut_min", "time_weeding_min",
+        "time_transfer_min", "time_press_min", "time_assembly_min"
+    ])
+    total_hours = total_min / 60.0
+    labor_rate = float(doc.get("labor_rate_hour", 15) or 0)
+    labor_cost = total_hours * labor_rate
+
+    # ---- Macchina ----
+    machine_amort = 0.0
+    machine_energy = 0.0
+    machine_info = None
+    if machine:
+        machine_info = _serialize_cricut_machine(machine)
+        mh = float(doc.get("machine_hours", 0) or 0)
+        machine_amort = machine_info["hourly_amortization"] * mh
+        machine_energy = machine_info["hourly_energy_cost"] * mh
+
+    # ---- Consumabili ----
+    cons_cost = 0.0
+    cons_detail = []
+    for c in (doc.get("consumables") or []):
+        cd = cons_map.get(c.get("consumable_id"))
+        if not cd:
+            continue
+        price = float(cd.get("price", 0) or 0)
+        life = float(cd.get("life_uses", 1) or 1)
+        per_use = price / life if life > 0 else 0
+        uses = float(c.get("uses", 1) or 0)
+        cost = per_use * uses
+        cons_cost += cost
+        cons_detail.append({
+            "consumable_id": c.get("consumable_id"),
+            "name": cd.get("name", ""),
+            "type": cd.get("type", ""),
+            "uses": uses,
+            "cost": round(cost, 4),
+        })
+
+    # ---- Confezione ----
+    pkg_cost = sum(float(doc.get(k, 0) or 0) for k in [
+        "pkg_bag", "pkg_box", "pkg_cardstock", "pkg_label", "pkg_thank_card", "pkg_ribbon"
+    ])
+
+    # ---- Produzione (prima costi indiretti) ----
+    production_cost = total_material_cost + labor_cost + machine_amort + machine_energy + cons_cost + pkg_cost
+
+    # ---- Prezzo di vendita ----
+    margin = float(doc.get("margin_percent", 50) or 0)
+    manual = doc.get("manual_sale_price")
+    if manual is not None and float(manual or 0) > 0:
+        recommended_price = float(manual)
+    else:
+        recommended_price = production_cost * (1 + margin / 100.0)
+
+    # Costi indiretti (calcolati sul prezzo di vendita)
+    mkt_fee_pct = float(doc.get("marketplace_fee_percent", 0) or 0)
+    pay_fee_pct = float(doc.get("payment_fee_percent", 0) or 0)
+    overhead = float(doc.get("overhead_fixed", 0) or 0)
+    vat_pct = float(doc.get("vat_percent", 0) or 0)
+    marketplace_cost = recommended_price * mkt_fee_pct / 100.0
+    payment_cost = recommended_price * pay_fee_pct / 100.0
+    vat_cost = recommended_price * vat_pct / 100.0
+    indirect_total = marketplace_cost + payment_cost + overhead + vat_cost
+
+    total_cost = production_cost + indirect_total
+    net_profit = recommended_price - total_cost
+    margin_actual = (net_profit / recommended_price * 100.0) if recommended_price > 0 else 0.0
+
+    return {
+        "id": str(doc["_id"]) if "_id" in doc else None,
+        "name": doc.get("name", ""),
+        "client": doc.get("client", ""),
+        "category": doc.get("category", ""),
+        "date": doc.get("date", ""),
+        "notes": doc.get("notes", ""),
+        "material_id": doc.get("material_id", ""),
+        "material_qty": float(doc.get("material_qty", 0) or 0),
+        "material_dimensions": doc.get("material_dimensions", ""),
+        "material_name": (main_mat or {}).get("name", ""),
+        "material_unit": (main_mat or {}).get("unit_of_measure", ""),
+        "material_waste_percent": float((main_mat or {}).get("waste_percent", 0) or 0),
+        "time_prep_min": float(doc.get("time_prep_min", 0) or 0),
+        "time_cut_min": float(doc.get("time_cut_min", 0) or 0),
+        "time_weeding_min": float(doc.get("time_weeding_min", 0) or 0),
+        "time_transfer_min": float(doc.get("time_transfer_min", 0) or 0),
+        "time_press_min": float(doc.get("time_press_min", 0) or 0),
+        "time_assembly_min": float(doc.get("time_assembly_min", 0) or 0),
+        "total_time_min": round(total_min, 2),
+        "total_time_hours": round(total_hours, 4),
+        "labor_rate_hour": labor_rate,
+        "labor_cost": round(labor_cost, 4),
+        "machine_id": doc.get("machine_id", ""),
+        "machine_hours": float(doc.get("machine_hours", 0) or 0),
+        "machine_name": (machine or {}).get("name", ""),
+        "machine_amort_cost": round(machine_amort, 4),
+        "machine_energy_cost": round(machine_energy, 4),
+        "consumables": doc.get("consumables", []),
+        "consumables_detail": cons_detail,
+        "consumables_cost": round(cons_cost, 4),
+        "extra_materials": doc.get("extra_materials", []),
+        "extra_materials_detail": extras_detail,
+        "extra_materials_cost": round(extras_cost, 4),
+        "material_cost": round(mcost, 4),
+        "material_cost_no_waste": round(mcost_no_waste, 4),
+        "total_material_cost": round(total_material_cost, 4),
+        "pkg_bag": float(doc.get("pkg_bag", 0) or 0),
+        "pkg_box": float(doc.get("pkg_box", 0) or 0),
+        "pkg_cardstock": float(doc.get("pkg_cardstock", 0) or 0),
+        "pkg_label": float(doc.get("pkg_label", 0) or 0),
+        "pkg_thank_card": float(doc.get("pkg_thank_card", 0) or 0),
+        "pkg_ribbon": float(doc.get("pkg_ribbon", 0) or 0),
+        "packaging_cost": round(pkg_cost, 4),
+        "marketplace_fee_percent": mkt_fee_pct,
+        "payment_fee_percent": pay_fee_pct,
+        "overhead_fixed": overhead,
+        "vat_percent": vat_pct,
+        "marketplace_cost": round(marketplace_cost, 4),
+        "payment_cost": round(payment_cost, 4),
+        "vat_cost": round(vat_cost, 4),
+        "overhead_cost": round(overhead, 4),
+        "indirect_total": round(indirect_total, 4),
+        "production_cost": round(production_cost, 4),
+        "total_cost": round(total_cost, 4),
+        "margin_percent": margin,
+        "manual_sale_price": (float(manual) if manual is not None else None),
+        "recommended_price": round(recommended_price, 2),
+        "net_profit": round(net_profit, 2),
+        "margin_actual": round(margin_actual, 2),
+        "created_at": doc.get("created_at", ""),
+    }
+
+@api_router.get("/cricut/projects")
+async def list_cricut_projects(current_user: dict = Depends(get_current_user)):
+    result = []
+    async for d in db.cricut_projects.find({"user_id": current_user["id"]}).sort("created_at", -1):
+        result.append(await _compute_cricut_project(d, current_user["id"]))
+    return result
+
+@api_router.post("/cricut/projects")
+async def create_cricut_project(p: CricutProjectCreate, current_user: dict = Depends(get_current_user)):
+    doc = p.model_dump()
+    doc["user_id"] = current_user["id"]
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    res = await db.cricut_projects.insert_one(doc)
+    doc["_id"] = res.inserted_id
+    return await _compute_cricut_project(doc, current_user["id"])
+
+@api_router.get("/cricut/projects/{pid}")
+async def get_cricut_project(pid: str, current_user: dict = Depends(get_current_user)):
+    d = await db.cricut_projects.find_one({"_id": ObjectId(pid), "user_id": current_user["id"]})
+    if not d:
+        raise HTTPException(status_code=404, detail="Preventivo non trovato")
+    return await _compute_cricut_project(d, current_user["id"])
+
+@api_router.put("/cricut/projects/{pid}")
+async def update_cricut_project(pid: str, p: CricutProjectUpdate, current_user: dict = Depends(get_current_user)):
+    upd = {k: v for k, v in p.model_dump().items() if v is not None}
+    await db.cricut_projects.update_one({"_id": ObjectId(pid), "user_id": current_user["id"]}, {"$set": upd})
+    d = await db.cricut_projects.find_one({"_id": ObjectId(pid), "user_id": current_user["id"]})
+    return await _compute_cricut_project(d, current_user["id"])
+
+@api_router.delete("/cricut/projects/{pid}")
+async def delete_cricut_project(pid: str, current_user: dict = Depends(get_current_user)):
+    await db.cricut_projects.delete_one({"_id": ObjectId(pid), "user_id": current_user["id"]})
+    return {"message": "Preventivo eliminato"}
+
+@api_router.post("/cricut/projects/{pid}/duplicate")
+async def duplicate_cricut_project(pid: str, current_user: dict = Depends(get_current_user)):
+    orig = await db.cricut_projects.find_one({"_id": ObjectId(pid), "user_id": current_user["id"]})
+    if not orig:
+        raise HTTPException(status_code=404, detail="Preventivo non trovato")
+    new_doc = {k: v for k, v in orig.items() if k != "_id"}
+    new_doc["name"] = f"{orig.get('name', '')} (copia)"
+    new_doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    res = await db.cricut_projects.insert_one(new_doc)
+    new_doc["_id"] = res.inserted_id
+    return await _compute_cricut_project(new_doc, current_user["id"])
+
 # Sales CRUD
 @api_router.get("/sales")
 async def get_sales(current_user: dict = Depends(get_current_user)):

@@ -34,6 +34,7 @@ import ClientsPage from "./pages/ClientsPage";
 import QuotesPage from "./pages/QuotesPage";
 import DemoCalculatorPage from "./pages/DemoCalculatorPage";
 import CricutPage from "./pages/CricutPage";
+import CricutCalculatorPage from "./pages/CricutCalculatorPage";
 import { CookieBanner } from "./components/CookieBanner";
 import { PublicScripts } from "./components/PublicScripts";
 
@@ -130,6 +131,8 @@ function AppRoutes() {
       <Route path="/calculator" element={<ProtectedRoute><CalculatorPage /></ProtectedRoute>} />
       <Route path="/sales" element={<ProtectedRoute><SalesPage /></ProtectedRoute>} />
       <Route path="/cricut" element={<ProtectedRoute><CricutPage /></ProtectedRoute>} />
+      <Route path="/cricut/calculator" element={<ProtectedRoute><CricutCalculatorPage /></ProtectedRoute>} />
+      <Route path="/cricut/calculator/:pid" element={<ProtectedRoute><CricutCalculatorPage /></ProtectedRoute>} />
       <Route path="/purchases" element={<ProtectedRoute><PurchasesPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       <Route path="/banners" element={<ProtectedRoute><BannersPage /></ProtectedRoute>} />

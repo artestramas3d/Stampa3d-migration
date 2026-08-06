@@ -205,5 +205,11 @@ export const getCricutConsumables = () => api.get('/cricut/consumables').then(r 
 export const createCricutConsumable = (data) => api.post('/cricut/consumables', data).then(r => r.data);
 export const updateCricutConsumable = (id, data) => api.put(`/cricut/consumables/${id}`, data).then(r => r.data);
 export const deleteCricutConsumable = (id) => api.delete(`/cricut/consumables/${id}`).then(r => r.data);
+export const getCricutProjects = () => api.get('/cricut/projects').then(r => r.data);
+export const getCricutProject = (id) => api.get(`/cricut/projects/${id}`).then(r => r.data);
+export const createCricutProject = (data) => api.post('/cricut/projects', data).then(r => r.data);
+export const updateCricutProject = (id, data) => api.put(`/cricut/projects/${id}`, data).then(r => r.data);
+export const deleteCricutProject = (id) => api.delete(`/cricut/projects/${id}`).then(r => r.data);
+export const duplicateCricutProject = (id) => api.post(`/cricut/projects/${id}/duplicate`).then(r => r.data);
 
 export default api;

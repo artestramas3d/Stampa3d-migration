@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -7,13 +8,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Textarea } from '../components/ui/textarea';
 import { Badge } from '../components/ui/badge';
-import { Scissors, Layers, Cpu, Package as PackageIcon, Plus, Pencil, Trash2, AlertTriangle, PowerOff, Zap } from 'lucide-react';
+import { Scissors, Layers, Cpu, Package as PackageIcon, Plus, Pencil, Trash2, AlertTriangle, PowerOff, Zap, FileText, Copy, Calculator as CalcIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   getCricutMeta,
   getCricutMaterials, createCricutMaterial, updateCricutMaterial, deleteCricutMaterial,
   getCricutMachines, createCricutMachine, updateCricutMachine, deleteCricutMachine,
   getCricutConsumables, createCricutConsumable, updateCricutConsumable, deleteCricutConsumable,
+  getCricutProjects, deleteCricutProject, duplicateCricutProject,
 } from '../lib/api';
 
 const UNIT_LABELS = { m2: 'm²', cm2: 'cm²', metri_lineari: 'm lineari', fogli: 'fogli', pezzi: 'pezzi' };
@@ -23,29 +25,35 @@ const emptyMachine = { name: '', brand: '', model: '', price: 0, purchase_date: 
 const emptyConsumable = { name: '', type: 'Lama', price: 0, life_uses: 100, notes: '' };
 
 export default function CricutPage() {
-  const [tab, setTab] = useState('materials');
+  const [tab, setTab] = useState('projects');
   const [meta, setMeta] = useState({ units: [], material_categories: [], consumable_types: [] });
+  const navigate = useNavigate();
 
   useEffect(() => { getCricutMeta().then(setMeta).catch(() => {}); }, []);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white shadow-md">
-          <Scissors className="w-5 h-5" />
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white shadow-md">
+            <Scissors className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-heading font-bold">Lavorazioni Cricut</h1>
+            <p className="text-xs text-muted-foreground">Preventivi, materiali, macchine e consumabili per plotter da taglio</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-heading font-bold">Lavorazioni Cricut</h1>
-          <p className="text-xs text-muted-foreground">Gestisci materiali, macchine e consumabili per plotter da taglio</p>
-        </div>
+        <Button onClick={() => navigate('/cricut/calculator')} data-testid="cricut-new-project"><Plus className="w-4 h-4 mr-1" />Nuovo preventivo</Button>
       </div>
 
       <div className="flex flex-wrap gap-2 border-b border-border/50 pb-2">
+        <TabBtn active={tab === 'projects'} onClick={() => setTab('projects')} icon={FileText} label="Preventivi" testid="cricut-tab-projects" />
         <TabBtn active={tab === 'materials'} onClick={() => setTab('materials')} icon={Layers} label="Materiali" testid="cricut-tab-materials" />
         <TabBtn active={tab === 'machines'} onClick={() => setTab('machines')} icon={Cpu} label="Macchine" testid="cricut-tab-machines" />
         <TabBtn active={tab === 'consumables'} onClick={() => setTab('consumables')} icon={PackageIcon} label="Consumabili" testid="cricut-tab-consumables" />
       </div>
 
+      {tab === 'projects' && <ProjectsTab />}
       {tab === 'materials' && <MaterialsTab meta={meta} />}
       {tab === 'machines' && <MachinesTab />}
       {tab === 'consumables' && <ConsumablesTab meta={meta} />}
@@ -468,6 +476,83 @@ function ConsumablesTab({ meta }) {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ============ PREVENTIVI ============
+function ProjectsTab() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  const load = async () => {
+    setLoading(true);
+    try { setItems(await getCricutProjects()); }
+    catch { toast.error('Errore caricamento preventivi'); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { load(); }, []);
+
+  const remove = async (id) => {
+    if (!confirm('Eliminare questo preventivo?')) return;
+    try { await deleteCricutProject(id); toast.success('Eliminato'); load(); }
+    catch { toast.error('Errore'); }
+  };
+  const duplicate = async (id) => {
+    try {
+      const dup = await duplicateCricutProject(id);
+      toast.success('Preventivo duplicato');
+      navigate(`/cricut/calculator/${dup.id}`);
+    } catch { toast.error('Errore duplicazione'); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">{items.length} preventivi</p>
+      </div>
+      {loading ? <div className="text-center py-8 text-muted-foreground text-sm">Caricamento...</div> : items.length === 0 ? (
+        <Card><CardContent className="py-10 text-center text-muted-foreground">
+          <CalcIcon className="w-10 h-10 mx-auto mb-2 opacity-30" />
+          <p className="text-sm">Nessun preventivo salvato.</p>
+          <Button size="sm" className="mt-3" onClick={() => navigate('/cricut/calculator')}><Plus className="w-3.5 h-3.5 mr-1" />Crea il primo</Button>
+        </CardContent></Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {items.map(p => (
+            <Card key={p.id} className="group hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/cricut/calculator/${p.id}`)} data-testid={`cricut-project-${p.id}`}>
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm truncate">{p.name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{p.client || '—'} · {p.date}</p>
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); duplicate(p.id); }} title="Duplica" data-testid={`cricut-duplicate-${p.id}`}><Copy className="w-3.5 h-3.5" /></Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={(e) => { e.stopPropagation(); remove(p.id); }} title="Elimina"><Trash2 className="w-3.5 h-3.5" /></Button>
+                  </div>
+                </div>
+                {p.category && <Badge variant="outline" className="text-[10px]">{p.category}</Badge>}
+                <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                  <div>
+                    <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Costo tot.</p>
+                    <p className="font-semibold">€{p.total_cost.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Prezzo</p>
+                    <p className="font-bold text-primary">€{p.recommended_price.toFixed(2)}</p>
+                  </div>
+                  <div className="col-span-2 flex justify-between text-[11px]">
+                    <span className="text-muted-foreground">Profitto</span>
+                    <span className={`font-semibold ${p.net_profit >= 0 ? 'text-green-600' : 'text-destructive'}`}>€{p.net_profit.toFixed(2)} · {p.margin_actual.toFixed(0)}%</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
