@@ -136,6 +136,13 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
     - PublicListinoPage: seconda riga di chip filtro "Sotto-categoria" che appare solo quando una categoria è selezionata. Reset automatico del filtro sub quando cambia la categoria. Query string estesa `?cat=X&subcat=Y`.
     - PublicProductDetailPage: badge categoria + badge sottocategoria affiancati.
     - Test manuale Playwright: creazione 2 prodotti con stessa categoria e sub diverse ✓, filtro combinato mostra correttamente 1 risultato ✓, "Tutte" mostra tutti ✓.
+70. **Modulo Cricut / Plotter da Taglio — Fase 1: Fondamenta** (06/08/2026):
+    - Backend: 3 nuove collezioni Mongo (`cricut_materials`, `cricut_machines`, `cricut_consumables`) con CRUD completo scoped per `user_id`. Endpoint `/api/cricut/meta` restituisce categorie materiali (12: HTV, Vinile adesivo/removibile, Transfer Tape, Cartoncino, ecc.), unità di misura (m², cm², m lineari, fogli, pezzi), tipi consumabili (7).
+    - Modello **Materiale**: nome, categoria, marca, colore + hex, fornitore, prezzo/qty/UdM, sfrido %, note, rimanenza, soglia stock basso. `unit_cost` calcolato server-side.
+    - Modello **Macchina**: nome, marca/modello, prezzo, data acquisto, consumo watt, costo €/kWh, stato (attiva/disattiva). **Doppia formula ammortamento**: `simple` (prezzo/ore_vita) o `fiscal` (prezzo / anni × 12 × ore_mese). Costi orari (`hourly_amortization`, `hourly_energy_cost`) calcolati auto.
+    - Modello **Consumabile**: nome, tipo (Lama/Tappetino/Penna/Punta/Rullo/Foglio protettivo/Personalizzato), prezzo, `life_uses`, `cost_per_use` auto.
+    - Frontend: nuova pagina `/cricut` (`CricutPage.js`) con 3 tab, nuova voce sidebar "Cricut" con icona Scissors tra Vendite e Acquisti. Card grid con hover actions, dialog form completo, preview live dei calcoli, badge stock basso.
+    - Testato Playwright: creazione materiale HTV Siser Rosso (€2.50/foglio) ✓, creazione Cricut Maker €400/3000h (€0.1333/h ammort + €0.0090/h energia) ✓, creazione Lama Fine Point €15/200 usi (€0.075/uso) ✓.
 
 ## Note Importanti
 - SMTP REALE: smtps.aruba.it, preventivi e inquiry prodotti a info@artestramas3d.it

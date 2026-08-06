@@ -9,7 +9,7 @@ import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { 
   LayoutDashboard, Cylinder, Calculator, ShoppingCart, Receipt, Settings,
-  Menu, Sun, Moon, LogOut, Package, Megaphone, ShieldCheck, User, AlertTriangle, Mail, Bug, ShoppingBag, BookOpen, Users, FileText
+  Menu, Sun, Moon, LogOut, Package, Megaphone, ShieldCheck, User, AlertTriangle, Mail, Bug, ShoppingBag, BookOpen, Users, FileText, Scissors
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -38,6 +38,7 @@ function Sidebar({ onNavigate, banners, siteSettings }) {
     { path: '/accessories', label: t('accessories'), icon: Package },
     { path: '/calculator', label: t('calculator'), icon: Calculator },
     { path: '/sales', label: t('sales'), icon: Receipt },
+    { path: '/cricut', label: 'Cricut', icon: Scissors },
     { path: '/purchases', label: t('purchases'), icon: ShoppingCart },
     { path: '/clients', label: 'Clienti', icon: Users },
     { path: '/quotes', label: 'Preventivi', icon: FileText },

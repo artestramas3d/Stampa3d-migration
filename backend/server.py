@@ -864,6 +864,246 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
         "net_profit": round(net_profit_total, 2)
     }
 
+# ========== CRICUT / PLOTTER DA TAGLIO ==========
+CRICUT_UNITS = ["m2", "cm2", "metri_lineari", "fogli", "pezzi"]
+CRICUT_MATERIAL_CATEGORIES = [
+    "Vinile adesivo", "Vinile removibile", "HTV", "Transfer Tape", "Cartoncino",
+    "Carta adesiva", "Infusible Ink", "Acetato", "Magnetico", "EVA", "Feltro", "Personalizzato"
+]
+CRICUT_CONSUMABLE_TYPES = ["Lama", "Tappetino", "Penna", "Punta", "Rullo", "Foglio protettivo", "Personalizzato"]
+
+class CricutMaterialCreate(BaseModel):
+    name: str
+    category: str = "Personalizzato"
+    brand: str = ""
+    color: str = ""
+    color_hex: str = "#FFFFFF"
+    supplier: str = ""
+    purchase_price: float = 0.0
+    purchase_qty: float = 1.0
+    unit_of_measure: str = "fogli"  # m2, cm2, metri_lineari, fogli, pezzi
+    waste_percent: float = 10.0
+    notes: str = ""
+    remaining_qty: Optional[float] = None
+    low_stock_threshold: float = 0.0
+
+class CricutMaterialUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    brand: Optional[str] = None
+    color: Optional[str] = None
+    color_hex: Optional[str] = None
+    supplier: Optional[str] = None
+    purchase_price: Optional[float] = None
+    purchase_qty: Optional[float] = None
+    unit_of_measure: Optional[str] = None
+    waste_percent: Optional[float] = None
+    notes: Optional[str] = None
+    remaining_qty: Optional[float] = None
+    low_stock_threshold: Optional[float] = None
+
+def _cricut_material_unit_cost(price: float, qty: float) -> float:
+    return round(price / qty, 4) if qty and qty > 0 else 0.0
+
+def _serialize_cricut_material(doc):
+    price = float(doc.get("purchase_price", 0) or 0)
+    qty = float(doc.get("purchase_qty", 1) or 1)
+    remaining = doc.get("remaining_qty")
+    if remaining is None:
+        remaining = qty
+    threshold = float(doc.get("low_stock_threshold", 0) or 0)
+    return {
+        "id": str(doc["_id"]),
+        "name": doc.get("name", ""),
+        "category": doc.get("category", "Personalizzato"),
+        "brand": doc.get("brand", ""),
+        "color": doc.get("color", ""),
+        "color_hex": doc.get("color_hex", "#FFFFFF"),
+        "supplier": doc.get("supplier", ""),
+        "purchase_price": price,
+        "purchase_qty": qty,
+        "unit_of_measure": doc.get("unit_of_measure", "fogli"),
+        "unit_cost": _cricut_material_unit_cost(price, qty),
+        "waste_percent": float(doc.get("waste_percent", 10) or 0),
+        "notes": doc.get("notes", ""),
+        "remaining_qty": remaining,
+        "low_stock_threshold": threshold,
+        "low_stock": bool(threshold > 0 and remaining <= threshold),
+    }
+
+@api_router.get("/cricut/materials")
+async def get_cricut_materials(current_user: dict = Depends(get_current_user)):
+    return [_serialize_cricut_material(d) async for d in db.cricut_materials.find({"user_id": current_user["id"]}).sort("name", 1)]
+
+@api_router.post("/cricut/materials")
+async def create_cricut_material(m: CricutMaterialCreate, current_user: dict = Depends(get_current_user)):
+    doc = m.model_dump()
+    doc["user_id"] = current_user["id"]
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    if doc.get("remaining_qty") is None:
+        doc["remaining_qty"] = doc.get("purchase_qty", 0)
+    res = await db.cricut_materials.insert_one(doc)
+    doc["_id"] = res.inserted_id
+    return _serialize_cricut_material(doc)
+
+@api_router.put("/cricut/materials/{mid}")
+async def update_cricut_material(mid: str, m: CricutMaterialUpdate, current_user: dict = Depends(get_current_user)):
+    upd = {k: v for k, v in m.model_dump().items() if v is not None}
+    await db.cricut_materials.update_one({"_id": ObjectId(mid), "user_id": current_user["id"]}, {"$set": upd})
+    return {"message": "Materiale aggiornato"}
+
+@api_router.delete("/cricut/materials/{mid}")
+async def delete_cricut_material(mid: str, current_user: dict = Depends(get_current_user)):
+    await db.cricut_materials.delete_one({"_id": ObjectId(mid), "user_id": current_user["id"]})
+    return {"message": "Materiale eliminato"}
+
+# ----- Macchine -----
+class CricutMachineCreate(BaseModel):
+    name: str
+    brand: str = ""
+    model: str = ""
+    price: float = 0.0
+    purchase_date: str = ""
+    life_hours: float = 3000.0  # ore di vita utile (formula semplice)
+    power_watts: float = 30.0
+    electricity_cost_kwh: float = 0.30
+    active: bool = True
+    amortization_formula: str = "simple"  # "simple" | "fiscal"
+    fiscal_years: float = 5.0
+    monthly_hours: float = 20.0
+
+class CricutMachineUpdate(BaseModel):
+    name: Optional[str] = None
+    brand: Optional[str] = None
+    model: Optional[str] = None
+    price: Optional[float] = None
+    purchase_date: Optional[str] = None
+    life_hours: Optional[float] = None
+    power_watts: Optional[float] = None
+    electricity_cost_kwh: Optional[float] = None
+    active: Optional[bool] = None
+    amortization_formula: Optional[str] = None
+    fiscal_years: Optional[float] = None
+    monthly_hours: Optional[float] = None
+
+def _cricut_hourly_amort(doc: dict) -> float:
+    price = float(doc.get("price", 0) or 0)
+    formula = doc.get("amortization_formula", "simple")
+    if formula == "fiscal":
+        years = float(doc.get("fiscal_years", 5) or 5)
+        mh = float(doc.get("monthly_hours", 20) or 20)
+        total = years * 12 * mh
+    else:
+        total = float(doc.get("life_hours", 3000) or 3000)
+    return round(price / total, 4) if total > 0 else 0.0
+
+def _serialize_cricut_machine(doc):
+    hourly = _cricut_hourly_amort(doc)
+    power_w = float(doc.get("power_watts", 0) or 0)
+    elec_cost = float(doc.get("electricity_cost_kwh", 0) or 0)
+    hourly_energy = round((power_w / 1000.0) * elec_cost, 4)
+    return {
+        "id": str(doc["_id"]),
+        "name": doc.get("name", ""),
+        "brand": doc.get("brand", ""),
+        "model": doc.get("model", ""),
+        "price": float(doc.get("price", 0) or 0),
+        "purchase_date": doc.get("purchase_date", ""),
+        "life_hours": float(doc.get("life_hours", 3000) or 3000),
+        "power_watts": power_w,
+        "electricity_cost_kwh": elec_cost,
+        "active": bool(doc.get("active", True)),
+        "amortization_formula": doc.get("amortization_formula", "simple"),
+        "fiscal_years": float(doc.get("fiscal_years", 5) or 5),
+        "monthly_hours": float(doc.get("monthly_hours", 20) or 20),
+        "hourly_amortization": hourly,
+        "hourly_energy_cost": hourly_energy,
+    }
+
+@api_router.get("/cricut/machines")
+async def get_cricut_machines(current_user: dict = Depends(get_current_user)):
+    return [_serialize_cricut_machine(d) async for d in db.cricut_machines.find({"user_id": current_user["id"]}).sort("name", 1)]
+
+@api_router.post("/cricut/machines")
+async def create_cricut_machine(m: CricutMachineCreate, current_user: dict = Depends(get_current_user)):
+    doc = m.model_dump()
+    doc["user_id"] = current_user["id"]
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    res = await db.cricut_machines.insert_one(doc)
+    doc["_id"] = res.inserted_id
+    return _serialize_cricut_machine(doc)
+
+@api_router.put("/cricut/machines/{mid}")
+async def update_cricut_machine(mid: str, m: CricutMachineUpdate, current_user: dict = Depends(get_current_user)):
+    upd = {k: v for k, v in m.model_dump().items() if v is not None}
+    await db.cricut_machines.update_one({"_id": ObjectId(mid), "user_id": current_user["id"]}, {"$set": upd})
+    return {"message": "Macchina aggiornata"}
+
+@api_router.delete("/cricut/machines/{mid}")
+async def delete_cricut_machine(mid: str, current_user: dict = Depends(get_current_user)):
+    await db.cricut_machines.delete_one({"_id": ObjectId(mid), "user_id": current_user["id"]})
+    return {"message": "Macchina eliminata"}
+
+# ----- Consumabili -----
+class CricutConsumableCreate(BaseModel):
+    name: str
+    type: str = "Lama"  # tipo
+    price: float = 0.0
+    life_uses: float = 100.0  # numero lavorazioni prima di sostituire
+    notes: str = ""
+
+class CricutConsumableUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    price: Optional[float] = None
+    life_uses: Optional[float] = None
+    notes: Optional[str] = None
+
+def _serialize_cricut_consumable(doc):
+    price = float(doc.get("price", 0) or 0)
+    life = float(doc.get("life_uses", 1) or 1)
+    return {
+        "id": str(doc["_id"]),
+        "name": doc.get("name", ""),
+        "type": doc.get("type", "Lama"),
+        "price": price,
+        "life_uses": life,
+        "cost_per_use": round(price / life, 4) if life > 0 else 0.0,
+        "notes": doc.get("notes", ""),
+    }
+
+@api_router.get("/cricut/consumables")
+async def get_cricut_consumables(current_user: dict = Depends(get_current_user)):
+    return [_serialize_cricut_consumable(d) async for d in db.cricut_consumables.find({"user_id": current_user["id"]}).sort("type", 1)]
+
+@api_router.post("/cricut/consumables")
+async def create_cricut_consumable(c: CricutConsumableCreate, current_user: dict = Depends(get_current_user)):
+    doc = c.model_dump()
+    doc["user_id"] = current_user["id"]
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    res = await db.cricut_consumables.insert_one(doc)
+    doc["_id"] = res.inserted_id
+    return _serialize_cricut_consumable(doc)
+
+@api_router.put("/cricut/consumables/{cid}")
+async def update_cricut_consumable(cid: str, c: CricutConsumableUpdate, current_user: dict = Depends(get_current_user)):
+    upd = {k: v for k, v in c.model_dump().items() if v is not None}
+    await db.cricut_consumables.update_one({"_id": ObjectId(cid), "user_id": current_user["id"]}, {"$set": upd})
+    return {"message": "Consumabile aggiornato"}
+
+@api_router.delete("/cricut/consumables/{cid}")
+async def delete_cricut_consumable(cid: str, current_user: dict = Depends(get_current_user)):
+    await db.cricut_consumables.delete_one({"_id": ObjectId(cid), "user_id": current_user["id"]})
+    return {"message": "Consumabile eliminato"}
+
+@api_router.get("/cricut/meta")
+async def get_cricut_meta():
+    return {
+        "units": CRICUT_UNITS,
+        "material_categories": CRICUT_MATERIAL_CATEGORIES,
+        "consumable_types": CRICUT_CONSUMABLE_TYPES,
+    }
+
 # Sales CRUD
 @api_router.get("/sales")
 async def get_sales(current_user: dict = Depends(get_current_user)):

@@ -191,4 +191,19 @@ export const getAdminShopSettings = () => api.get('/admin/shop-settings').then(r
 export const updateShopSettings = (data) => api.put('/admin/shop-settings', data).then(r => r.data);
 export const toggleShopOwner = (userId) => api.post(`/admin/toggle-shop-owner/${userId}`).then(r => r.data);
 
+// Cricut / Plotter da taglio
+export const getCricutMeta = () => api.get('/cricut/meta').then(r => r.data);
+export const getCricutMaterials = () => api.get('/cricut/materials').then(r => r.data);
+export const createCricutMaterial = (data) => api.post('/cricut/materials', data).then(r => r.data);
+export const updateCricutMaterial = (id, data) => api.put(`/cricut/materials/${id}`, data).then(r => r.data);
+export const deleteCricutMaterial = (id) => api.delete(`/cricut/materials/${id}`).then(r => r.data);
+export const getCricutMachines = () => api.get('/cricut/machines').then(r => r.data);
+export const createCricutMachine = (data) => api.post('/cricut/machines', data).then(r => r.data);
+export const updateCricutMachine = (id, data) => api.put(`/cricut/machines/${id}`, data).then(r => r.data);
+export const deleteCricutMachine = (id) => api.delete(`/cricut/machines/${id}`).then(r => r.data);
+export const getCricutConsumables = () => api.get('/cricut/consumables').then(r => r.data);
+export const createCricutConsumable = (data) => api.post('/cricut/consumables', data).then(r => r.data);
+export const updateCricutConsumable = (id, data) => api.put(`/cricut/consumables/${id}`, data).then(r => r.data);
+export const deleteCricutConsumable = (id) => api.delete(`/cricut/consumables/${id}`).then(r => r.data);
+
 export default api;
