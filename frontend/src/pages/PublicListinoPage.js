@@ -17,7 +17,7 @@ function ProductCard({ p, index, primary }) {
       <div className="aspect-[4/3] bg-gray-50 relative overflow-hidden">
         {photos.length > 0 ? (
           <>
-            <img src={photos[idx]} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-testid={`product-photo-${index}`} />
+            <img src={photos[idx]} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-testid={`product-photo-${index}`} />
             {photos.length > 1 && (
               <>
                 <button onClick={prev} aria-label="Foto precedente" className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition-opacity" data-testid={`prev-photo-${index}`}>

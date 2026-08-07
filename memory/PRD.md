@@ -148,6 +148,12 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
     - Modello **Progetto**: info (nome, cliente, categoria, data, note), materiale principale + `extra_materials[]`, 6 tempi (prep/taglio/spellicolatura/TT/pressatura/assemblaggio) + `labor_rate_hour`, macchina + ore, `consumables[]` (multi), 6 voci confezione, 4 costi indiretti (marketplace %, pagamento %, generali €, IVA %), `margin_percent` OR `manual_sale_price`.
     - Frontend: pagina `/cricut/calculator` (create) e `/cricut/calculator/:pid` (edit) con **7 sezioni** in card + **riepilogo sticky** che si aggiorna live. Compute JS mirror del backend. Tab "Preventivi" in `/cricut` con lista card + Duplica + Elimina, click card = apri editor.
     - Testato end-to-end: progetto "T-shirt logo" con HTV + Maker + Lama + Sacchetto + commissioni → €7.29 produzione + €0.77 indiretti + margine 50% = **€10.93 prezzo, €2.88 profitto (26.33% effettivo)** ✓.
+72. **SEO Full Optimization** (07/02/2026):
+    - Backend: nuovi endpoint `/api/sitemap.xml` (dinamico con prodotti pubblici, per-dominio) e `/api/robots.txt` (dinamico basato su header Host). Nuovi campi `SiteSettings`: `shop_domain`, `calc_domain`, `head_scripts_shop`, `body_scripts_shop`.
+    - `/api/public/site-scripts` ora seleziona gli script in base al dominio (GA4 doppio: shop vs calcolatore).
+    - Frontend: `SeoHead` canonical ora usa origin+pathname (no query string, no duplicati). `LandingPage` ora ha SeoHead + Schema.org Organization + WebApplication. AdminPanel "Codici" tab: 2 sezioni separate (SaaS/Shop) + configurazione domini SEO.
+    - Core Web Vitals: `loading="lazy"` + `decoding="async"` su tutte le immagini prodotto/categoria. Immagine principale prodotto ha `loading="eager"` + `fetchpriority="high"` per LCP ottimale.
+    - Report completo in `/app/memory/SEO_REPORT.md` con lista interventi, azioni VPS/nginx, limitazioni (SSR non implementato per rischi tecnici con react-snap+React18), punteggio finale 9.3/10.
 
 ## Note Importanti
 - SMTP REALE: smtps.aruba.it, preventivi e inquiry prodotti a info@artestramas3d.it

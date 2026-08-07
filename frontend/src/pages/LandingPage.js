@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getPublicLanding, submitContactForm } from '../lib/api';
 import { Package, Mail, Phone, Send, Instagram, Facebook, ChevronRight } from 'lucide-react';
+import { SeoHead } from '../components/SeoHead';
 
 export default function LandingPage() {
   const [data, setData] = useState(null);
@@ -35,8 +36,36 @@ export default function LandingPage() {
   const brand = data?.brand_name || 'Artes&Tramas';
   const portfolio = data?.portfolio || [];
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        name: brand,
+        url: typeof window !== 'undefined' ? window.location.origin : '',
+        logo: data?.logo_url || '',
+        sameAs: [data?.instagram_url, data?.facebook_url].filter(Boolean),
+      },
+      {
+        '@type': 'WebApplication',
+        name: `${brand} - Calcolatore Stampa 3D e Plotter`,
+        description: 'Software gestionale per makers: calcolatore costi stampa 3D, gestione filamenti, magazzino, vendite e preventivi Cricut.',
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Any (Web)',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
+      },
+    ],
+  };
+
   return (
     <div className="min-h-screen" style={{ background: '#fafafa', fontFamily: "'Inter', sans-serif" }} data-testid="landing-page">
+      <SeoHead
+        title={`${brand} · Calcolatore costi Stampa 3D e Plotter Cricut`}
+        description={data?.hero_subtitle || 'Gestisci filamenti, calcola costi di stampa 3D e Cricut, tieni traccia di vendite e preventivi. Software gestionale gratuito per makers.'}
+        image={data?.hero_image || portfolio[0]?.photos?.[0] || portfolio[0]?.photo || ''}
+        siteName={brand}
+        jsonLd={jsonLd}
+      />
       {/* Hero */}
       <section className="relative text-white py-20 sm:py-28 px-6" style={{ background: `linear-gradient(135deg, ${primary}, #1a1a2e)` }}>
         <div className="max-w-4xl mx-auto text-center">
@@ -131,7 +160,7 @@ export default function LandingPage() {
             {/* Contact Info */}
             <div>
               <p className="text-gray-600 mb-6">
-                Hai un'idea da realizzare? Contattaci per un preventivo personalizzato. Risponderemo il prima possibile!
+                Hai un&apos;idea da realizzare? Contattaci per un preventivo personalizzato. Risponderemo il prima possibile!
               </p>
               {data?.contact_email && (
                 <a href={`mailto:${data.contact_email}`} className="flex items-center gap-3 text-gray-700 mb-3 hover:underline">

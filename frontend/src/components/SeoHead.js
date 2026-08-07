@@ -22,7 +22,11 @@ export function SeoHead({
   jsonLd = null,
   noindex = false,
 }) {
-  const canonical = url || (typeof window !== 'undefined' ? window.location.href : '');
+  // Canonical: rimuove query string per evitare duplicati indicizzati da Google
+  let canonical = url;
+  if (!canonical && typeof window !== 'undefined') {
+    canonical = window.location.origin + window.location.pathname;
+  }
   const cleanDesc = (description || '').slice(0, 300);
 
   return (

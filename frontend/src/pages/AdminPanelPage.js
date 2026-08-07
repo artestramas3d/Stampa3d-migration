@@ -130,6 +130,8 @@ function SiteSettingsTab() {
 function ScriptsTab() {
   const [data, setData] = useState({
     head_scripts: '', body_scripts: '',
+    head_scripts_shop: '', body_scripts_shop: '',
+    shop_domain: '', calc_domain: '',
     demo_banner_text: '', demo_banner_enabled: false,
     demo_banner_color: '#f97316', demo_banner_link: ''
   });
@@ -141,6 +143,10 @@ function ScriptsTab() {
       setData({
         head_scripts: s.head_scripts || '',
         body_scripts: s.body_scripts || '',
+        head_scripts_shop: s.head_scripts_shop || '',
+        body_scripts_shop: s.body_scripts_shop || '',
+        shop_domain: s.shop_domain || 'https://shop.artestramas3d.it',
+        calc_domain: s.calc_domain || 'https://calcolatore.artestramas3d.it',
         demo_banner_text: s.demo_banner_text || '',
         demo_banner_enabled: s.demo_banner_enabled || false,
         demo_banner_color: s.demo_banner_color || '#f97316',
@@ -221,36 +227,84 @@ function ScriptsTab() {
         </CardContent>
       </Card>
 
-      {/* Script esterni */}
+      {/* Script esterni CALCOLATORE (SaaS) */}
       <Card className="border-border/40">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-heading flex items-center gap-2">
-            <Code className="w-4 h-4" /> Script Esterni (AdSense, Analytics)
+            <Code className="w-4 h-4" /> Script Esterni — Calcolatore (SaaS)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Codice aggiunto nel &lt;head&gt; delle pagine pubbliche (landing, demo, listino).
+            Applicati sul dominio <b>calcolatore.artestramas3d.it</b> (landing, demo, listino privato). Es. GA4 per il SaaS.
           </p>
           <Textarea
             value={data.head_scripts}
             onChange={e => setData(prev => ({...prev, head_scripts: e.target.value}))}
-            placeholder='Es. <script async src="https://pagead2.googlesyndication.com/..."></script>'
+            placeholder='<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>'
             rows={4}
             className="font-mono text-xs"
             data-testid="head-scripts-input"
           />
-          <p className="text-xs text-muted-foreground">
-            Codice aggiunto prima della chiusura &lt;/body&gt;.
-          </p>
+          <p className="text-xs text-muted-foreground">Codice prima della chiusura &lt;/body&gt;</p>
           <Textarea
             value={data.body_scripts}
             onChange={e => setData(prev => ({...prev, body_scripts: e.target.value}))}
-            placeholder='Es. <script src="https://widget.esempio.com/chat.js"></script>'
+            placeholder='<script>window.dataLayer=window.dataLayer||[];...</script>'
             rows={3}
             className="font-mono text-xs"
             data-testid="body-scripts-input"
           />
+        </CardContent>
+      </Card>
+
+      {/* Script esterni SHOP */}
+      <Card className="border-border/40">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-heading flex items-center gap-2">
+            <Code className="w-4 h-4" /> Script Esterni — Shop (Vetrina)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Applicati sul dominio <b>shop.artestramas3d.it</b>. Usa un GA4 separato per tracciare shopper vs utenti SaaS.
+          </p>
+          <Textarea
+            value={data.head_scripts_shop}
+            onChange={e => setData(prev => ({...prev, head_scripts_shop: e.target.value}))}
+            placeholder='<script async src="https://www.googletagmanager.com/gtag/js?id=G-YYYYYYYYYY"></script>'
+            rows={4}
+            className="font-mono text-xs"
+            data-testid="head-scripts-shop-input"
+          />
+          <Textarea
+            value={data.body_scripts_shop}
+            onChange={e => setData(prev => ({...prev, body_scripts_shop: e.target.value}))}
+            placeholder='Pixel Facebook, chat widget, ecc.'
+            rows={3}
+            className="font-mono text-xs"
+            data-testid="body-scripts-shop-input"
+          />
+        </CardContent>
+      </Card>
+
+      {/* SEO Domains */}
+      <Card className="border-border/40">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-heading flex items-center gap-2">SEO — Domini pubblici</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">Usati per generare sitemap, canonical e Open Graph. Includere <code>https://</code>.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Dominio Shop</Label>
+              <Input value={data.shop_domain} onChange={e => setData(prev => ({...prev, shop_domain: e.target.value}))} placeholder="https://shop.artestramas3d.it" className="h-8 text-xs font-mono" data-testid="shop-domain-input" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Dominio Calcolatore</Label>
+              <Input value={data.calc_domain} onChange={e => setData(prev => ({...prev, calc_domain: e.target.value}))} placeholder="https://calcolatore.artestramas3d.it" className="h-8 text-xs font-mono" data-testid="calc-domain-input" />
+            </div>
+          </div>
         </CardContent>
       </Card>
 

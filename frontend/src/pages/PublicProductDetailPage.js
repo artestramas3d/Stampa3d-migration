@@ -266,7 +266,7 @@ export default function PublicProductDetailPage() {
             <div className="aspect-square bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm relative group">
               {photos.length > 0 ? (
                 <>
-                  <img src={photos[photoIdx]} alt={product.name} className="w-full h-full object-cover" data-testid="main-photo" />
+                  <img src={photos[photoIdx]} alt={product.name} loading="eager" fetchpriority="high" decoding="async" className="w-full h-full object-cover" data-testid="main-photo" />
                   {photos.length > 1 && (
                     <>
                       <button onClick={prevPhoto} aria-label="Foto precedente" className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-700 rounded-full w-10 h-10 flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-all">

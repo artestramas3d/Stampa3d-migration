@@ -2320,6 +2320,12 @@ class SiteSettingsUpdate(BaseModel):
     accent_color: Optional[str] = None
     head_scripts: Optional[str] = None
     body_scripts: Optional[str] = None
+    # Analytics/Marketing SHOP domain (separato dal calcolatore SaaS)
+    head_scripts_shop: Optional[str] = None
+    body_scripts_shop: Optional[str] = None
+    # SEO
+    shop_domain: Optional[str] = None  # es. https://shop.artestramas3d.it
+    calc_domain: Optional[str] = None  # es. https://calcolatore.artestramas3d.it
     demo_banner_text: Optional[str] = None
     demo_banner_enabled: Optional[bool] = None
     demo_banner_color: Optional[str] = None
@@ -2328,30 +2334,36 @@ class SiteSettingsUpdate(BaseModel):
 @api_router.get("/site-settings")
 async def get_site_settings(current_user: dict = Depends(get_current_user)):
     doc = await db.site_settings.find_one({"_id": "global"})
-    if not doc:
-        return {"brand_name": "Artes&Tramas", "subtitle": "Calcolatore", "primary_color": "#f97316", "accent_color": "#2563eb", "head_scripts": "", "body_scripts": "", "demo_banner_text": "", "demo_banner_enabled": False, "demo_banner_color": "#f97316", "demo_banner_link": ""}
-    return {
-        "brand_name": doc.get("brand_name", "Artes&Tramas"),
-        "subtitle": doc.get("subtitle", "Calcolatore"),
-        "primary_color": doc.get("primary_color", "#f97316"),
-        "accent_color": doc.get("accent_color", "#2563eb"),
-        "head_scripts": doc.get("head_scripts", ""),
-        "body_scripts": doc.get("body_scripts", ""),
-        "demo_banner_text": doc.get("demo_banner_text", ""),
-        "demo_banner_enabled": doc.get("demo_banner_enabled", False),
-        "demo_banner_color": doc.get("demo_banner_color", "#f97316"),
-        "demo_banner_link": doc.get("demo_banner_link", ""),
+    defaults = {
+        "brand_name": "Artes&Tramas", "subtitle": "Calcolatore",
+        "primary_color": "#f97316", "accent_color": "#2563eb",
+        "head_scripts": "", "body_scripts": "",
+        "head_scripts_shop": "", "body_scripts_shop": "",
+        "shop_domain": "https://shop.artestramas3d.it",
+        "calc_domain": "https://calcolatore.artestramas3d.it",
+        "demo_banner_text": "", "demo_banner_enabled": False,
+        "demo_banner_color": "#f97316", "demo_banner_link": ""
     }
+    if not doc:
+        return defaults
+    return {k: doc.get(k, v) for k, v in defaults.items()}
 
 # Public endpoint for scripts (no auth needed)
 @api_router.get("/public/site-scripts")
-async def get_public_site_scripts():
+async def get_public_site_scripts(request: Request):
     doc = await db.site_settings.find_one({"_id": "global"})
+    host = (request.headers.get("host") or "").lower()
+    is_shop = host.startswith("shop.")
+    defaults = {"head_scripts": "", "body_scripts": "", "demo_banner_text": "",
+                "demo_banner_enabled": False, "demo_banner_color": "#f97316", "demo_banner_link": ""}
     if not doc:
-        return {"head_scripts": "", "body_scripts": "", "demo_banner_text": "", "demo_banner_enabled": False, "demo_banner_color": "#f97316", "demo_banner_link": ""}
+        return defaults
+    # Seleziona gli script in base al dominio: shop.* usa gli script SHOP, altri quelli SaaS
+    head_key = "head_scripts_shop" if is_shop else "head_scripts"
+    body_key = "body_scripts_shop" if is_shop else "body_scripts"
     return {
-        "head_scripts": doc.get("head_scripts", ""),
-        "body_scripts": doc.get("body_scripts", ""),
+        "head_scripts": doc.get(head_key) or doc.get("head_scripts", ""),
+        "body_scripts": doc.get(body_key) or doc.get("body_scripts", ""),
         "demo_banner_text": doc.get("demo_banner_text", ""),
         "demo_banner_enabled": doc.get("demo_banner_enabled", False),
         "demo_banner_color": doc.get("demo_banner_color", "#f97316"),
@@ -2368,18 +2380,17 @@ async def update_site_settings(settings: SiteSettingsUpdate, current_user: dict 
             upsert=True
         )
     doc = await db.site_settings.find_one({"_id": "global"})
-    return {
-        "brand_name": doc.get("brand_name", "Artes&Tramas"),
-        "subtitle": doc.get("subtitle", "Calcolatore"),
-        "primary_color": doc.get("primary_color", "#f97316"),
-        "accent_color": doc.get("accent_color", "#2563eb"),
-        "head_scripts": doc.get("head_scripts", ""),
-        "body_scripts": doc.get("body_scripts", ""),
-        "demo_banner_text": doc.get("demo_banner_text", ""),
-        "demo_banner_enabled": doc.get("demo_banner_enabled", False),
-        "demo_banner_color": doc.get("demo_banner_color", "#f97316"),
-        "demo_banner_link": doc.get("demo_banner_link", ""),
+    defaults = {
+        "brand_name": "Artes&Tramas", "subtitle": "Calcolatore",
+        "primary_color": "#f97316", "accent_color": "#2563eb",
+        "head_scripts": "", "body_scripts": "",
+        "head_scripts_shop": "", "body_scripts_shop": "",
+        "shop_domain": "https://shop.artestramas3d.it",
+        "calc_domain": "https://calcolatore.artestramas3d.it",
+        "demo_banner_text": "", "demo_banner_enabled": False,
+        "demo_banner_color": "#f97316", "demo_banner_link": ""
     }
+    return {k: doc.get(k, v) for k, v in defaults.items()}
 
 # ========== BUG REPORTS ==========
 
@@ -2615,6 +2626,111 @@ async def delete_product(product_id: str, current_user: dict = Depends(require_s
     return {"message": "Prodotto eliminato"}
 
 # ========== PUBLIC ENDPOINTS (no auth) ==========
+
+async def _get_domains():
+    """Restituisce gli URL configurati per shop e calcolatore (con fallback sicuri)."""
+    doc = await db.site_settings.find_one({"_id": "global"}) or {}
+    shop = (doc.get("shop_domain") or "https://shop.artestramas3d.it").rstrip("/")
+    calc = (doc.get("calc_domain") or "https://calcolatore.artestramas3d.it").rstrip("/")
+    return shop, calc
+
+@api_router.get("/sitemap.xml", include_in_schema=False)
+async def sitemap_xml(request: Request):
+    """Sitemap XML generata dinamicamente. Include tutti i prodotti pubblici."""
+    shop_url, calc_url = await _get_domains()
+    host = (request.headers.get("host") or "").lower()
+    # Se richiesto dal dominio shop, ritorna solo URL shop; altrimenti include entrambi
+    is_shop_only = host.startswith("shop.")
+
+    urls = []
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    # SHOP: pagine statiche
+    for path, priority, changefreq in [
+        ("/", "1.0", "weekly"),
+        ("/listino", "0.9", "daily"),
+    ]:
+        urls.append((f"{shop_url}{path}", now, changefreq, priority))
+
+    # SHOP: prodotti pubblici
+    async for p in db.products.find({"is_public": True}):
+        slug = p.get("slug") or (_slugify(p.get("name", "")) + "-" + str(p["_id"])[-6:])
+        lastmod = (p.get("updated_at") or p.get("created_at") or "")[:10] or now
+        urls.append((f"{shop_url}/shop/prodotto/{slug}", lastmod, "weekly", "0.7"))
+
+    # CALCOLATORE: pagine pubbliche indicizzabili (landing, guide, cookie policy)
+    if not is_shop_only:
+        for path, priority, changefreq in [
+            ("/", "0.9", "weekly"),
+            ("/guide", "0.7", "monthly"),
+            ("/cookie-policy", "0.3", "yearly"),
+        ]:
+            urls.append((f"{calc_url}{path}", now, changefreq, priority))
+
+    xml_urls = "\n".join(
+        f"  <url><loc>{loc}</loc><lastmod>{lm}</lastmod>"
+        f"<changefreq>{cf}</changefreq><priority>{pr}</priority></url>"
+        for loc, lm, cf, pr in urls
+    )
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{xml_urls}\n"
+        "</urlset>\n"
+    )
+    return Response(content=xml, media_type="application/xml")
+
+@api_router.get("/robots.txt", include_in_schema=False)
+async def robots_txt(request: Request):
+    """robots.txt dinamico basato sul dominio richiedente."""
+    shop_url, calc_url = await _get_domains()
+    host = (request.headers.get("host") or "").lower()
+    is_shop = host.startswith("shop.")
+
+    if is_shop:
+        # Su shop.*: indicizza tutto pubblico, blocca le route SaaS che restano montate
+        body = (
+            "User-agent: *\n"
+            "Allow: /\n"
+            "Disallow: /admin\n"
+            "Disallow: /login\n"
+            "Disallow: /register\n"
+            "Disallow: /forgot-password\n"
+            "Disallow: /reset-password\n"
+            "Disallow: /verify-email\n"
+            "Disallow: /profile\n"
+            "Disallow: /bug-report\n"
+            f"\nSitemap: {shop_url}/sitemap.xml\n"
+        )
+    else:
+        # Sul calcolatore SaaS: blocca l'area privata, permetti landing/guide/cookie
+        body = (
+            "User-agent: *\n"
+            "Allow: /\n"
+            "Allow: /guide\n"
+            "Allow: /cookie-policy\n"
+            "Disallow: /admin\n"
+            "Disallow: /dashboard\n"
+            "Disallow: /calculator\n"
+            "Disallow: /cricut\n"
+            "Disallow: /filaments\n"
+            "Disallow: /accessories\n"
+            "Disallow: /sales\n"
+            "Disallow: /purchases\n"
+            "Disallow: /settings\n"
+            "Disallow: /banners\n"
+            "Disallow: /clients\n"
+            "Disallow: /quotes\n"
+            "Disallow: /profile\n"
+            "Disallow: /bug-report\n"
+            "Disallow: /login\n"
+            "Disallow: /register\n"
+            "Disallow: /forgot-password\n"
+            "Disallow: /reset-password\n"
+            "Disallow: /verify-email\n"
+            f"\nSitemap: {calc_url}/sitemap.xml\n"
+        )
+    return Response(content=body, media_type="text/plain")
 
 @api_router.get("/public/listino")
 async def get_public_listino():

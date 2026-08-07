@@ -223,7 +223,7 @@ export default function HomeShopPage() {
                   >
                     {catImg && (
                       <>
-                        <img src={catImg} alt={cat} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                        <img src={catImg} alt={cat} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                         <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.15) 60%, transparent 100%)' }} />
                       </>
                     )}
@@ -266,7 +266,7 @@ export default function HomeShopPage() {
               >
                 <div className="aspect-square bg-gray-50 relative overflow-hidden">
                   {(p.photos?.[0] || p.photo) ? (
-                    <img src={p.photos?.[0] || p.photo} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img src={p.photos?.[0] || p.photo} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center"><Package className="w-12 h-12 text-gray-300" /></div>
                   )}

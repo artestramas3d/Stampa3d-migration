@@ -1,8 +1,12 @@
+# Robots.txt statico (fallback). Sui domini shop.* e calcolatore.* il backend
+# serve una versione dinamica via /api/robots.txt configurata su nginx (rewrite root).
+
 User-agent: *
 Allow: /
 Allow: /listino
-Allow: /prodotto/
 Allow: /shop/prodotto/
+Allow: /guide
+Allow: /cookie-policy
 
 Disallow: /admin
 Disallow: /admin/
@@ -10,6 +14,7 @@ Disallow: /login
 Disallow: /register
 Disallow: /dashboard
 Disallow: /calculator
+Disallow: /cricut
 Disallow: /filaments
 Disallow: /accessories
 Disallow: /sales
@@ -24,5 +29,6 @@ Disallow: /forgot-password
 Disallow: /reset-password
 Disallow: /verify-email
 
-# Sitemap
+# Sitemaps (uno per dominio)
 Sitemap: https://shop.artestramas3d.it/sitemap.xml
+Sitemap: https://calcolatore.artestramas3d.it/sitemap.xml
