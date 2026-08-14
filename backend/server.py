@@ -2636,49 +2636,49 @@ async def _get_domains():
 
 @api_router.get("/sitemap.xml", include_in_schema=False)
 async def sitemap_xml(request: Request):
-    """Sitemap XML generata dinamicamente. Include tutti i prodotti pubblici."""
+    """Sitemap XML valida secondo protocollo sitemap.org. Include prodotti pubblici."""
     shop_url, calc_url = await _get_domains()
     host = (request.headers.get("host") or "").lower()
     # Se richiesto dal dominio shop, ritorna solo URL shop; altrimenti include entrambi
     is_shop_only = host.startswith("shop.")
-
-    urls = []
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    # SHOP: pagine statiche
-    for path, priority, changefreq in [
-        ("/", "1.0", "weekly"),
-        ("/listino", "0.9", "daily"),
-    ]:
-        urls.append((f"{shop_url}{path}", now, changefreq, priority))
+    # Costruzione URL con deduplica (dict keyed by loc)
+    urls_map = {}
 
-    # SHOP: prodotti pubblici
+    # --- SHOP: home + listino ---
+    urls_map[f"{shop_url}/"] = (now, "weekly", "1.0")
+    urls_map[f"{shop_url}/listino"] = (now, "daily", "0.9")
+
+    # --- SHOP: prodotti pubblici ---
     async for p in db.products.find({"is_public": True}):
         slug = p.get("slug") or (_slugify(p.get("name", "")) + "-" + str(p["_id"])[-6:])
         lastmod = (p.get("updated_at") or p.get("created_at") or "")[:10] or now
-        urls.append((f"{shop_url}/shop/prodotto/{slug}", lastmod, "weekly", "0.7"))
+        urls_map[f"{shop_url}/shop/prodotto/{slug}"] = (lastmod, "weekly", "0.7")
 
-    # CALCOLATORE: pagine pubbliche indicizzabili (landing, guide, cookie policy)
+    # --- CALCOLATORE: home + guida (solo se richiesta non è dal dominio shop) ---
     if not is_shop_only:
-        for path, priority, changefreq in [
-            ("/", "0.9", "weekly"),
-            ("/guide", "0.7", "monthly"),
-            ("/cookie-policy", "0.3", "yearly"),
-        ]:
-            urls.append((f"{calc_url}{path}", now, changefreq, priority))
+        urls_map[f"{calc_url}/"] = (now, "weekly", "0.9")
+        urls_map[f"{calc_url}/guide"] = (now, "monthly", "0.7")
 
-    xml_urls = "\n".join(
-        f"  <url><loc>{loc}</loc><lastmod>{lm}</lastmod>"
-        f"<changefreq>{cf}</changefreq><priority>{pr}</priority></url>"
-        for loc, lm, cf, pr in urls
+    # Rendering XML (ogni tag su riga separata per leggibilità)
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for loc, (lastmod, changefreq, priority) in urls_map.items():
+        lines.append("  <url>")
+        lines.append(f"    <loc>{loc}</loc>")
+        lines.append(f"    <lastmod>{lastmod}</lastmod>")
+        lines.append(f"    <changefreq>{changefreq}</changefreq>")
+        lines.append(f"    <priority>{priority}</priority>")
+        lines.append("  </url>")
+    lines.append("</urlset>")
+    xml = "\n".join(lines) + "\n"
+
+    return Response(
+        content=xml,
+        media_type="application/xml",
+        headers={"Content-Type": "application/xml; charset=utf-8", "Cache-Control": "public, max-age=3600"},
     )
-    xml = (
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        f"{xml_urls}\n"
-        "</urlset>\n"
-    )
-    return Response(content=xml, media_type="application/xml")
 
 @api_router.get("/robots.txt", include_in_schema=False)
 async def robots_txt(request: Request):
