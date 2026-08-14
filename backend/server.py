@@ -2656,10 +2656,32 @@ async def sitemap_xml(request: Request):
         lastmod = (p.get("updated_at") or p.get("created_at") or "")[:10] or now
         urls_map[f"{shop_url}/shop/prodotto/{slug}"] = (lastmod, "weekly", "0.7")
 
+    # --- NEWS: pubblicate (visibili su shop + calc) ---
+    news_count = 0
+    async for n in db.news.find({"is_published": True}):
+        s = n.get("slug", "")
+        if not s:
+            continue
+        lastmod = (n.get("updated_at") or n.get("created_at") or "")[:10] or now
+        # Notizie visibili su entrambi i domini; sitemap le mette solo sullo shop se richiesto da shop
+        urls_map[f"{shop_url}/news/{s}"] = (lastmod, "monthly", "0.6")
+        news_count += 1
+    if news_count > 0:
+        urls_map[f"{shop_url}/news"] = (now, "weekly", "0.7")
+
     # --- CALCOLATORE: home + guida (solo se richiesta non è dal dominio shop) ---
     if not is_shop_only:
         urls_map[f"{calc_url}/"] = (now, "weekly", "0.9")
         urls_map[f"{calc_url}/guide"] = (now, "monthly", "0.7")
+        # News anche su dominio calcolatore
+        async for n in db.news.find({"is_published": True}):
+            s = n.get("slug", "")
+            if not s:
+                continue
+            lastmod = (n.get("updated_at") or n.get("created_at") or "")[:10] or now
+            urls_map[f"{calc_url}/news/{s}"] = (lastmod, "monthly", "0.6")
+        if news_count > 0:
+            urls_map[f"{calc_url}/news"] = (now, "weekly", "0.7")
 
     # Rendering XML (ogni tag su riga separata per leggibilità)
     lines = ['<?xml version="1.0" encoding="UTF-8"?>',
@@ -2731,6 +2753,125 @@ async def robots_txt(request: Request):
             f"\nSitemap: {calc_url}/sitemap.xml\n"
         )
     return Response(content=body, media_type="text/plain")
+
+# ========== NEWS / NOTIZIE ==========
+NEWS_CATEGORIES_DEFAULT = ["Novità", "Guide", "Offerte", "Eventi", "Aggiornamenti"]
+
+class NewsCreate(BaseModel):
+    title: str
+    slug: str = ""
+    category: str = "Novità"
+    excerpt: str = ""
+    content_html: str = ""  # Rich text HTML (dal tiptap)
+    cover_image: str = ""   # base64 o URL
+    is_published: bool = False
+    is_featured: bool = False
+
+class NewsUpdate(BaseModel):
+    title: Optional[str] = None
+    slug: Optional[str] = None
+    category: Optional[str] = None
+    excerpt: Optional[str] = None
+    content_html: Optional[str] = None
+    cover_image: Optional[str] = None
+    is_published: Optional[bool] = None
+    is_featured: Optional[bool] = None
+
+def _serialize_news(doc, include_content=True):
+    out = {
+        "id": str(doc["_id"]),
+        "title": doc.get("title", ""),
+        "slug": doc.get("slug", ""),
+        "category": doc.get("category", "Novità"),
+        "excerpt": doc.get("excerpt", ""),
+        "cover_image": doc.get("cover_image", ""),
+        "is_published": bool(doc.get("is_published", False)),
+        "is_featured": bool(doc.get("is_featured", False)),
+        "views": int(doc.get("views", 0)),
+        "author_id": doc.get("author_id", ""),
+        "author_name": doc.get("author_name", ""),
+        "created_at": doc.get("created_at", ""),
+        "updated_at": doc.get("updated_at", ""),
+    }
+    if include_content:
+        out["content_html"] = doc.get("content_html", "")
+    return out
+
+async def _news_require_editor(current_user: dict = Depends(get_current_user)):
+    if not (current_user.get("is_admin") or current_user.get("is_shop_owner")):
+        raise HTTPException(status_code=403, detail="Solo admin e proprietari shop possono gestire le notizie")
+    return current_user
+
+@api_router.get("/admin/news")
+async def admin_list_news(current_user: dict = Depends(_news_require_editor)):
+    return [_serialize_news(d, include_content=False) async for d in db.news.find({}).sort("created_at", -1)]
+
+@api_router.post("/admin/news")
+async def create_news(n: NewsCreate, current_user: dict = Depends(_news_require_editor)):
+    slug = (n.slug or _slugify(n.title)).strip()
+    # Assicura slug univoco
+    counter = 0
+    base_slug = slug
+    while await db.news.find_one({"slug": slug}):
+        counter += 1
+        slug = f"{base_slug}-{counter}"
+    now = datetime.now(timezone.utc).isoformat()
+    doc = n.model_dump()
+    doc["slug"] = slug
+    doc["author_id"] = current_user["id"]
+    doc["author_name"] = current_user.get("name", "")
+    doc["views"] = 0
+    doc["created_at"] = now
+    doc["updated_at"] = now
+    res = await db.news.insert_one(doc)
+    doc["_id"] = res.inserted_id
+    return _serialize_news(doc)
+
+@api_router.put("/admin/news/{nid}")
+async def update_news(nid: str, n: NewsUpdate, current_user: dict = Depends(_news_require_editor)):
+    upd = {k: v for k, v in n.model_dump().items() if v is not None}
+    if "title" in upd and not upd.get("slug"):
+        upd["slug"] = _slugify(upd["title"])
+    upd["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.news.update_one({"_id": ObjectId(nid)}, {"$set": upd})
+    d = await db.news.find_one({"_id": ObjectId(nid)})
+    return _serialize_news(d)
+
+@api_router.delete("/admin/news/{nid}")
+async def delete_news(nid: str, current_user: dict = Depends(_news_require_editor)):
+    await db.news.delete_one({"_id": ObjectId(nid)})
+    return {"message": "Notizia eliminata"}
+
+@api_router.get("/public/news")
+async def public_list_news(category: Optional[str] = None, limit: int = 50, featured_only: bool = False):
+    q = {"is_published": True}
+    if category:
+        q["category"] = category
+    if featured_only:
+        q["is_featured"] = True
+    result = []
+    async for d in db.news.find(q).sort("created_at", -1).limit(max(1, min(limit, 100))):
+        result.append(_serialize_news(d, include_content=False))
+    return result
+
+@api_router.get("/public/news/{slug}")
+async def public_news_detail(slug: str):
+    d = await db.news.find_one({"slug": slug, "is_published": True})
+    if not d:
+        raise HTTPException(status_code=404, detail="Notizia non trovata")
+    # Incrementa contatore letture
+    await db.news.update_one({"_id": d["_id"]}, {"$inc": {"views": 1}})
+    d["views"] = int(d.get("views", 0)) + 1
+    return _serialize_news(d)
+
+@api_router.get("/public/news-categories")
+async def public_news_categories():
+    cats = set(NEWS_CATEGORIES_DEFAULT)
+    async for d in db.news.find({"is_published": True}, {"category": 1}):
+        c = d.get("category")
+        if c:
+            cats.add(c)
+    return sorted(cats)
 
 @api_router.get("/public/listino")
 async def get_public_listino():

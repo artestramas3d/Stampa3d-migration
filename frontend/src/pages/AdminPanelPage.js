@@ -35,6 +35,7 @@ import { useAuth } from '../context/AuthContext';
 import { downloadHtmlAsPdf } from '../lib/pdfExport';
 import { compressImageBase64 } from '../lib/imageCompress';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import AdminNewsTab from './AdminNewsTab';
 
 function SiteSettingsTab() {
   const [settings, setSettings] = useState(null);
@@ -2646,7 +2647,7 @@ export default function AdminPanelPage() {
       )}
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 sm:grid-cols-11">
+        <TabsList className="grid w-full grid-cols-5 sm:grid-cols-12">
           <TabsTrigger value="users" data-testid="tab-users">
             <Users className="w-4 h-4 mr-1.5 hidden sm:inline" />Utenti
           </TabsTrigger>
@@ -2687,7 +2688,14 @@ export default function AdminPanelPage() {
           <TabsTrigger value="scripts" data-testid="tab-scripts">
             <Code className="w-4 h-4 mr-1.5 hidden sm:inline" />Codici
           </TabsTrigger>
+          <TabsTrigger value="news" data-testid="tab-news">
+            <Newspaper className="w-4 h-4 mr-1.5 hidden sm:inline" />Notizie
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="news">
+          <AdminNewsTab />
+        </TabsContent>
 
         {/* Orders/Inquiries Tab */}
         <TabsContent value="orders">

@@ -35,6 +35,9 @@ import QuotesPage from "./pages/QuotesPage";
 import DemoCalculatorPage from "./pages/DemoCalculatorPage";
 import CricutPage from "./pages/CricutPage";
 import CricutCalculatorPage from "./pages/CricutCalculatorPage";
+import Print3DLayout from "./components/Print3DLayout";
+import NewsListPage from "./pages/NewsListPage";
+import NewsDetailPage from "./pages/NewsDetailPage";
 import { CookieBanner } from "./components/CookieBanner";
 import { PublicScripts } from "./components/PublicScripts";
 
@@ -101,6 +104,8 @@ function AppRoutes() {
         <PageTracker />
         <Routes>
           <Route path="/cookie-policy" element={<CookiePolicyPage />} />
+          <Route path="/news" element={<NewsListPage />} />
+          <Route path="/news/:slug" element={<NewsDetailPage />} />
           <Route path="/shop/prodotto/:slug" element={<PublicProductDetailPage />} />
           <Route path="/prodotto/:slug" element={<PublicProductDetailPage />} />
           <Route path="/listino" element={<PublicListinoPage />} />
@@ -126,9 +131,19 @@ function AppRoutes() {
       <Route path="/reset-password" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-      <Route path="/filaments" element={<ProtectedRoute><FilamentsPage /></ProtectedRoute>} />
-      <Route path="/accessories" element={<ProtectedRoute><AccessoriesPage /></ProtectedRoute>} />
-      <Route path="/calculator" element={<ProtectedRoute><CalculatorPage /></ProtectedRoute>} />
+      {/* Stampa 3D: pagina unificata con 4 tab (Preventivi / Calcolatore / Filamenti / Accessori) */}
+      <Route path="/print3d" element={<ProtectedRoute><Print3DLayout /></ProtectedRoute>}>
+        <Route index element={<Navigate to="/print3d/quotes" replace />} />
+        <Route path="quotes" element={<QuotesPage />} />
+        <Route path="calculator" element={<CalculatorPage />} />
+        <Route path="filaments" element={<FilamentsPage />} />
+        <Route path="accessories" element={<AccessoriesPage />} />
+      </Route>
+      {/* Vecchie URL → redirect ai nuovi tab (retrocompatibilita') */}
+      <Route path="/filaments" element={<Navigate to="/print3d/filaments" replace />} />
+      <Route path="/accessories" element={<Navigate to="/print3d/accessories" replace />} />
+      <Route path="/calculator" element={<Navigate to="/print3d/calculator" replace />} />
+      <Route path="/quotes" element={<Navigate to="/print3d/quotes" replace />} />
       <Route path="/sales" element={<ProtectedRoute><SalesPage /></ProtectedRoute>} />
       <Route path="/cricut" element={<ProtectedRoute><CricutPage /></ProtectedRoute>} />
       <Route path="/cricut/calculator" element={<ProtectedRoute><CricutCalculatorPage /></ProtectedRoute>} />
@@ -140,13 +155,14 @@ function AppRoutes() {
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/bug-report" element={<ProtectedRoute><BugReportPage /></ProtectedRoute>} />
       <Route path="/clients" element={<ProtectedRoute><ClientsPage /></ProtectedRoute>} />
-      <Route path="/quotes" element={<ProtectedRoute><QuotesPage /></ProtectedRoute>} />
       {/* Public pages - no auth */}
       <Route path="/listino" element={<PublicListinoPage />} />
       <Route path="/shop/prodotto/:slug" element={<PublicProductDetailPage />} />
       <Route path="/landing" element={<LandingPage />} />
       <Route path="/demo" element={<DemoCalculatorPage />} />
       <Route path="/guide" element={<GuidePage />} />
+      <Route path="/news" element={<NewsListPage />} />
+      <Route path="/news/:slug" element={<NewsDetailPage />} />
       <Route path="/cookie-policy" element={<CookiePolicyPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

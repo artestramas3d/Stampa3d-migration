@@ -109,6 +109,7 @@ export default function HomeShopPage() {
           <nav className="hidden sm:flex items-center gap-5 text-sm font-medium text-gray-700">
             <Link to="/listino" className="hover:underline" data-testid="nav-prodotti">Prodotti</Link>
             <a href="#categorie" className="hover:underline">Categorie</a>
+            <Link to="/news" className="hover:underline" data-testid="nav-news">Notizie</Link>
             <a href="#about" className="hover:underline">Chi siamo</a>
             <a href="#contatti" className="hover:underline">Contatti</a>
           </nav>

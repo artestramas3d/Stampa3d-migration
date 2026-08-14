@@ -212,4 +212,13 @@ export const updateCricutProject = (id, data) => api.put(`/cricut/projects/${id}
 export const deleteCricutProject = (id) => api.delete(`/cricut/projects/${id}`).then(r => r.data);
 export const duplicateCricutProject = (id) => api.post(`/cricut/projects/${id}/duplicate`).then(r => r.data);
 
+// News / Notizie
+export const getAdminNews = () => api.get('/admin/news').then(r => r.data);
+export const createNews = (data) => api.post('/admin/news', data).then(r => r.data);
+export const updateNews = (id, data) => api.put(`/admin/news/${id}`, data).then(r => r.data);
+export const deleteNews = (id) => api.delete(`/admin/news/${id}`).then(r => r.data);
+export const getPublicNews = (params = {}) => api.get('/public/news', { params }).then(r => r.data);
+export const getPublicNewsDetail = (slug) => api.get(`/public/news/${slug}`).then(r => r.data);
+export const getPublicNewsCategories = () => api.get('/public/news-categories').then(r => r.data);
+
 export default api;

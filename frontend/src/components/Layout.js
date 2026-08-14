@@ -9,7 +9,7 @@ import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { 
   LayoutDashboard, Cylinder, Calculator, ShoppingCart, Receipt, Settings,
-  Menu, Sun, Moon, LogOut, Package, Megaphone, ShieldCheck, User, AlertTriangle, Mail, Bug, ShoppingBag, BookOpen, Users, FileText, Scissors
+  Menu, Sun, Moon, LogOut, Package, Megaphone, ShieldCheck, User, AlertTriangle, Mail, Bug, ShoppingBag, BookOpen, Users, FileText, Scissors, Printer, Newspaper
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -34,14 +34,12 @@ function Sidebar({ onNavigate, banners, siteSettings }) {
 
   const navItems = [
     { path: '/', label: t('dashboard'), icon: LayoutDashboard },
-    { path: '/filaments', label: t('filaments'), icon: Cylinder },
-    { path: '/accessories', label: t('accessories'), icon: Package },
-    { path: '/calculator', label: 'Calcolatore costi Stampa 3D', icon: Calculator },
+    { path: '/print3d', label: 'Calcolatore costi Stampa 3D', icon: Printer, match: '/print3d' },
+    { path: '/cricut', label: 'Calcolatore costi Plotter da taglio', icon: Scissors, match: '/cricut' },
     { path: '/sales', label: t('sales'), icon: Receipt },
-    { path: '/cricut', label: 'Calcolatore costi Plotter da taglio', icon: Scissors },
     { path: '/purchases', label: t('purchases'), icon: ShoppingCart },
     { path: '/clients', label: 'Clienti', icon: Users },
-    { path: '/quotes', label: 'Preventivi', icon: FileText },
+    { path: '/news', label: 'Notizie', icon: Newspaper, match: '/news' },
     { path: '/settings', label: t('settings'), icon: Settings },
   ];
 
@@ -65,7 +63,9 @@ function Sidebar({ onNavigate, banners, siteSettings }) {
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = location.pathname === item.path;
+          const isActive = item.match
+            ? location.pathname === item.match || location.pathname.startsWith(item.match + '/')
+            : location.pathname === item.path;
           return (
             <Link
               key={item.path}
