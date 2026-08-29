@@ -23,7 +23,7 @@ export function RichTextEditor({ value = '', onChange, placeholder = 'Scrivi qui
     onUpdate: ({ editor }) => onChange?.(editor.getHTML()),
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none dark:prose-invert focus:outline-none min-h-[240px] p-3',
+        class: 'prose prose-sm max-w-none focus:outline-none min-h-[240px] p-3 [&_*]:!text-gray-900 dark:[&_*]:!text-gray-100 [&_h2]:!text-gray-900 dark:[&_h2]:!text-white [&_h3]:!text-gray-800 dark:[&_h3]:!text-gray-200 [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-6 [&_ol]:pl-6',
       },
     },
   });

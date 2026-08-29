@@ -87,7 +87,10 @@ export default function NewsDetailPage() {
             </button>
           </div>
 
-          <div className="prose prose-sm sm:prose-base max-w-none prose-headings:font-heading prose-a:text-orange-500" dangerouslySetInnerHTML={{ __html: n.content_html || '<p class="text-gray-400 italic">Contenuto non ancora disponibile.</p>' }} />
+          <div
+            className="prose prose-sm sm:prose-base max-w-none prose-headings:font-heading prose-a:text-orange-500 [&_*]:!text-gray-800 [&_h1]:!text-gray-900 [&_h2]:!text-gray-900 [&_h3]:!text-gray-900 [&_strong]:!text-gray-900 [&_a]:!text-orange-500 [&_blockquote]:!text-gray-600 [&_blockquote]:border-orange-300 [&_ul]:!list-disc [&_ol]:!list-decimal [&_ul]:pl-6 [&_ol]:pl-6"
+            dangerouslySetInnerHTML={{ __html: n.content_html || '<p class="text-gray-400 italic">Contenuto non ancora disponibile.</p>' }}
+          />
 
           <div className="mt-8 pt-6 border-t border-gray-100">
             <Link to="/news" className="inline-flex items-center gap-1.5 text-orange-500 font-semibold hover:text-orange-600" data-testid="news-back"><ArrowLeft className="w-4 h-4" />Torna alle notizie</Link>
