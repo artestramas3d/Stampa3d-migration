@@ -265,6 +265,30 @@ sudo certbot delete --cert-name shop.artestramas3d.it   # se esiste
 
 ---
 
+### ❌ Il rinnovo va, ma il browser mostra ancora certificato scaduto
+
+**Causa**: dopo aver consolidato più certificati in uno solo, nginx.conf punta ancora ai vecchi path.
+
+**Fix**: aggiorna `/opt/Stampa3d-migration/nginx/default.conf` sostituendo i path SSL:
+```bash
+sudo cp /opt/Stampa3d-migration/nginx/default.conf /opt/Stampa3d-migration/nginx/default.conf.bak
+sudo sed -i \
+  -e 's|/etc/letsencrypt/live/shop\.artestramas3d\.it/|/etc/letsencrypt/live/artestramas3d.it/|g' \
+  -e 's|/etc/letsencrypt/live/calcolatore\.artestramas3d\.it/|/etc/letsencrypt/live/artestramas3d.it/|g' \
+  -e 's|/etc/letsencrypt/live/listino\.artestramas3d\.it/|/etc/letsencrypt/live/artestramas3d.it/|g' \
+  /opt/Stampa3d-migration/nginx/default.conf
+docker compose exec nginx nginx -t && docker compose exec nginx nginx -s reload
+```
+
+Poi cancella eventuali cert doppi/scaduti:
+```bash
+sudo certbot delete --cert-name shop.artestramas3d.it --non-interactive
+sudo certbot delete --cert-name calcolatore.artestramas3d.it --non-interactive
+sudo certbot delete --cert-name listino.artestramas3d.it --non-interactive
+```
+
+---
+
 ## Auto-rinnovo automatico
 
 Let's Encrypt rinnova automaticamente ~30 giorni prima della scadenza tramite `certbot.timer`.
