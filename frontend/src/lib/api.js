@@ -211,6 +211,7 @@ export const createCricutProject = (data) => api.post('/cricut/projects', data).
 export const updateCricutProject = (id, data) => api.put(`/cricut/projects/${id}`, data).then(r => r.data);
 export const deleteCricutProject = (id) => api.delete(`/cricut/projects/${id}`).then(r => r.data);
 export const duplicateCricutProject = (id) => api.post(`/cricut/projects/${id}/duplicate`).then(r => r.data);
+export const getCricutProjectsFor3D = () => api.get('/cricut/projects-for-3d').then(r => r.data);
 
 // News / Notizie
 export const getAdminNews = () => api.get('/admin/news').then(r => r.data);

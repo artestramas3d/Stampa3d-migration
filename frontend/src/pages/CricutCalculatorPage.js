@@ -7,12 +7,13 @@ import { Card, CardContent } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Textarea } from '../components/ui/textarea';
 import { Badge } from '../components/ui/badge';
-import { Scissors, ArrowLeft, Save, Trash2, Plus, Info, Layers, Cpu, Package, Truck, Percent, DollarSign, Calculator as CalcIcon, Clock } from 'lucide-react';
+import { Scissors, ArrowLeft, Save, Trash2, Plus, Info, Layers, Cpu, Package, Truck, Percent, DollarSign, Calculator as CalcIcon, Clock, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   getCricutMaterials, getCricutMachines, getCricutConsumables,
-  getCricutProject, createCricutProject, updateCricutProject,
+  getCricutProject, createCricutProject, updateCricutProject, createSale,
 } from '../lib/api';
+import { NumericInput } from '../components/NumericInput';
 
 const emptyProject = {
   name: '', client: '', category: '', date: new Date().toISOString().slice(0, 10), notes: '',
@@ -24,6 +25,7 @@ const emptyProject = {
   pkg_bag: 0, pkg_box: 0, pkg_cardstock: 0, pkg_label: 0, pkg_thank_card: 0, pkg_ribbon: 0,
   marketplace_fee_percent: 0, payment_fee_percent: 0, overhead_fixed: 0, vat_percent: 0,
   margin_percent: 50, manual_sale_price: null,
+  include_in_3d_calc: false,
 };
 
 // Live compute (mirror del backend `_compute_cricut_project`)
@@ -126,7 +128,7 @@ export default function CricutCalculatorPage() {
   const calc = useMemo(() => computeProject(form, matMap, machMap, consMap), [form, matMap, machMap, consMap]);
 
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const num = (k, v) => setForm(f => ({ ...f, [k]: v === '' ? 0 : parseFloat(v) }));
+  // Nota: NumericInput chiama onChange(number) direttamente (non un evento)
 
   const addConsumable = () => {
     if (!consumables.length) return toast.error('Aggiungi prima dei consumabili in "Gestisci"');
@@ -158,6 +160,33 @@ export default function CricutCalculatorPage() {
     finally { setSaving(false); }
   };
 
+  const saveAsSale = async () => {
+    if (!form.name.trim()) return toast.error('Nome progetto obbligatorio');
+    if (!(calc.recommended_price > 0)) return toast.error('Nessun prezzo calcolato');
+    // Salva prima il preventivo se non ancora salvato (per avere il pid)
+    let projectId = pid;
+    try {
+      if (!projectId) {
+        const created = await createCricutProject(form);
+        projectId = created.id;
+        navigate(`/cricut/calculator/${created.id}`, { replace: true });
+      } else {
+        await updateCricutProject(projectId, form);
+      }
+      await createSale({
+        date: new Date().toISOString().split('T')[0],
+        product_name: form.name,
+        print_time_hours: 0,
+        printer_id: '',
+        sale_price: calc.recommended_price,
+        quantity: 1,
+        source_module: 'cricut',
+        cricut_project_id: projectId,
+      });
+      toast.success('Vendita Cricut registrata!');
+    } catch { toast.error('Errore registrazione vendita'); }
+  };
+
   if (loading) return <div className="p-6 text-muted-foreground">Caricamento preventivo...</div>;
 
   return (
@@ -173,7 +202,12 @@ export default function CricutCalculatorPage() {
             </div>
           </div>
         </div>
-        <Button onClick={save} disabled={saving} data-testid="calc-save"><Save className="w-4 h-4 mr-1.5" />{saving ? 'Salvo...' : 'Salva'}</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={saveAsSale} data-testid="calc-save-sale" title="Salva come vendita">
+            <ShoppingCart className="w-4 h-4 mr-1.5" />Vendita
+          </Button>
+          <Button onClick={save} disabled={saving} data-testid="calc-save"><Save className="w-4 h-4 mr-1.5" />{saving ? 'Salvo...' : 'Salva'}</Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -187,6 +221,19 @@ export default function CricutCalculatorPage() {
               <Field label="Categoria"><Input value={form.category} onChange={e => update('category', e.target.value)} placeholder="es. Abbigliamento, Decorazioni" /></Field>
               <Field label="Data"><Input type="date" value={form.date} onChange={e => update('date', e.target.value)} /></Field>
               <div className="sm:col-span-2"><Label className="text-xs">Note</Label><Textarea rows={2} value={form.notes} onChange={e => update('notes', e.target.value)} /></div>
+              <div className="sm:col-span-2 flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="include_in_3d_calc"
+                  checked={!!form.include_in_3d_calc}
+                  onChange={e => update('include_in_3d_calc', e.target.checked)}
+                  className="w-4 h-4 rounded border-border cursor-pointer"
+                  data-testid="calc-include-3d"
+                />
+                <label htmlFor="include_in_3d_calc" className="text-xs cursor-pointer select-none">
+                  <b>Aggiungi al calcolatore Stampa 3D</b> — apparirà come lavorazione selezionabile
+                </label>
+              </div>
             </div>
           </Section>
 
@@ -203,7 +250,7 @@ export default function CricutCalculatorPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Field label="Quantità utilizzata"><Input type="number" step="0.01" value={form.material_qty} onChange={e => num('material_qty', e.target.value)} data-testid="calc-material-qty" /></Field>
+              <Field label="Quantità utilizzata"><NumericInput step="0.01" value={form.material_qty} onChange={v => update('material_qty', v)} data-testid="calc-material-qty" /></Field>
               <Field label="Dimensioni (testo libero)"><Input value={form.material_dimensions} onChange={e => update('material_dimensions', e.target.value)} placeholder="es. 20x30 cm" /></Field>
               {matMap[form.material_id] && (
                 <div className="sm:col-span-2 text-[11px] text-muted-foreground bg-muted/30 rounded-md px-2 py-1.5 self-end">
@@ -229,7 +276,7 @@ export default function CricutCalculatorPage() {
                           <SelectContent>{materials.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
                         </Select>
                       </div>
-                      <Input type="number" step="0.01" value={em.qty} onChange={e => patchExtra(i, 'qty', parseFloat(e.target.value) || 0)} className="col-span-3 h-8 text-xs" placeholder="Qty" />
+                      <NumericInput step="0.01" value={em.qty} onChange={v => patchExtra(i, 'qty', v)} className="col-span-3 h-8 text-xs" placeholder="Qty" />
                       <span className="col-span-2 text-xs text-primary font-semibold text-right">{eu4((calc.extras_detail[i]?.cost) || 0)}</span>
                       <Button size="icon" variant="ghost" className="col-span-1 h-8 w-8 text-destructive" onClick={() => removeExtra(i)}><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>
@@ -251,11 +298,11 @@ export default function CricutCalculatorPage() {
                 ['time_assembly_min', 'Assemblaggio'],
               ].map(([k, lab]) => (
                 <Field key={k} label={`${lab} (min)`}>
-                  <Input type="number" step="1" value={form[k]} onChange={e => num(k, e.target.value)} className="h-9" data-testid={`calc-${k}`} />
+                  <NumericInput step="1" value={form[k]} onChange={v => update(k, v)} className="h-9" data-testid={`calc-${k}`} />
                 </Field>
               ))}
               <Field label="Costo orario manodopera (€/h)">
-                <Input type="number" step="0.5" value={form.labor_rate_hour} onChange={e => num('labor_rate_hour', e.target.value)} className="h-9" />
+                <NumericInput step="0.5" value={form.labor_rate_hour} onChange={v => update('labor_rate_hour', v)} className="h-9" />
               </Field>
             </div>
           </Section>
@@ -273,7 +320,7 @@ export default function CricutCalculatorPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Field label="Ore di utilizzo"><Input type="number" step="0.25" value={form.machine_hours} onChange={e => num('machine_hours', e.target.value)} data-testid="calc-machine-hours" /></Field>
+              <Field label="Ore di utilizzo"><NumericInput step="0.25" value={form.machine_hours} onChange={v => update('machine_hours', v)} data-testid="calc-machine-hours" /></Field>
             </div>
           </Section>
 
@@ -294,7 +341,7 @@ export default function CricutCalculatorPage() {
                         <SelectContent>{consumables.map(cc => <SelectItem key={cc.id} value={cc.id}>{cc.name} · {cc.type}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
-                    <Input type="number" step="1" value={c.uses} onChange={e => patchConsumable(i, 'uses', parseFloat(e.target.value) || 0)} className="col-span-3 h-8 text-xs" placeholder="Usi" />
+                    <NumericInput step="1" value={c.uses} onChange={v => patchConsumable(i, 'uses', v)} className="col-span-3 h-8 text-xs" placeholder="Usi" />
                     <span className="col-span-2 text-xs text-primary font-semibold text-right">{eu4(calc.consumables_detail[i]?.cost || 0)}</span>
                     <Button size="icon" variant="ghost" className="col-span-1 h-8 w-8 text-destructive" onClick={() => removeConsumable(i)}><Trash2 className="w-3.5 h-3.5" /></Button>
                   </div>
@@ -315,7 +362,7 @@ export default function CricutCalculatorPage() {
                 ['pkg_ribbon', 'Nastro'],
               ].map(([k, lab]) => (
                 <Field key={k} label={`${lab} (€)`}>
-                  <Input type="number" step="0.01" value={form[k]} onChange={e => num(k, e.target.value)} className="h-9" />
+                  <NumericInput step="0.01" value={form[k]} onChange={v => update(k, v)} className="h-9" />
                 </Field>
               ))}
             </div>
@@ -324,10 +371,10 @@ export default function CricutCalculatorPage() {
           {/* COSTI INDIRETTI */}
           <Section icon={Percent} title="Costi indiretti" right={<span className="text-xs text-muted-foreground">Totale <b className="text-primary">{eu(calc.indirect_total)}</b></span>}>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Field label="Commissioni marketplace (%)"><Input type="number" step="0.1" value={form.marketplace_fee_percent} onChange={e => num('marketplace_fee_percent', e.target.value)} className="h-9" /></Field>
-              <Field label="Commissioni pagamento (%)"><Input type="number" step="0.1" value={form.payment_fee_percent} onChange={e => num('payment_fee_percent', e.target.value)} className="h-9" /></Field>
-              <Field label="Costi generali (€)"><Input type="number" step="0.01" value={form.overhead_fixed} onChange={e => num('overhead_fixed', e.target.value)} className="h-9" /></Field>
-              <Field label="IVA (%)"><Input type="number" step="1" value={form.vat_percent} onChange={e => num('vat_percent', e.target.value)} className="h-9" placeholder="0 = disattivata" /></Field>
+              <Field label="Commissioni marketplace (%)"><NumericInput step="0.1" value={form.marketplace_fee_percent} onChange={v => update('marketplace_fee_percent', v)} className="h-9" /></Field>
+              <Field label="Commissioni pagamento (%)"><NumericInput step="0.1" value={form.payment_fee_percent} onChange={v => update('payment_fee_percent', v)} className="h-9" /></Field>
+              <Field label="Costi generali (€)"><NumericInput step="0.01" value={form.overhead_fixed} onChange={v => update('overhead_fixed', v)} className="h-9" /></Field>
+              <Field label="IVA (%)"><NumericInput step="1" value={form.vat_percent} onChange={v => update('vat_percent', v)} className="h-9" placeholder="0 = disattivata" /></Field>
             </div>
           </Section>
         </div>
@@ -356,11 +403,11 @@ export default function CricutCalculatorPage() {
 
               <div className="pt-3 border-t border-border/60 space-y-2">
                 <Field label="Margine desiderato (%)">
-                  <Input type="number" step="1" value={form.margin_percent} onChange={e => num('margin_percent', e.target.value)} disabled={form.manual_sale_price != null && form.manual_sale_price !== ''} data-testid="calc-margin" />
+                  <NumericInput step="1" value={form.margin_percent} onChange={v => update('margin_percent', v)} disabled={form.manual_sale_price != null && form.manual_sale_price !== ''} data-testid="calc-margin" />
                 </Field>
                 <Field label="Prezzo manuale (€) — override">
                   <div className="flex gap-1.5">
-                    <Input type="number" step="0.01" value={form.manual_sale_price ?? ''} onChange={e => update('manual_sale_price', e.target.value === '' ? null : parseFloat(e.target.value))} placeholder="Auto da margine" data-testid="calc-manual-price" />
+                    <NumericInput step="0.01" value={form.manual_sale_price ?? 0} onChange={v => update('manual_sale_price', v || null)} placeholder="Auto da margine" data-testid="calc-manual-price" />
                     {form.manual_sale_price != null && form.manual_sale_price !== '' && <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => update('manual_sale_price', null)}><Trash2 className="w-3.5 h-3.5" /></Button>}
                   </div>
                 </Field>

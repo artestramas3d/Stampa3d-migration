@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { getFilaments, getPrinters, getAccessories, getRecentSales, calculatePrint, createSale, import3mf, getClients, generateQuotePdf } from '../lib/api';
+import { getFilaments, getPrinters, getAccessories, getRecentSales, calculatePrint, createSale, import3mf, getClients, generateQuotePdf, getCricutProjectsFor3D } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -13,7 +13,7 @@ import { Switch } from '../components/ui/switch';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { 
-  Calculator, Receipt, Save, AlertCircle, Package, Plus, Minus, Trash2, 
+  Calculator, Receipt, Save, AlertCircle, Package, Plus, Minus, Trash2, Scissors, 
   Palette, Copy, History, Euro, Percent, Clock, Upload, FileText, Download, Sparkles, Printer
 } from 'lucide-react';
 import { AffiliateLinks } from '../components/AffiliateLinks';
@@ -46,6 +46,8 @@ export default function CalculatorPage() {
   const [filaments, setFilaments] = useState([]);
   const [printers, setPrinters] = useState([]);
   const [accessories, setAccessories] = useState([]);
+  const [cricutProjects, setCricutProjects] = useState([]);
+  const [selectedCricutIds, setSelectedCricutIds] = useState([]); // preventivi Cricut aggiunti come lavorazione
   const [recentSales, setRecentSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
@@ -106,18 +108,20 @@ export default function CalculatorPage() {
 
   const loadData = async () => {
     try {
-      const [filamentsData, printersData, accessoriesData, recentData, clientsData] = await Promise.all([
+      const [filamentsData, printersData, accessoriesData, recentData, clientsData, cricutData] = await Promise.all([
         getFilaments(),
         getPrinters(),
         getAccessories(),
         getRecentSales(10),
-        getClients()
+        getClients(),
+        getCricutProjectsFor3D().catch(() => [])
       ]);
       setFilaments(filamentsData);
       setPrinters(printersData);
       setAccessories(accessoriesData);
       setRecentSales(recentData);
       setClientsList(clientsData);
+      setCricutProjects(cricutData);
       
       if (printersData.length > 0) {
         setFormData(prev => ({ ...prev, printer_id: printersData[0].id }));
@@ -400,9 +404,11 @@ export default function CalculatorPage() {
         labor_hours: 0,
         design_hours: formData.design_hours,
         quantity: formData.quantity,
-        sale_price: result.sale_price_total,
+        sale_price: result.sale_price_total + cricutExtra,
         accessories: formData.accessories,
-        client_id: selectedClientId && selectedClientId !== 'none' ? selectedClientId : null
+        client_id: selectedClientId && selectedClientId !== 'none' ? selectedClientId : null,
+        source_module: '3d',
+        cricut_project_id: selectedCricutIds[0] || null, // se piu' preventivi, tiene il primo per link
       });
       const count = res.count || 1;
       toast.success(count > 1 ? `${count} vendite registrate!` : 'Vendita registrata!');
@@ -416,6 +422,12 @@ export default function CalculatorPage() {
   };
 
   const selectedPrinter = printers.find(p => p.id === formData.printer_id);
+
+  // Costo aggiuntivo derivante dalle lavorazioni Cricut selezionate
+  const cricutExtra = selectedCricutIds.reduce((s, id) => {
+    const cp = cricutProjects.find(p => p.id === id);
+    return s + (cp?.total_cost || 0);
+  }, 0);
 
   const handleGenerateQuote = async () => {
     if (!formData.product_name || !result) return;
@@ -766,6 +778,32 @@ export default function CalculatorPage() {
               </div>
             )}
 
+            {/* Lavorazioni Cricut */}
+            {cricutProjects.length > 0 && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-xs"><Scissors className="w-3 h-3" />Lavorazioni Cricut</Label>
+                <div className="space-y-1 max-h-24 overflow-y-auto">
+                  {cricutProjects.map(cp => {
+                    const checked = selectedCricutIds.includes(cp.id);
+                    return (
+                      <div key={cp.id} className="flex items-center justify-between p-1.5 rounded-sm bg-muted/30 border border-border/40">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(c) => setSelectedCricutIds(prev => c ? [...prev, cp.id] : prev.filter(x => x !== cp.id))}
+                            data-testid={`cricut-check-${cp.id}`}
+                          />
+                          <span className="text-xs truncate max-w-[130px]" title={cp.name}>{cp.name}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">€{cp.total_cost.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-muted-foreground italic">Da &quot;Cricut&quot; spunta <b>Aggiungi al calcolatore Stampa 3D</b> per farle apparire qui.</p>
+              </div>
+            )}
+
             {/* Price Mode Toggle */}
             <div className="space-y-3 pt-2 border-t border-border/40">
               <div className="flex items-center justify-between">
@@ -886,6 +924,12 @@ export default function CalculatorPage() {
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Costo/unità</span>
                       <span className="font-mono">€{result.cost_per_unit.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {cricutExtra > 0 && (
+                    <div className="flex justify-between text-xs text-orange-600 dark:text-orange-400">
+                      <span className="inline-flex items-center gap-1"><Scissors className="w-3 h-3" />+ Lavorazioni Cricut</span>
+                      <span className="font-mono">€{cricutExtra.toFixed(2)}</span>
                     </div>
                   )}
                 </div>

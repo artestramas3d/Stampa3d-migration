@@ -343,8 +343,8 @@ class SaleCreate(BaseModel):
     filaments: List[FilamentUsage] = []  # For multicolor
     filament_id: Optional[str] = None  # Legacy
     grams_used: Optional[float] = None  # Legacy
-    print_time_hours: float
-    printer_id: str
+    print_time_hours: float = 0  # 0 se vendita non 3D (Cricut, altro)
+    printer_id: str = ""  # vuoto se vendita non 3D
     sale_price: float
     labor_hours: float = 0
     design_hours: float = 0
@@ -352,6 +352,8 @@ class SaleCreate(BaseModel):
     accessories: List[AccessoryUsage] = []
     client_id: Optional[str] = None
     shipping_cost: float = 0
+    source_module: str = "3d"  # "3d" | "cricut" | "manuale"
+    cricut_project_id: Optional[str] = None  # link a preventivo Cricut se applicabile
 
 # Template for saving print configurations
 class PrintTemplateCreate(BaseModel):
@@ -1153,11 +1155,14 @@ class CricutProjectCreate(BaseModel):
     # Prezzo
     margin_percent: float = 50
     manual_sale_price: Optional[float] = None
+    # Se True, questo preventivo appare nel dropdown del calcolatore 3D come "lavorazione Cricut"
+    include_in_3d_calc: bool = False
 
 class CricutProjectUpdate(CricutProjectCreate):
     name: Optional[str] = None
     labor_rate_hour: Optional[float] = None
     margin_percent: Optional[float] = None
+    include_in_3d_calc: Optional[bool] = None
 
 async def _compute_cricut_project(doc: dict, user_id: str) -> dict:
     """Ricalcola tutti i totali basandosi sui prezzi correnti di materiali/macchine/consumabili."""
@@ -1339,6 +1344,7 @@ async def _compute_cricut_project(doc: dict, user_id: str) -> dict:
         "total_cost": round(total_cost, 4),
         "margin_percent": margin,
         "manual_sale_price": (float(manual) if manual is not None else None),
+        "include_in_3d_calc": bool(doc.get("include_in_3d_calc", False)),
         "recommended_price": round(recommended_price, 2),
         "net_profit": round(net_profit, 2),
         "margin_actual": round(margin_actual, 2),
@@ -1391,6 +1397,23 @@ async def duplicate_cricut_project(pid: str, current_user: dict = Depends(get_cu
     res = await db.cricut_projects.insert_one(new_doc)
     new_doc["_id"] = res.inserted_id
     return await _compute_cricut_project(new_doc, current_user["id"])
+
+@api_router.get("/cricut/projects-for-3d")
+async def cricut_projects_for_3d(current_user: dict = Depends(get_current_user)):
+    """Lista compatta dei preventivi Cricut da usare come 'lavorazione' nel calcolatore 3D."""
+    result = []
+    async for d in db.cricut_projects.find(
+        {"user_id": current_user["id"], "include_in_3d_calc": True}
+    ).sort("name", 1):
+        p = await _compute_cricut_project(d, current_user["id"])
+        result.append({
+            "id": p["id"],
+            "name": p["name"],
+            "category": p.get("category", ""),
+            "total_cost": p["total_cost"],
+            "recommended_price": p["recommended_price"],
+        })
+    return result
 
 # Sales CRUD
 @api_router.get("/sales")
