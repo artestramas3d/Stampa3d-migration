@@ -7,22 +7,20 @@ import { toast } from 'sonner';
 const GUIDES = {
   it: {
     title: "Guida Utente",
-    subtitle: "Calcolatore Costi Stampa 3D + Cricut + Shop",
+    subtitle: "Calcolatore Costi Stampa 3D + Cricut",
     print: "Stampa",
     download: "Scarica PDF",
     version: "v2026.09 — Aggiornata",
     sections: [
       {
         title: "Benvenuto",
-        content: `Benvenuto nel Calcolatore Costi Artes&Tramas 3D! Un'app completa per makers e professionisti che tracciano costi di stampa 3D, plotter da taglio (Cricut), materiali, vendite, clienti e vetrina online.
+        content: `Benvenuto nel Calcolatore Costi Artes&Tramas 3D! Un'app completa per makers e professionisti che tracciano costi di stampa 3D, plotter da taglio (Cricut), materiali, vendite e clienti.
 
 QUESTA GUIDA COPRE:
 • Calcolatore Stampa 3D (con Attrezzature/AMS e integrazione Cricut)
 • Modulo Cricut / Plotter da Taglio
 • Clienti, Vendite, Preventivi e Acquisti
-• Vetrina pubblica (Shop) e Listino Prodotti
-• Blog / Notizie
-• Pannello Admin`
+• Blog / Notizie`
       },
       {
         title: "1. Registrazione e Accesso",
@@ -240,82 +238,18 @@ STORICO
 Tab "Storico" nella pagina Preventivi. Ogni preventivo mostra: numero PRV-YYYYMMDD-HHMMSS, cliente, prodotti, valore, data invio (se inviato via email).`
       },
       {
-        title: "12. Vetrina Pubblica / Shop ⭐ (solo Shop Owner)",
-        content: `Il tuo shop pubblico è accessibile senza login su un dominio dedicato (es. shop.tuodominio.it). Gestisci tutto da "Gestione Vetrina" nel Pannello Admin:
-
-PRODOTTI
-Ogni prodotto ha:
-• Nome, categoria, sotto-categoria (⭐ NOVITÀ)
-• Prezzo con toggle "a partire da" e "Scrivici per il prezzo"
-• Descrizione lunga
-• Foto multi-formato (max 5 per card)
-• Varianti (colori, materiali, dimensioni) editabili senza perdita cursore
-• Personalizzazione (testo libero cliente)
-• Toggle Pubblico/Nascosto
-
-⭐ CATEGORIE E SOTTOCATEGORIE
-Filtro combinato Categoria → Sottocategoria nella vetrina. La sottocategoria appare solo quando è selezionata una categoria (chip filtri responsive).
-
-⭐ EDITOR VISUALE IN-PLACE
-Attiva "Editor sito" (pill in basso destra visibile SOLO al proprietario). Cliccando sui titoli/immagini/testi della home appare "Modifica" → dialog modale con upload immagini compresse client-side + fallback URL. Salva → modifiche live.
-
-RICHIESTE ORDINE / INFO
-Tab "Richieste" mostra richieste "Info/Acquista" e "Prodotti personalizzati" inviate dai clienti dal frontend pubblico. Ogni richiesta include nome, email, telefono, messaggio, prodotto associato. Inviate anche via email a info@tuodominio.it.
-
-⭐ ESPORTA LISTINO PDF
-Selezionando prodotti con checkbox puoi generare un LISTINO PDF con: titolo, foto (principali + miniature), descrizioni, colori, dimensioni, prezzi/su richiesta. Le immagini vengono compresse automaticamente (fino al 93% di risparmio).`
-      },
-      {
-        title: "13. Notizie / Blog ⭐",
-        content: `Modulo Blog per pubblicare articoli, guide e novità. Ogni articolo ha:
-• Titolo, slug (URL) auto-generato
-• Categoria (Guide / Novità / Case study / ecc.)
-• Editor Rich Text (TipTap): grassetto, corsivo, liste, link, immagini, headings
-• Copertina, data pubblicazione, autore
-• Toggle pubblico/bozza
+        title: "12. Notizie / Blog",
+        content: `Modulo Blog pubblico dove leggere articoli, guide e novità di Artes&Tramas 3D. Ogni articolo ha:
+• Titolo, categoria (Guide / Novità / Case study / ecc.)
+• Contenuto formattato (grassetto, liste, link, immagini)
+• Copertina, data pubblicazione
 
 ROUTE PUBBLICHE
 • /notizie — lista articoli pubblici con filtro categoria
-• /notizie/:slug — dettaglio articolo (leggibile anche in dark mode)
-
-GESTIONE ADMIN
-Tab "Notizie" nel Pannello Admin: CRUD completo, anteprima, categorie.
-
-SEO
-Ogni articolo ha meta title/description, canonical, OG tags e appare nel sitemap.xml automatico.`
+• /notizie/:slug — dettaglio articolo (leggibile anche in dark mode)`
       },
       {
-        title: "14. Pannello Admin",
-        content: `Solo per utenti admin. Tab disponibili:
-• UTENTI — lista, verifica manuale, promozione admin, cancellazione
-• GESTIONE VETRINA (solo shop_owner) — prodotti shop
-• IMPOSTAZIONI SHOP (solo shop_owner) — hero, categorie in evidenza, contatti, policy
-• NEWSLETTER — invio a tutti o utenti selezionati, programmazione, editor HTML
-• SEGNALAZIONI — bug report con screenshot, gestione stati
-• PREVENTIVI — richieste preventivo pubbliche
-• RICHIESTE — inquiries ordine
-• ANALYTICS — page views per URL con giornalieri unici vs totali
-• AFFILIATI — CRUD link sponsorizzati (Amazon, Bambu Lab, ecc.) con placement (guida, shop, ecc.) + coupon code + tracking click + widget statistiche
-• EMAIL LOG — storico invii SMTP
-• INVIATE — newsletter già inviate
-• CODICI — script GA/Meta (SaaS + Shop separati), configurazione domini SEO
-• NOTIZIE — CRUD blog
-• ⭐ MANUTENZIONE (NOVITÀ) — Anteprima Dry-Run e Esecuzione manuale della pulizia account inattivi, storico esecuzioni. Lo scheduler automatico gira ogni 24 ore.`
-      },
-      {
-        title: "15. SEO & Domini",
-        content: `L'app è pre-ottimizzata per SEO:
-• Sitemap XML dinamico per ogni dominio (shop.* e calcolatore.*)
-• robots.txt dinamico basato su Host header
-• Canonical, Open Graph, Twitter Card, JSON-LD (Store, Product, Organization)
-• Meta tags per ogni pagina (SeoHead component)
-• Rotte SaaS in noindex sul dominio shop, e viceversa
-
-DOMINI E SSL
-Configura i domini nel tab "Codici" del Pannello Admin. In produzione (VPS Aruba) l'SSL è gestito da Let's Encrypt / Certbot con nginx-docker. In caso di problemi consulta la guida /app/GUIDA_SSL_CERTIFICATI.md nel server.`
-      },
-      {
-        title: "16. Profilo, Tema, Lingua",
+        title: "13. Profilo, Tema, Lingua",
         content: `Nel Profilo puoi:
 • Cambiare nome, lingua UI (IT/EN/ES/FR)
 • Cambiare password
@@ -328,11 +262,11 @@ SELETTORE LINGUA PRE-LOGIN
 Le pagine di login/registrazione/password dimenticata hanno un selettore lingua (IT/EN/ES/FR). La scelta è salvata in localStorage.`
       },
       {
-        title: "17. Segnala un Problema",
-        content: `Se trovi un bug: "Segnala Problema" nella sidebar. Inserisci titolo, descrizione, priorità (bassa/media/alta), allega screenshot (max 5MB). L'admin riceve la segnalazione e ti può aggiornare sullo stato.`
+        title: "14. Segnala un Problema",
+        content: `Se trovi un bug: "Segnala Problema" nella sidebar. Inserisci titolo, descrizione, priorità (bassa/media/alta), allega screenshot (max 5MB). Riceverai aggiornamenti sullo stato di risoluzione.`
       },
       {
-        title: "18. Cookie e Privacy (GDPR)",
+        title: "15. Cookie e Privacy (GDPR)",
         content: `Al primo accesso vedrai un banner GDPR-compliant per gestire i cookie:
 • Tecnici (sempre attivi)
 • Analitici (opzionali)
@@ -349,7 +283,6 @@ Modifica le preferenze in ogni momento dal footer del sito (Cookie Policy).`
 5. Se hai una Cricut: registra materiali, macchine e consumabili nel modulo Cricut
 6. Usa il Calcolatore per la tua prima stampa
 7. Salva la vendita, associa il cliente e inizia a tracciare i profitti
-8. (Se sei shop owner) Personalizza la vetrina e pubblica i primi prodotti
 
 Buona stampa! 🖨️✂️`
       }
