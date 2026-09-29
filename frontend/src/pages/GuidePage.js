@@ -1,219 +1,357 @@
-import { useState } from 'react';
-import { Book, Printer, Globe } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Book, Printer, Globe, Download } from 'lucide-react';
 import { AffiliateLinks } from '../components/AffiliateLinks';
+import { downloadHtmlAsPdf } from '../lib/pdfExport';
+import { toast } from 'sonner';
 
 const GUIDES = {
   it: {
     title: "Guida Utente",
-    subtitle: "Calcolatore Costi Stampa 3D",
-    print: "Stampa / Salva PDF",
+    subtitle: "Calcolatore Costi Stampa 3D + Cricut + Shop",
+    print: "Stampa",
+    download: "Scarica PDF",
+    version: "v2026.09 — Aggiornata",
     sections: [
       {
         title: "Benvenuto",
-        content: `Benvenuto nel Calcolatore Costi per Stampa 3D! Questa applicazione ti aiuta a gestire i costi di stampa, i materiali, le vendite e la profittabilità delle tue creazioni 3D. Questa guida ti mostrerà come utilizzare tutte le funzionalità.`
+        content: `Benvenuto nel Calcolatore Costi Artes&Tramas 3D! Un'app completa per makers e professionisti che tracciano costi di stampa 3D, plotter da taglio (Cricut), materiali, vendite, clienti e vetrina online.
+
+QUESTA GUIDA COPRE:
+• Calcolatore Stampa 3D (con Attrezzature/AMS e integrazione Cricut)
+• Modulo Cricut / Plotter da Taglio
+• Clienti, Vendite, Preventivi e Acquisti
+• Vetrina pubblica (Shop) e Listino Prodotti
+• Blog / Notizie
+• Pannello Admin`
       },
       {
         title: "1. Registrazione e Accesso",
-        content: `Per iniziare, registrati con la tua email e una password. Riceverai un'email di verifica: clicca il link per attivare il tuo account. Dopo la verifica, potrai accedere a tutte le funzionalità.
+        content: `Per iniziare, registrati con email e password. Riceverai un'email di verifica: clicca il link per attivare l'account.
 
-Se dimentichi la password, clicca su "Password dimenticata" nella pagina di login e segui le istruzioni per reimpostarla.`
+Se dimentichi la password, usa "Password dimenticata" dalla pagina di login. Riceverai un link temporaneo per reimpostarla.
+
+RETENTION ACCOUNT
+Per igiene del database:
+• Account NON verificati inattivi da oltre 90 giorni vengono eliminati
+• Account VERIFICATI senza login da oltre 12 mesi vengono disattivati (riattivabili facendo login)
+• Account disattivati da oltre 12 mesi vengono eliminati definitivamente
+Basta effettuare il login per riattivare un account disattivato.`
       },
       {
         title: "2. Dashboard",
-        content: `La Dashboard è la tua panoramica generale. Qui trovi:
-• Fatturato totale e profitto netto
-• Trend mensili con grafici
-• Avvisi per scorte basse (filamenti sotto i 200g)
-• Prodotti più venduti
-• Vendite recenti
+        content: `Panoramica generale con:
+• Fatturato totale, profitto netto e trend mensili
+• Grafici delle vendite
+• Avvisi scorte basse (filamenti sotto 200g)
+• Prodotti più venduti e vendite recenti
+• Riepilogo spedizioni del mese
 
-La Dashboard si aggiorna automaticamente con i tuoi dati.`
+La Dashboard si aggiorna in tempo reale con i tuoi dati.`
       },
       {
         title: "3. Gestione Filamenti",
-        content: `Nella sezione Filamenti puoi registrare tutte le tue bobine:
+        content: `Registra ogni bobina con:
 • Materiale (PLA, PETG, ABS, TPU, ecc.)
-• Colore con anteprima visiva (supporta anche bicolore!)
-• Brand e peso della bobina
-• Prezzo di acquisto
+• Colore con anteprima (supporto BICOLORE con split diagonale)
+• Brand, peso e prezzo di acquisto
 • Grammi rimanenti
 
-Per i filamenti bicolore: seleziona il Colore 1 e il Colore 2 nei color picker. L'anteprima mostrerà un cerchio diviso in diagonale con entrambi i colori.
+Il sistema calcola automaticamente il costo per grammo e avvisa quando le scorte scendono sotto i 200g.
 
-Il sistema calcola automaticamente il costo per grammo e ti avvisa quando le scorte scendono sotto i 200g.`
+Puoi esportare l'inventario in CSV per il tuo commercialista.`
       },
       {
         title: "4. Gestione Accessori",
-        content: `Registra tutti gli accessori che usi nelle stampe:
-• Nome dell'accessorio (gancetti, magneti, packaging, ecc.)
-• Costo unitario
-• Quantità in stock
+        content: `Registra accessori che usi nelle stampe (gancetti, magneti, packaging, ecc.) con nome, costo unitario e quantità in stock.
 
-Gli accessori vengono inclusi nel calcolo del costo finale quando li selezioni nel Calcolatore.`
+Le CATEGORIE ACCESSORI sono personalizzabili: puoi aggiungerne di nuove dalle voci di menu (Accessori → Nuova categoria).
+
+Gli accessori si aggiungono automaticamente al calcolo quando li selezioni nel Calcolatore.`
       },
       {
-        title: "5. Calcolatore Costi",
-        content: `Il Calcolatore è il cuore dell'applicazione. Ecco come usarlo:
+        title: "5. Impostazioni: Stampanti e Attrezzature",
+        content: `Nella pagina "Impostazioni" gestisci:
 
-PASSO 1 — Seleziona la stampante
-Scegli la stampante che userai. Il sistema include automaticamente il costo di ammortamento e l'elettricità.
+STAMPANTI 3D
+• Nome/modello, costo di acquisto, vita stimata in ore
+• Potenza (W) e costo elettricità (€/kWh)
+• Manutenzione (€/ora di stampa): copre ugelli, cinghie, lubrificanti, ecc.
+Il sistema calcola automaticamente ammortamento €/h ed elettricità €/h.
 
-PASSO 2 — Aggiungi filamenti
-Seleziona il filamento e inserisci i grammi che userai. Puoi aggiungere più filamenti per stampe multicolore.
+⭐ ATTREZZATURE & ACCESSORI (NOVITÀ)
+Sezione dedicata alle attrezzature amortizzate a tempo:
+• Bambu Lab AMS / AMS 2 Pro (multicolore)
+• Piatti texturati, PEI, ecc.
+• Sistemi di essiccazione filamento
+Inserisci: Nome, Marca, Prezzo, Vita utile (ore). Il sistema calcola l'ammortamento €/ora.
+
+Nel Calcolatore 3D potrai poi SELEZIONARE PIÙ ATTREZZATURE contemporaneamente per ciascuna stampa, indicando le ore di utilizzo di ognuna.`
+      },
+      {
+        title: "6. Calcolatore Costi Stampa 3D",
+        content: `Il Calcolatore è il cuore dell'app. Passi:
+
+PASSO 1 — Stampante
+Scegli la stampante. Include automaticamente ammortamento + elettricità + manutenzione oraria.
+
+PASSO 2 — Filamenti
+Seleziona i filamenti e grammi. Puoi aggiungerne più di uno (multicolore).
 
 PASSO 3 — Tempo di stampa
-Inserisci le ore e i minuti di stampa. Puoi anche importare questi dati da un file .3mf usando il pulsante "Importa .3mf".
+Ore e minuti separati. Puoi importarli da file .3mf con "Importa .3mf".
 
 PASSO 4 — Tempo di design
-Se hai dedicato tempo al design/modellazione, inseriscilo qui.
+Se hai modellato tu il pezzo, aggiungi ore di design (default 20€/h).
 
 PASSO 5 — Accessori e quantità
-Aggiungi eventuali accessori e imposta la quantità di pezzi da produrre. Se la quantità è maggiore di 1, le vendite verranno registrate come pezzi singoli che puoi gestire individualmente.
+Aggiungi accessori e imposta quantità (se > 1, ogni pezzo diventa una riga vendita indipendente).
 
-PASSO 6 — Margine di profitto
-Imposta il margine percentuale desiderato oppure inserisci un prezzo manuale.
+⭐ PASSO 6 — Attrezzature (AMS, piatti, ecc.)
+Se hai configurato attrezzature nelle Impostazioni, appariranno qui. Spunta quelle usate e indica le ore. Il costo di ammortamento viene sommato al totale.
 
-PASSO 7 — Cliente (opzionale)
-Seleziona un cliente dalla rubrica per associare la vendita.
+⭐ PASSO 7 — Lavorazioni Cricut (SE HAI USATO IL PLOTTER)
+Se hai creato preventivi Cricut con "Aggiungi al Calcolatore 3D", li vedrai qui. Selezionali per includerne il costo. IMPORTANTE: puoi scegliere se applicare il margine anche al costo Cricut:
+• Checkbox ATTIVA (default): il costo Cricut concorre al margine come tutti gli altri costi → guadagni anche sulle lavorazioni Cricut
+• Checkbox DISATTIVA: il costo Cricut viene sommato al prezzo di vendita come pass-through (il cliente paga esattamente il valore del preventivo Cricut, senza markup addizionale)
 
-Il sistema calcola: costo filamento + elettricità + ammortamento + accessori + design = costo totale. Poi applica il margine per il prezzo di vendita suggerito.
+PASSO 8 — Prezzo
+Imposta un margine % oppure un prezzo manuale. Puoi anche impostare IVA (22%), yield rate (% stampe riuscite) e manutenzione oraria personalizzata.
 
-IMPORTAZIONE .3MF
-Clicca "Importa .3mf" e carica il file esportato dal tuo slicer. Slicer supportati:
-• Bambu Studio (v2.05+)
-• OrcaSlicer
-• Creality Print
-• PrusaSlicer
-• Cura
+PASSO 9 — Cliente (opzionale)
+Associa la vendita a un cliente della tua rubrica.
 
-IMPORTANTE: Il file deve essere esportato DOPO lo slicing. In Bambu Studio usa "File → Esporta → Esporta file piatto slicato" (NON "Salva progetto").
+IMPORTA .3MF
+Bambu Studio (2.05+), OrcaSlicer, Creality Print, PrusaSlicer, Cura sono supportati. Il file deve essere SLICATO (esporta il piatto slicato, non il progetto).
 
-Per stampe multicolore, il sistema riconosce automaticamente ogni filamento con tipo, colore e grammi separati.
-
-GENERA PREVENTIVO PDF
-Dopo aver calcolato i costi, puoi generare un Preventivo PDF direttamente dal calcolatore cliccando "Genera Preventivo PDF". Il preventivo mostra solo il prodotto e il prezzo finale (non i costi interni) ed è personalizzato con i tuoi dati aziendali e logo.`
+Il sistema calcola: materiale + elettricità + ammortamento stampante + manutenzione + accessori + attrezzature + design + eventuali costi Cricut = costo totale. Poi applica il margine.`
       },
       {
-        title: "6. Registro Vendite",
-        content: `Nella sezione Vendite puoi:
-• Salvare ogni vendita dal Calcolatore
-• Vedere nome prodotto, costo, prezzo di vendita e profitto
-• Segnare se una vendita è stata pagata o meno
-• Filtrare per mese e stato di pagamento
-• Ordinare per data, prezzo, profitto o nome
-• Esportare tutto in formato CSV
-• Modificare prezzo e nome di ogni vendita (icona matita)
+        title: "7. Modulo Cricut / Plotter da Taglio ⭐",
+        content: `Se possiedi una Cricut, Silhouette, Brother o altro plotter da taglio, il modulo Cricut è pensato per te. Trovi tre sezioni in "Calcolatore costi Plotter da taglio":
+
+MATERIALI
+Registra ogni materiale con:
+• Categoria (HTV, Vinile adesivo/removibile, Transfer Tape, Cartoncino, ecc.)
+• Marca, colore + hex, fornitore
+• Prezzo, quantità di acquisto, unità di misura (m², cm², metri lineari, fogli, pezzi)
+• % sfrido (scarto tipico)
+• Rimanenza + soglia stock basso
+Il sistema calcola auto il costo unitario.
+
+MACCHINE
+Registra il tuo plotter con:
+• Nome, marca/modello, prezzo, data acquisto
+• Consumo (W) e costo elettricità (€/kWh)
+• Ammortamento: formula "simple" (prezzo/ore vita) o "fiscal" (prezzo/anni/12/ore mese)
+Il sistema calcola €/h di ammortamento e di energia.
+
+CONSUMABILI
+Lame, tappetini, penne, punte, rulli, fogli protettivi. Per ciascuno: prezzo + numero di utilizzi previsti → costo per uso auto.
+
+CALCOLATORE PREVENTIVO CRICUT
+Nel calcolatore progetto trovi 7 sezioni:
+1. Info (nome, cliente, categoria, data, note)
+2. Materiale principale + materiali extra
+3. Tempi di lavorazione: preparazione, taglio, spellicolatura, transfer tape, pressatura, assemblaggio (⭐ TUTTI IN MINUTI, non ore)
+4. Macchina + minuti di utilizzo (⭐ NOVITÀ: da ore a minuti, più realistico per lavori corti)
+5. Consumabili (multi-select con numero utilizzi per progetto)
+6. Confezione: sacchetto, scatola, cartoncino, etichetta, biglietto, nastro
+7. Costi indiretti (marketplace %, commissioni pagamento %, spese generali fisse, IVA %)
+
+PREZZO
+Imposta margine % oppure prezzo manuale. Il riepilogo sticky sulla destra mostra live: produzione, costi indiretti, prezzo, profitto netto e margine effettivo.
+
+INTEGRAZIONE CON IL 3D
+Attivando "Aggiungi al Calcolatore Stampa 3D" sul preventivo Cricut, questo apparirà nella sezione "Lavorazioni Cricut" del Calcolatore 3D. Utile per prodotti misti (es. maglietta con HTV + gadget stampato in 3D).
+
+DUPLICA / SALVA COME VENDITA
+Ogni preventivo Cricut può essere duplicato (utile per varianti) o salvato direttamente come vendita nel Registro Vendite.`
+      },
+      {
+        title: "8. Clienti (Rubrica CRM)",
+        content: `Rubrica clienti con:
+• Nome, cognome, telefono, email, indirizzo, note
+• Ricerca rapida e ordinamento
+• Storico acquisti per cliente (icona borsa)
+• Esportazione CSV
+
+I clienti si associano alle vendite dal Calcolatore (menu "Cliente"). Nei preventivi PDF vengono precompilati automaticamente.`
+      },
+      {
+        title: "9. Registro Vendite",
+        content: `Ogni vendita salvata dal Calcolatore mostra:
+• Nome prodotto, costo, prezzo di vendita, profitto, cliente
+• Stato pagamento (Pagato / Non pagato) toggle rapido
+• Spedizione (costo separato)
+• Modulo di origine (3D / Cricut / Manuale)
+
+FILTRI E ORDINAMENTO
+Per mese, stato pagamento, ordinabile per data/prezzo/profitto/nome.
 
 QUANTITÀ MULTIPLE
-Se hai stampato più copie (es. 4 portachiavi), ogni pezzo viene registrato come riga singola. Puoi:
-• Segnare pagato/non pagato ogni pezzo individualmente
-• Modificare il prezzo di ogni singolo pezzo
-• Vedere l'indicatore batch (1/4, 2/4, ecc.)
+Se hai stampato 4 portachiavi, ogni pezzo diventa una riga singola con indicatore batch (1/4, 2/4...). Puoi:
+• Segnare pagato/non pagato ogni pezzo
+• Modificare prezzo del singolo pezzo
+• Vederli aggregati o singoli
 
 RISTAMPA
-Ogni vendita ha un pulsante "Ristampa" (icona stampante). Cliccandolo, torni al Calcolatore con tutti i dati pre-compilati: filamenti, stampante, tempo di stampa e accessori.
+Icona stampante → torna al Calcolatore con tutti i dati precompilati.
 
-Il nome del cliente associato viene mostrato se presente.`
+MODIFICA
+Icona matita → modifica nome, prezzo, cliente, spedizione (ricalcolo profitto automatico).
+
+PREVENTIVO DA VENDITA
+Icona documento blu → genera un preventivo PDF a partire da una vendita esistente. Se hai già generato preventivi per quella vendita, l'icona diventa verde con pallino (evita duplicati inconsapevoli).
+
+EXPORT CSV
+Esporta tutto in CSV per commercialista.`
       },
       {
-        title: "7. Acquisti",
-        content: `Registra ogni acquisto di materiale:
-• Tipo di materiale, brand e colore
-• Quantità di bobine e prezzo totale
-• Grammi totali
+        title: "10. Acquisti",
+        content: `Registra ogni acquisto materiale (tipo, brand, colore, quantità bobine, prezzo, grammi).
 
-Quando registri un acquisto, il sistema può:
-• Aggiornare automaticamente un filamento esistente in magazzino
-• Creare un nuovo filamento se non esiste ancora
-
-Puoi ordinare gli acquisti per data, prezzo, grammi, materiale o brand ed esportare in CSV.`
+Il sistema:
+• Aggiorna automaticamente un filamento esistente
+• O crea un nuovo filamento se non esiste
+Puoi ordinare per data, prezzo, grammi, materiale o brand ed esportare in CSV.`
       },
       {
-        title: "8. Impostazioni (Stampanti)",
-        content: `Nella sezione Impostazioni gestisci le tue stampanti:
-• Nome e modello
-• Costo di acquisto
-• Vita stimata in ore
-• Potenza in Watt
-• Costo elettricità per kWh
+        title: "11. Preventivi PDF Professionali",
+        content: `Tre modi per generare preventivi:
 
-Questi dati servono al Calcolatore per calcolare con precisione l'ammortamento e il costo dell'elettricità per ogni stampa.`
+A) DAL CALCOLATORE (rapido)
+Dopo il calcolo, clicca "Genera Preventivo PDF". Il preventivo mostra solo prodotto e prezzo (nessun costo interno).
+
+B) DALLE VENDITE (retroattivo)
+Icona documento blu su ogni vendita → dialog precompilato → PDF.
+
+C) DALLA PAGINA PREVENTIVI (multi-prodotto)
+Nel menu "Preventivi" puoi creare preventivi complessi con più prodotti, cliente della rubrica o manuale, note, validità.
+
+DATI AZIENDALI
+Tab "Dati Aziendali": nome azienda, indirizzo, CAP, città, P.IVA, telefono, email, logo (max 500KB). Appariranno nell'intestazione di TUTTI i preventivi.
+
+DOWNLOAD & STAMPA
+Ogni preventivo ha:
+• Scarica PDF → download vero file .pdf (sfondo bianco garantito anche in dark mode)
+• Stampa → dialog di stampa browser
+
+STORICO
+Tab "Storico" nella pagina Preventivi. Ogni preventivo mostra: numero PRV-YYYYMMDD-HHMMSS, cliente, prodotti, valore, data invio (se inviato via email).`
       },
       {
-        title: "9. Profilo",
-        content: `Nel tuo Profilo puoi:
-• Cambiare il nome visualizzato
-• Cambiare la lingua dell'interfaccia (Italiano, Inglese, Spagnolo, Francese)
-• Cambiare la password
+        title: "12. Vetrina Pubblica / Shop ⭐ (solo Shop Owner)",
+        content: `Il tuo shop pubblico è accessibile senza login su un dominio dedicato (es. shop.tuodominio.it). Gestisci tutto da "Gestione Vetrina" nel Pannello Admin:
 
-Le statistiche del profilo mostrano un riepilogo dei tuoi dati.`
+PRODOTTI
+Ogni prodotto ha:
+• Nome, categoria, sotto-categoria (⭐ NOVITÀ)
+• Prezzo con toggle "a partire da" e "Scrivici per il prezzo"
+• Descrizione lunga
+• Foto multi-formato (max 5 per card)
+• Varianti (colori, materiali, dimensioni) editabili senza perdita cursore
+• Personalizzazione (testo libero cliente)
+• Toggle Pubblico/Nascosto
+
+⭐ CATEGORIE E SOTTOCATEGORIE
+Filtro combinato Categoria → Sottocategoria nella vetrina. La sottocategoria appare solo quando è selezionata una categoria (chip filtri responsive).
+
+⭐ EDITOR VISUALE IN-PLACE
+Attiva "Editor sito" (pill in basso destra visibile SOLO al proprietario). Cliccando sui titoli/immagini/testi della home appare "Modifica" → dialog modale con upload immagini compresse client-side + fallback URL. Salva → modifiche live.
+
+RICHIESTE ORDINE / INFO
+Tab "Richieste" mostra richieste "Info/Acquista" e "Prodotti personalizzati" inviate dai clienti dal frontend pubblico. Ogni richiesta include nome, email, telefono, messaggio, prodotto associato. Inviate anche via email a info@tuodominio.it.
+
+⭐ ESPORTA LISTINO PDF
+Selezionando prodotti con checkbox puoi generare un LISTINO PDF con: titolo, foto (principali + miniature), descrizioni, colori, dimensioni, prezzi/su richiesta. Le immagini vengono compresse automaticamente (fino al 93% di risparmio).`
       },
       {
-        title: "10. Segnala un Problema",
-        content: `Se trovi un bug o un malfunzionamento:
-• Vai su "Segnala Problema" nella barra laterale
-• Inserisci un titolo e una descrizione dettagliata
-• Scegli la priorità (bassa, media, alta)
-• Allega uno screenshot se necessario
+        title: "13. Notizie / Blog ⭐",
+        content: `Modulo Blog per pubblicare articoli, guide e novità. Ogni articolo ha:
+• Titolo, slug (URL) auto-generato
+• Categoria (Guide / Novità / Case study / ecc.)
+• Editor Rich Text (TipTap): grassetto, corsivo, liste, link, immagini, headings
+• Copertina, data pubblicazione, autore
+• Toggle pubblico/bozza
 
-L'amministratore riceverà la segnalazione e potrai vedere lo stato della risoluzione.`
+ROUTE PUBBLICHE
+• /notizie — lista articoli pubblici con filtro categoria
+• /notizie/:slug — dettaglio articolo (leggibile anche in dark mode)
+
+GESTIONE ADMIN
+Tab "Notizie" nel Pannello Admin: CRUD completo, anteprima, categorie.
+
+SEO
+Ogni articolo ha meta title/description, canonical, OG tags e appare nel sitemap.xml automatico.`
       },
       {
-        title: "11. Tema Chiaro/Scuro",
-        content: `Puoi cambiare il tema dell'interfaccia cliccando l'icona sole/luna nella barra laterale. Il tema scuro è più riposante per gli occhi, soprattutto in ambienti poco illuminati.`
+        title: "14. Pannello Admin",
+        content: `Solo per utenti admin. Tab disponibili:
+• UTENTI — lista, verifica manuale, promozione admin, cancellazione
+• GESTIONE VETRINA (solo shop_owner) — prodotti shop
+• IMPOSTAZIONI SHOP (solo shop_owner) — hero, categorie in evidenza, contatti, policy
+• NEWSLETTER — invio a tutti o utenti selezionati, programmazione, editor HTML
+• SEGNALAZIONI — bug report con screenshot, gestione stati
+• PREVENTIVI — richieste preventivo pubbliche
+• RICHIESTE — inquiries ordine
+• ANALYTICS — page views per URL con giornalieri unici vs totali
+• AFFILIATI — CRUD link sponsorizzati (Amazon, Bambu Lab, ecc.) con placement (guida, shop, ecc.) + coupon code + tracking click + widget statistiche
+• EMAIL LOG — storico invii SMTP
+• INVIATE — newsletter già inviate
+• CODICI — script GA/Meta (SaaS + Shop separati), configurazione domini SEO
+• NOTIZIE — CRUD blog
+• ⭐ MANUTENZIONE (NOVITÀ) — Anteprima Dry-Run e Esecuzione manuale della pulizia account inattivi, storico esecuzioni. Lo scheduler automatico gira ogni 24 ore.`
       },
       {
-        title: "12. Gestione Clienti",
-        content: `Nella sezione Clienti puoi gestire la tua rubrica:
-• Nome, cognome, telefono, email, indirizzo e note
-• Ricerca rapida tra i clienti
-• Storico acquisti per ogni cliente (icona borsa)
-• Esportazione della rubrica in CSV
+        title: "15. SEO & Domini",
+        content: `L'app è pre-ottimizzata per SEO:
+• Sitemap XML dinamico per ogni dominio (shop.* e calcolatore.*)
+• robots.txt dinamico basato su Host header
+• Canonical, Open Graph, Twitter Card, JSON-LD (Store, Product, Organization)
+• Meta tags per ogni pagina (SeoHead component)
+• Rotte SaaS in noindex sul dominio shop, e viceversa
 
-I clienti possono essere associati alle vendite direttamente dal Calcolatore, selezionandoli dal menu a tendina "Cliente".`
+DOMINI E SSL
+Configura i domini nel tab "Codici" del Pannello Admin. In produzione (VPS Aruba) l'SSL è gestito da Let's Encrypt / Certbot con nginx-docker. In caso di problemi consulta la guida /app/GUIDA_SSL_CERTIFICATI.md nel server.`
       },
       {
-        title: "13. Preventivi PDF",
-        content: `Puoi generare preventivi professionali in due modi:
+        title: "16. Profilo, Tema, Lingua",
+        content: `Nel Profilo puoi:
+• Cambiare nome, lingua UI (IT/EN/ES/FR)
+• Cambiare password
+• Vedere statistiche personali
 
-DAL CALCOLATORE (metodo rapido):
-Dopo aver calcolato i costi, clicca "Genera Preventivo PDF". Il sistema crea un preventivo con il prodotto e il prezzo di vendita. I costi interni non vengono mostrati.
+TEMA CHIARO/SCURO
+Icona sole/luna nella sidebar. Il tema si applica anche a modali, form ed export.
 
-DALLA PAGINA PREVENTIVI (preventivi personalizzati):
-Vai su "Preventivi" nel menu laterale. Qui puoi:
-• Creare preventivi con più prodotti
-• Selezionare un cliente dalla rubrica o inserirlo manualmente
-• Aggiungere note e validità
-• Visualizzare l'anteprima e stampare/salvare come PDF
-
-DATI AZIENDALI:
-Nel tab "Dati Aziendali" della pagina Preventivi, inserisci:
-• Nome azienda, indirizzo, CAP, città
-• P.IVA, telefono, email
-• Logo (caricamento immagine, max 500KB)
-
-Questi dati appariranno nell'intestazione di tutti i preventivi.
-
-Lo storico dei preventivi generati è consultabile nel tab "Storico".`
+SELETTORE LINGUA PRE-LOGIN
+Le pagine di login/registrazione/password dimenticata hanno un selettore lingua (IT/EN/ES/FR). La scelta è salvata in localStorage.`
       },
       {
-        title: "14. Cookie e Privacy",
-        content: `Il sito è conforme al GDPR. Al primo accesso vedrai un banner che ti permette di:
-• Accettare tutti i cookie
-• Accettare solo quelli necessari
-• Personalizzare le preferenze (tecnici, analitici, marketing)
+        title: "17. Segnala un Problema",
+        content: `Se trovi un bug: "Segnala Problema" nella sidebar. Inserisci titolo, descrizione, priorità (bassa/media/alta), allega screenshot (max 5MB). L'admin riceve la segnalazione e ti può aggiornare sullo stato.`
+      },
+      {
+        title: "18. Cookie e Privacy (GDPR)",
+        content: `Al primo accesso vedrai un banner GDPR-compliant per gestire i cookie:
+• Tecnici (sempre attivi)
+• Analitici (opzionali)
+• Marketing (opzionali)
 
-Puoi modificare le tue preferenze in qualsiasi momento dalla pagina Cookie Policy, accessibile dal footer del sito.`
+Modifica le preferenze in ogni momento dal footer del sito (Cookie Policy).`
       },
       {
         title: "Consigli per Iniziare",
-        content: `1. Aggiungi le tue stampanti nelle Impostazioni
-2. Registra i filamenti che hai in magazzino
-3. Aggiungi gli accessori che usi frequentemente
-4. Usa il Calcolatore per la tua prima stampa
-5. Salva la vendita e inizia a tracciare i profitti!
+        content: `1. Aggiungi la tua stampante 3D nelle Impostazioni
+2. Aggiungi le attrezzature amortizzate (AMS, ecc.) se le hai
+3. Registra i filamenti in magazzino
+4. Aggiungi accessori frequenti
+5. Se hai una Cricut: registra materiali, macchine e consumabili nel modulo Cricut
+6. Usa il Calcolatore per la tua prima stampa
+7. Salva la vendita, associa il cliente e inizia a tracciare i profitti
+8. (Se sei shop owner) Personalizza la vetrina e pubblica i primi prodotti
 
-Buona stampa! 🖨️`
+Buona stampa! 🖨️✂️`
       }
     ]
   },
@@ -221,6 +359,7 @@ Buona stampa! 🖨️`
     title: "User Guide",
     subtitle: "3D Printing Cost Calculator",
     print: "Print / Save PDF",
+    download: "Download PDF",
     sections: [
       {
         title: "Welcome",
@@ -433,6 +572,7 @@ Happy printing! 🖨️`
     title: "Benutzerhandbuch",
     subtitle: "3D-Druck Kostenkalkulator",
     print: "Drucken / Als PDF speichern",
+    download: "PDF herunterladen",
     sections: [
       {
         title: "Willkommen",
@@ -618,6 +758,7 @@ Viel Spaß beim Drucken! 🖨️`
     title: "Guide Utilisateur",
     subtitle: "Calculateur de Coûts d'Impression 3D",
     print: "Imprimer / Enregistrer PDF",
+    download: "Télécharger PDF",
     sections: [
       {
         title: "Bienvenue",
@@ -803,17 +944,34 @@ Bonne impression ! 🖨️`
 
 export default function GuidePage() {
   const [lang, setLang] = useState('it');
+  const [downloading, setDownloading] = useState(false);
+  const contentRef = useRef(null);
   const guide = GUIDES[lang];
 
   const handlePrint = () => {
     window.print();
   };
 
+  const handleDownloadPdf = async () => {
+    if (!contentRef.current) return;
+    setDownloading(true);
+    try {
+      const html = `<html><body style="background:#fff;color:#111;font-family:system-ui,sans-serif;">${contentRef.current.innerHTML}</body></html>`;
+      const date = new Date().toISOString().slice(0, 10);
+      await downloadHtmlAsPdf(html, `Guida_Utente_${lang.toUpperCase()}_${date}.pdf`);
+      toast.success('PDF scaricato');
+    } catch (e) {
+      toast.error('Errore durante il download del PDF');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white" data-testid="guide-page">
       {/* No-print header */}
       <div className="print:hidden sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
+        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Globe className="w-4 h-4 text-gray-500" />
             <div className="flex gap-1">
@@ -829,19 +987,30 @@ export default function GuidePage() {
               ))}
             </div>
           </div>
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors"
-            data-testid="print-guide-btn"
-          >
-            <Printer className="w-4 h-4" />
-            {guide.print}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadPdf}
+              disabled={downloading}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors disabled:opacity-60"
+              data-testid="download-guide-pdf-btn"
+            >
+              <Download className="w-4 h-4" />
+              {downloading ? '...' : (guide.download || 'Scarica PDF')}
+            </button>
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 bg-white text-orange-600 border border-orange-500 rounded-lg text-sm font-medium hover:bg-orange-50 transition-colors"
+              data-testid="print-guide-btn"
+            >
+              <Printer className="w-4 h-4" />
+              {guide.print}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Printable content */}
-      <div className="max-w-3xl mx-auto px-6 py-10 print:px-12 print:py-8">
+      <div ref={contentRef} className="max-w-3xl mx-auto px-6 py-10 print:px-12 print:py-8">
         {/* Cover */}
         <div className="text-center mb-12 pb-8 border-b-2 border-orange-500">
           <div className="w-16 h-16 bg-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -849,6 +1018,7 @@ export default function GuidePage() {
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">{guide.title}</h1>
           <p className="text-xl text-orange-500 font-medium">{guide.subtitle}</p>
+          {guide.version && <p className="text-xs text-gray-400 mt-2">{guide.version}</p>}
           <p className="text-sm text-gray-400 mt-4">Artes&Tramas 3D</p>
         </div>
 
