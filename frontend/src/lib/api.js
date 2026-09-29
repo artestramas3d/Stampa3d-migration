@@ -45,6 +45,16 @@ export const getAccessoryCategories = () => api.get('/accessory-categories').the
 export const addAccessoryCategory = (name) => api.post('/accessory-categories', { name }).then(r => r.data);
 export const deleteAccessoryCategory = (name) => api.delete(`/accessory-categories/${encodeURIComponent(name)}`).then(r => r.data);
 
+// Equipment (attrezzature 3D ammortizzate a tempo, es. Bambu Lab AMS)
+export const getEquipment = () => api.get('/equipment').then(r => r.data);
+export const createEquipment = (data) => api.post('/equipment', data).then(r => r.data);
+export const updateEquipment = (id, data) => api.put(`/equipment/${id}`, data).then(r => r.data);
+export const deleteEquipment = (id) => api.delete(`/equipment/${id}`).then(r => r.data);
+
+// Admin cleanup
+export const runInactiveAccountsCleanup = (dryRun = true) => api.post(`/admin/cleanup-inactive-accounts?dry_run=${dryRun}`).then(r => r.data);
+export const getCleanupLogs = () => api.get('/admin/cleanup-logs').then(r => r.data);
+
 // Purchases
 export const getPurchases = () => api.get('/purchases').then(r => r.data);
 export const createPurchase = (data) => api.post('/purchases', data).then(r => r.data);

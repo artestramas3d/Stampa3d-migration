@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { getFilaments, getPrinters, getAccessories, getRecentSales, calculatePrint, createSale, import3mf, getClients, generateQuotePdf, getCricutProjectsFor3D } from '../lib/api';
+import { getFilaments, getPrinters, getAccessories, getRecentSales, calculatePrint, createSale, import3mf, getClients, generateQuotePdf, getCricutProjectsFor3D, getEquipment } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -48,6 +48,9 @@ export default function CalculatorPage() {
   const [accessories, setAccessories] = useState([]);
   const [cricutProjects, setCricutProjects] = useState([]);
   const [selectedCricutIds, setSelectedCricutIds] = useState([]); // preventivi Cricut aggiunti come lavorazione
+  const [applyMarginToExtras, setApplyMarginToExtras] = useState(true); // se true, il costo Cricut viene moltiplicato per il margine
+  const [equipmentList, setEquipmentList] = useState([]); // attrezzature 3D disponibili
+  const [selectedEquipment, setSelectedEquipment] = useState([]); // [{equipment_id, hours}]
   const [recentSales, setRecentSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
@@ -108,13 +111,14 @@ export default function CalculatorPage() {
 
   const loadData = async () => {
     try {
-      const [filamentsData, printersData, accessoriesData, recentData, clientsData, cricutData] = await Promise.all([
+      const [filamentsData, printersData, accessoriesData, recentData, clientsData, cricutData, equipmentData] = await Promise.all([
         getFilaments(),
         getPrinters(),
         getAccessories(),
         getRecentSales(10),
         getClients(),
-        getCricutProjectsFor3D().catch(() => [])
+        getCricutProjectsFor3D().catch(() => []),
+        getEquipment().catch(() => [])
       ]);
       setFilaments(filamentsData);
       setPrinters(printersData);
@@ -122,6 +126,7 @@ export default function CalculatorPage() {
       setRecentSales(recentData);
       setClientsList(clientsData);
       setCricutProjects(cricutData);
+      setEquipmentList(equipmentData);
       
       if (printersData.length > 0) {
         setFormData(prev => ({ ...prev, printer_id: printersData[0].id }));
@@ -254,8 +259,20 @@ export default function CalculatorPage() {
     
     setCalculating(true);
     try {
+      // Calcola costo extra dai preventivi Cricut selezionati
+      // - Se applichiamo margine: usa total_cost (costo di produzione) -> il margine si applica
+      // - Se non applichiamo margine: usa recommended_price (quello che si vuole incassare) -> pass-through
+      const cricutSum = selectedCricutIds.reduce((s, id) => {
+        const cp = cricutProjects.find(p => p.id === id);
+        if (!cp) return s;
+        const val = applyMarginToExtras ? (cp.total_cost || 0) : (cp.recommended_price || cp.total_cost || 0);
+        return s + val;
+      }, 0);
       const calcData = {
         ...formData,
+        equipment: selectedEquipment.filter(e => e.equipment_id && Number(e.hours) > 0),
+        extra_costs: cricutSum,
+        apply_margin_to_extras: applyMarginToExtras,
         manual_price: useManualPrice ? formData.manual_price : null
       };
       const data = await calculatePrint(calcData);
@@ -265,14 +282,14 @@ export default function CalculatorPage() {
     } finally {
       setCalculating(false);
     }
-  }, [formData, useManualPrice]);
+  }, [formData, useManualPrice, selectedCricutIds, cricutProjects, applyMarginToExtras, selectedEquipment]);
 
   useEffect(() => {
     if (formData.filaments.length > 0 && formData.printer_id) {
       const timer = setTimeout(handleCalculate, 300);
       return () => clearTimeout(timer);
     }
-  }, [formData, useManualPrice, handleCalculate]);
+  }, [formData, useManualPrice, handleCalculate, selectedCricutIds, applyMarginToExtras, selectedEquipment]);
 
   // Copy from previous sale
   const copyFromSale = (sale) => {
@@ -404,7 +421,7 @@ export default function CalculatorPage() {
         labor_hours: 0,
         design_hours: formData.design_hours,
         quantity: formData.quantity,
-        sale_price: result.sale_price_total + cricutExtra,
+        sale_price: result.sale_price_total,
         accessories: formData.accessories,
         client_id: selectedClientId && selectedClientId !== 'none' ? selectedClientId : null,
         source_module: '3d',
@@ -422,12 +439,6 @@ export default function CalculatorPage() {
   };
 
   const selectedPrinter = printers.find(p => p.id === formData.printer_id);
-
-  // Costo aggiuntivo derivante dalle lavorazioni Cricut selezionate
-  const cricutExtra = selectedCricutIds.reduce((s, id) => {
-    const cp = cricutProjects.find(p => p.id === id);
-    return s + (cp?.total_cost || 0);
-  }, 0);
 
   const handleGenerateQuote = async () => {
     if (!formData.product_name || !result) return;
@@ -778,6 +789,50 @@ export default function CalculatorPage() {
               </div>
             )}
 
+            {/* Attrezzature 3D (AMS, ecc.) */}
+            {equipmentList.length > 0 && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-xs"><Sparkles className="w-3 h-3" />Attrezzature (AMS, piatti, ecc.)</Label>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {equipmentList.map(eq => {
+                    const sel = selectedEquipment.find(e => e.equipment_id === eq.id);
+                    const checked = !!sel;
+                    return (
+                      <div key={eq.id} className="flex items-center justify-between gap-2 p-1.5 rounded-sm bg-muted/30 border border-border/40">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(c) => {
+                              setSelectedEquipment(prev => c
+                                ? [...prev, { equipment_id: eq.id, hours: formData.print_time_hours || 0 }]
+                                : prev.filter(x => x.equipment_id !== eq.id));
+                            }}
+                            data-testid={`equipment-check-${eq.id}`}
+                          />
+                          <span className="text-xs truncate" title={eq.name}>{eq.name}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">€{eq.amortization_per_hour.toFixed(4)}/h</span>
+                        </div>
+                        {checked && (
+                          <Input
+                            type="number"
+                            step="0.25"
+                            className="h-6 w-16 text-xs"
+                            value={sel.hours}
+                            onChange={(e) => {
+                              const h = Number(e.target.value) || 0;
+                              setSelectedEquipment(prev => prev.map(x => x.equipment_id === eq.id ? { ...x, hours: h } : x));
+                            }}
+                            data-testid={`equipment-hours-${eq.id}`}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-muted-foreground italic">Attrezzature amortizzate a tempo (es. Bambu Lab AMS). Gestisci l'elenco dalle Impostazioni.</p>
+              </div>
+            )}
+
             {/* Lavorazioni Cricut */}
             {cricutProjects.length > 0 && (
               <div className="space-y-2">
@@ -800,6 +855,19 @@ export default function CalculatorPage() {
                     );
                   })}
                 </div>
+                {selectedCricutIds.length > 0 && (
+                  <div className="flex items-center gap-2 p-2 rounded bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900">
+                    <Checkbox
+                      id="apply-margin-cricut"
+                      checked={applyMarginToExtras}
+                      onCheckedChange={setApplyMarginToExtras}
+                      data-testid="apply-margin-cricut-check"
+                    />
+                    <label htmlFor="apply-margin-cricut" className="text-[11px] cursor-pointer flex-1">
+                      Applica il margine anche al costo Cricut <span className="text-muted-foreground">(consigliato per guadagnare anche sulle lavorazioni)</span>
+                    </label>
+                  </div>
+                )}
                 <p className="text-[10px] text-muted-foreground italic">Da &quot;Cricut&quot; spunta <b>Aggiungi al calcolatore Stampa 3D</b> per farle apparire qui.</p>
               </div>
             )}
@@ -902,12 +970,24 @@ export default function CalculatorPage() {
                   <div className="flex justify-between"><span>Ammortamento</span><span className="font-mono">€{result.depreciation_cost.toFixed(2)}</span></div>
                   {result.maintenance_cost > 0 && <div className="flex justify-between"><span>Manutenzione</span><span className="font-mono">€{result.maintenance_cost.toFixed(2)}</span></div>}
                   {result.accessories_cost > 0 && <div className="flex justify-between"><span>Accessori</span><span className="font-mono">€{result.accessories_cost.toFixed(2)}</span></div>}
+                  {result.equipment_cost > 0 && (
+                    <div className="flex justify-between text-blue-600 dark:text-blue-400">
+                      <span className="inline-flex items-center gap-1"><Sparkles className="w-3 h-3" />Attrezzature</span>
+                      <span className="font-mono">€{result.equipment_cost.toFixed(2)}</span>
+                    </div>
+                  )}
                   {result.labor_cost > 0 && <div className="flex justify-between"><span>Lavoro</span><span className="font-mono">€{result.labor_cost.toFixed(2)}</span></div>}
                   {result.design_cost > 0 && <div className="flex justify-between"><span>Design</span><span className="font-mono">€{result.design_cost.toFixed(2)}</span></div>}
                   {result.yield_extra_cost > 0 && (
                     <div className="flex justify-between text-amber-600 dark:text-amber-400" title={`Tasso successo ${result.yield_rate}%: assorbe il costo delle stampe fallite`}>
                       <span>Rischio fallimento ({(100 - result.yield_rate).toFixed(0)}%)</span>
                       <span className="font-mono">+€{result.yield_extra_cost.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {result.extra_costs > 0 && (
+                    <div className="flex justify-between text-orange-600 dark:text-orange-400">
+                      <span className="inline-flex items-center gap-1"><Scissors className="w-3 h-3" />Lavorazioni Cricut</span>
+                      <span className="font-mono">€{result.extra_costs.toFixed(2)}</span>
                     </div>
                   )}
                 </div>
@@ -924,12 +1004,6 @@ export default function CalculatorPage() {
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Costo/unità</span>
                       <span className="font-mono">€{result.cost_per_unit.toFixed(2)}</span>
-                    </div>
-                  )}
-                  {cricutExtra > 0 && (
-                    <div className="flex justify-between text-xs text-orange-600 dark:text-orange-400">
-                      <span className="inline-flex items-center gap-1"><Scissors className="w-3 h-3" />+ Lavorazioni Cricut</span>
-                      <span className="font-mono">€{cricutExtra.toFixed(2)}</span>
                     </div>
                   )}
                 </div>

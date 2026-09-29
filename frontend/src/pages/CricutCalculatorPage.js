@@ -20,7 +20,7 @@ const emptyProject = {
   material_id: '', material_qty: 0, material_dimensions: '',
   time_prep_min: 0, time_cut_min: 0, time_weeding_min: 0, time_transfer_min: 0, time_press_min: 0, time_assembly_min: 0,
   labor_rate_hour: 15,
-  machine_id: '', machine_hours: 0,
+  machine_id: '', machine_minutes: 0,
   consumables: [], extra_materials: [],
   pkg_bag: 0, pkg_box: 0, pkg_cardstock: 0, pkg_label: 0, pkg_thank_card: 0, pkg_ribbon: 0,
   marketplace_fee_percent: 0, payment_fee_percent: 0, overhead_fixed: 0, vat_percent: 0,
@@ -52,7 +52,8 @@ function computeProject(p, matMap, machMap, consMap) {
   const totalH = totalMin / 60;
   const laborCost = totalH * Number(p.labor_rate_hour || 0);
   const machine = machMap[p.machine_id];
-  const machHours = Number(p.machine_hours || 0);
+  const machMin = Number(p.machine_minutes ?? p.machine_hours * 60 ?? 0);
+  const machHours = machMin / 60;
   const machAmort = machine ? machine.hourly_amortization * machHours : 0;
   const machEnergy = machine ? machine.hourly_energy_cost * machHours : 0;
   let consCost = 0;
@@ -320,7 +321,7 @@ export default function CricutCalculatorPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Field label="Ore di utilizzo"><NumericInput step="0.25" value={form.machine_hours} onChange={v => update('machine_hours', v)} data-testid="calc-machine-hours" /></Field>
+              <Field label="Minuti di utilizzo"><NumericInput step="1" value={form.machine_minutes} onChange={v => update('machine_minutes', v)} data-testid="calc-machine-minutes" /></Field>
             </div>
           </Section>
 

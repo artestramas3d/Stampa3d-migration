@@ -315,6 +315,10 @@ class AccessoryUsage(BaseModel):
     accessory_id: str
     quantity: int
 
+class EquipmentUsage(BaseModel):
+    equipment_id: str
+    hours: float = 0.0
+
 class FilamentUsage(BaseModel):
     filament_id: str
     grams_used: float
@@ -332,10 +336,14 @@ class PrintCalculationCreate(BaseModel):
     quantity: int = 1  # Number of products in this print
     product_name: str = ""
     accessories: List[AccessoryUsage] = []
+    equipment: List[EquipmentUsage] = []  # Attrezzature/accessori amortizzati (AMS, ecc.)
     # ===== Feature Pro (solo utenti registrati) =====
     yield_rate: float = 100  # % stampe riuscite (es. 85 = 15% fallimento). Default 100
     maintenance_cost_per_hour: Optional[float] = None  # Costo orario manutenzione/riparazioni (€/h). Se None usa quello della stampante
     vat_rate: float = 0  # IVA da applicare al prezzo finale (es. 22). Default 0 = no IVA
+    # ===== Extra costs (lavorazioni Cricut, ecc.) =====
+    extra_costs: float = 0  # costi aggiuntivi (es. preventivi Cricut) in euro
+    apply_margin_to_extras: bool = True  # se True moltiplica extra per il margin, se False li aggiunge dopo
 
 class SaleCreate(BaseModel):
     date: str
@@ -419,7 +427,13 @@ async def login(user: UserLogin, response: Response):
     user_id = str(db_user["_id"])
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
-    await db.users.update_one({"_id": db_user["_id"]}, {"$set": {"last_login": datetime.now(timezone.utc).isoformat()}})
+    # Riattiva l'account se disattivato per inattività (login = intento di riutilizzo)
+    update_fields = {"last_login": datetime.now(timezone.utc).isoformat()}
+    if db_user.get("is_active") is False:
+        update_fields["is_active"] = True
+        update_fields["deactivated_at"] = None
+        update_fields["reactivated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.users.update_one({"_id": db_user["_id"]}, {"$set": update_fields})
     response.set_cookie(key="access_token", value=access_token, max_age=3600, **_cookie_kwargs())
     response.set_cookie(key="refresh_token", value=refresh_token, max_age=604800, **_cookie_kwargs())
     return {"id": user_id, "email": email, "name": db_user.get("name", ""), "is_admin": db_user.get("is_admin", False), "is_shop_owner": db_user.get("is_shop_owner", False), "email_verified": db_user.get("email_verified", True)}
@@ -738,6 +752,69 @@ async def delete_accessory_category(name: str, current_user: dict = Depends(get_
     await db.accessory_categories.delete_one({"user_id": current_user["id"], "name": name})
     return {"message": "Categoria rimossa"}
 
+# ==================== ATTREZZATURE (Equipment) 3D ====================
+# Attrezzature ammortizzate a tempo (es. Bambu Lab AMS, piani texturati, ecc.)
+class EquipmentCreate(BaseModel):
+    name: str
+    brand: str = ""
+    price: float = 0
+    life_hours: float = 0
+    notes: str = ""
+
+class EquipmentUpdate(BaseModel):
+    name: Optional[str] = None
+    brand: Optional[str] = None
+    price: Optional[float] = None
+    life_hours: Optional[float] = None
+    notes: Optional[str] = None
+
+def _serialize_equipment(doc: dict) -> dict:
+    price = float(doc.get("price", 0) or 0)
+    life = float(doc.get("life_hours", 0) or 0)
+    per_hour = round(price / life, 4) if life > 0 else 0
+    return {
+        "id": str(doc["_id"]),
+        "name": doc.get("name", ""),
+        "brand": doc.get("brand", ""),
+        "price": price,
+        "life_hours": life,
+        "amortization_per_hour": per_hour,
+        "notes": doc.get("notes", ""),
+        "created_at": doc.get("created_at", ""),
+    }
+
+@api_router.get("/equipment")
+async def list_equipment(current_user: dict = Depends(get_current_user)):
+    result = []
+    async for doc in db.equipment.find({"user_id": current_user["id"]}).sort("name", 1):
+        result.append(_serialize_equipment(doc))
+    return result
+
+@api_router.post("/equipment")
+async def create_equipment(eq: EquipmentCreate, current_user: dict = Depends(get_current_user)):
+    doc = eq.model_dump()
+    doc["user_id"] = current_user["id"]
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    res = await db.equipment.insert_one(doc)
+    doc["_id"] = res.inserted_id
+    return _serialize_equipment(doc)
+
+@api_router.put("/equipment/{eq_id}")
+async def update_equipment(eq_id: str, eq: EquipmentUpdate, current_user: dict = Depends(get_current_user)):
+    upd = {k: v for k, v in eq.model_dump().items() if v is not None}
+    if not upd:
+        raise HTTPException(status_code=400, detail="Nessun campo da aggiornare")
+    await db.equipment.update_one({"_id": ObjectId(eq_id), "user_id": current_user["id"]}, {"$set": upd})
+    d = await db.equipment.find_one({"_id": ObjectId(eq_id), "user_id": current_user["id"]})
+    if not d:
+        raise HTTPException(status_code=404, detail="Attrezzatura non trovata")
+    return _serialize_equipment(d)
+
+@api_router.delete("/equipment/{eq_id}")
+async def delete_equipment(eq_id: str, current_user: dict = Depends(get_current_user)):
+    await db.equipment.delete_one({"_id": ObjectId(eq_id), "user_id": current_user["id"]})
+    return {"message": "Attrezzatura eliminata"}
+
 # Print Calculator
 @api_router.post("/calculate")
 async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Depends(get_current_user)):
@@ -797,7 +874,27 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
                 "total": cost
             })
 
-    production_cost = material_cost + electricity_cost + depreciation_cost + maintenance_cost + accessories_cost
+    # ===== Attrezzature (Equipment) - Ammortamento orario =====
+    equipment_cost = 0
+    equipment_details = []
+    for eq_usage in (calc.equipment or []):
+        eq = await db.equipment.find_one({"_id": ObjectId(eq_usage.equipment_id), "user_id": current_user["id"]})
+        if eq:
+            price = float(eq.get("price", 0) or 0)
+            life = float(eq.get("life_hours", 0) or 0)
+            per_hour = (price / life) if life > 0 else float(eq.get("amortization_per_hour", 0) or 0)
+            hours = float(eq_usage.hours or 0)
+            cost = per_hour * hours
+            equipment_cost += cost
+            equipment_details.append({
+                "equipment_id": str(eq["_id"]),
+                "name": eq.get("name", ""),
+                "hours": hours,
+                "per_hour": round(per_hour, 4),
+                "total": round(cost, 2),
+            })
+
+    production_cost = material_cost + electricity_cost + depreciation_cost + maintenance_cost + accessories_cost + equipment_cost
     labor_cost = calc.labor_hours * 15  # 15€/hour labor
     design_cost = calc.design_hours * 20  # 20€/hour design
     total_cost_raw = production_cost + labor_cost + design_cost
@@ -812,16 +909,36 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
 
     # Calculate per-unit cost if quantity > 1
     quantity = max(1, calc.quantity)
+
+    # ===== Extra costs (Cricut, ecc.) =====
+    extra_costs = max(0.0, float(calc.extra_costs or 0))
+    apply_margin_to_extras = bool(calc.apply_margin_to_extras)
+
+    # Se apply_margin_to_extras: extra concorre al costo su cui calcolare margine
+    # Altrimenti: extra viene aggiunto dopo (pass-through al cliente, no markup)
+    cost_for_margin = total_cost + (extra_costs if apply_margin_to_extras else 0)
+    cost_per_unit_for_margin = cost_for_margin / quantity
+
+    # Il total_cost mostrato all'utente include SEMPRE gli extra
+    total_cost = total_cost + extra_costs
     cost_per_unit = total_cost / quantity
 
     # Use manual price or calculate from margin
     if calc.manual_price is not None and calc.manual_price > 0:
         sale_price_per_unit = calc.manual_price
         sale_price_total = calc.manual_price * quantity
+        # In manual mode: se non applichiamo margin agli extra, li sommiamo al prezzo finale
+        if not apply_margin_to_extras and extra_costs > 0:
+            sale_price_total += extra_costs
+            sale_price_per_unit = sale_price_total / quantity
         margin_percent = ((sale_price_per_unit - cost_per_unit) / cost_per_unit * 100) if cost_per_unit > 0 else 0
     else:
-        sale_price_per_unit = cost_per_unit * (1 + calc.margin_percent / 100)
-        sale_price_total = sale_price_per_unit * quantity
+        sale_price_per_unit_prod = cost_per_unit_for_margin * (1 + calc.margin_percent / 100)
+        sale_price_total = sale_price_per_unit_prod * quantity
+        # Se non si applica il margine agli extra, aggiungili al prezzo totale come pass-through
+        if not apply_margin_to_extras and extra_costs > 0:
+            sale_price_total += extra_costs
+        sale_price_per_unit = sale_price_total / quantity
         margin_percent = calc.margin_percent
 
     net_profit_per_unit = sale_price_per_unit - cost_per_unit
@@ -843,6 +960,10 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
         "maintenance_cost": round(maintenance_cost, 2),
         "accessories_cost": round(accessories_cost, 2),
         "accessories_details": accessories_details,
+        "equipment_cost": round(equipment_cost, 2),
+        "equipment_details": equipment_details,
+        "extra_costs": round(extra_costs, 2),
+        "apply_margin_to_extras": apply_margin_to_extras,
         "production_cost": round(production_cost, 2),
         "labor_cost": round(labor_cost, 2),
         "design_cost": round(design_cost, 2),
@@ -1135,7 +1256,7 @@ class CricutProjectCreate(BaseModel):
     labor_rate_hour: float = 15.0
     # Macchina
     machine_id: str = ""
-    machine_hours: float = 0.0
+    machine_minutes: float = 0.0  # minuti di utilizzo macchina (in precedenza: machine_hours)
     # Consumabili
     consumables: List[CricutConsumableUsage] = []
     # Materiali extra
@@ -1232,7 +1353,12 @@ async def _compute_cricut_project(doc: dict, user_id: str) -> dict:
     machine_info = None
     if machine:
         machine_info = _serialize_cricut_machine(machine)
-        mh = float(doc.get("machine_hours", 0) or 0)
+        # Retro-compat: se il doc ha ancora machine_hours (vecchi documenti), usalo
+        if "machine_minutes" in doc and doc.get("machine_minutes") is not None:
+            m_min = float(doc.get("machine_minutes", 0) or 0)
+        else:
+            m_min = float(doc.get("machine_hours", 0) or 0) * 60.0
+        mh = m_min / 60.0  # converti in ore per ammortamento €/h
         machine_amort = machine_info["hourly_amortization"] * mh
         machine_energy = machine_info["hourly_energy_cost"] * mh
 
@@ -1311,7 +1437,7 @@ async def _compute_cricut_project(doc: dict, user_id: str) -> dict:
         "labor_rate_hour": labor_rate,
         "labor_cost": round(labor_cost, 4),
         "machine_id": doc.get("machine_id", ""),
-        "machine_hours": float(doc.get("machine_hours", 0) or 0),
+        "machine_minutes": float(doc.get("machine_minutes") if doc.get("machine_minutes") is not None else float(doc.get("machine_hours", 0) or 0) * 60.0),
         "machine_name": (machine or {}).get("name", ""),
         "machine_amort_cost": round(machine_amort, 4),
         "machine_energy_cost": round(machine_energy, 4),
@@ -4349,6 +4475,37 @@ async def export_clients_csv(current_user: dict = Depends(get_current_user)):
     return StreamingResponse(io.BytesIO(output.getvalue().encode('utf-8-sig')), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=clienti.csv"})
 
 
+@api_router.post("/admin/cleanup-inactive-accounts")
+async def admin_run_cleanup(dry_run: bool = False, current_user: dict = Depends(require_admin)):
+    """Esegue manualmente la pulizia degli account inattivi. Usa ?dry_run=true per solo preview."""
+    report = await _run_inactive_accounts_cleanup(dry_run=dry_run)
+    if not dry_run:
+        try:
+            await db.cleanup_logs.insert_one({
+                "type": "inactive_accounts_manual",
+                "triggered_by": current_user.get("email", ""),
+                "ran_at": report["ran_at"],
+                "counts": report["counts"],
+                "details": {k: report[k] for k in ("deleted_unverified", "deactivated", "permanent_deleted")},
+            })
+        except Exception:
+            pass
+    return report
+
+@api_router.get("/admin/cleanup-logs")
+async def admin_cleanup_logs(current_user: dict = Depends(require_admin)):
+    logs = []
+    async for d in db.cleanup_logs.find({}).sort("ran_at", -1).limit(50):
+        logs.append({
+            "id": str(d["_id"]),
+            "type": d.get("type", ""),
+            "ran_at": d.get("ran_at", ""),
+            "triggered_by": d.get("triggered_by", ""),
+            "counts": d.get("counts", {}),
+        })
+    return logs
+
+
 # Include router
 app.include_router(api_router)
 
@@ -4411,6 +4568,124 @@ async def newsletter_scheduler():
             logger.error(f"Errore scheduler newsletter: {e}")
         await asyncio.sleep(60)
 
+# ==================== ACCOUNT CLEANUP ====================
+# Policy:
+# - Non verificati + nessun login + creati da > 90 giorni  -> ELIMINATI
+# - Verificati + nessun login da > 12 mesi (365 giorni)    -> DISATTIVATI (is_active=False)
+#   * L'utente puo' riattivarsi facendo login (login endpoint gestisce is_active=True)
+# - Verificati disattivati da > 12 mesi (24 mesi totali)   -> ELIMINATI DEFINITIVAMENTE
+# admin/testuser/shop_owner sono sempre esclusi.
+
+UNVERIFIED_DAYS_LIMIT = 90
+INACTIVE_MONTHS_LIMIT = 12
+DELETE_AFTER_DEACTIVATION_MONTHS = 12  # dopo 12 mesi da deactivated_at -> eliminazione
+
+def _parse_iso(dt_str: str):
+    if not dt_str:
+        return None
+    try:
+        # supporta ISO con o senza Z
+        s = dt_str.replace("Z", "+00:00") if isinstance(dt_str, str) else dt_str
+        return datetime.fromisoformat(s) if isinstance(s, str) else s
+    except Exception:
+        return None
+
+async def _run_inactive_accounts_cleanup(dry_run: bool = False) -> dict:
+    """Esegue la pulizia degli account inattivi. Ritorna il report delle azioni."""
+    now = datetime.now(timezone.utc)
+    unverified_cutoff = now - timedelta(days=UNVERIFIED_DAYS_LIMIT)
+    inactive_cutoff = now - timedelta(days=INACTIVE_MONTHS_LIMIT * 30)
+    permanent_delete_cutoff = now - timedelta(days=DELETE_AFTER_DEACTIVATION_MONTHS * 30)
+
+    deleted_unverified = []
+    deactivated = []
+    permanent_deleted = []
+
+    async for u in db.users.find({}):
+        email = u.get("email", "")
+        # Escludi admin, shop_owner e testuser
+        if u.get("is_admin") or u.get("is_shop_owner") or email == "testuser@example.com":
+            continue
+
+        created_at = _parse_iso(u.get("created_at", ""))
+        last_login = _parse_iso(u.get("last_login", ""))
+        deactivated_at = _parse_iso(u.get("deactivated_at", ""))
+        is_verified = bool(u.get("email_verified", False))
+        is_active = u.get("is_active", True)
+
+        # 1) Eliminazione permanente: disattivati da oltre 12 mesi
+        if is_active is False and deactivated_at and deactivated_at < permanent_delete_cutoff:
+            if not dry_run:
+                await _delete_user_and_data(str(u["_id"]))
+            permanent_deleted.append({"email": email, "deactivated_at": u.get("deactivated_at")})
+            continue
+
+        # 2) Non verificati vecchi (> 90 giorni) -> elimina
+        if not is_verified and created_at and created_at < unverified_cutoff and not last_login:
+            if not dry_run:
+                await _delete_user_and_data(str(u["_id"]))
+            deleted_unverified.append({"email": email, "created_at": u.get("created_at", "")})
+            continue
+
+        # 3) Verificati inattivi da > 12 mesi -> disattivazione (se ancora attivi)
+        if is_verified and is_active is not False:
+            reference = last_login or created_at
+            if reference and reference < inactive_cutoff:
+                if not dry_run:
+                    await db.users.update_one(
+                        {"_id": u["_id"]},
+                        {"$set": {"is_active": False, "deactivated_at": now.isoformat()}}
+                    )
+                deactivated.append({"email": email, "last_login": u.get("last_login", ""), "created_at": u.get("created_at", "")})
+
+    return {
+        "dry_run": dry_run,
+        "ran_at": now.isoformat(),
+        "deleted_unverified": deleted_unverified,
+        "deactivated": deactivated,
+        "permanent_deleted": permanent_deleted,
+        "counts": {
+            "deleted_unverified": len(deleted_unverified),
+            "deactivated": len(deactivated),
+            "permanent_deleted": len(permanent_deleted),
+        },
+    }
+
+async def _delete_user_and_data(user_id: str):
+    """Elimina l'utente e tutti i suoi dati collegati."""
+    collections = [
+        "filaments", "printers", "accessories", "equipment", "purchases", "sales", "clients",
+        "cricut_projects", "cricut_materials", "cricut_machines", "cricut_consumables",
+        "bug_reports", "quotes", "news", "products",
+    ]
+    for coll in collections:
+        try:
+            await db[coll].delete_many({"user_id": user_id})
+        except Exception:
+            pass
+    try:
+        await db.users.delete_one({"_id": ObjectId(user_id)})
+    except Exception:
+        pass
+
+async def inactive_accounts_scheduler():
+    """Esegue la pulizia account una volta al giorno (24h)."""
+    # Attendi 1 minuto all'avvio, poi loop ogni 24h
+    await asyncio.sleep(60)
+    while True:
+        try:
+            report = await _run_inactive_accounts_cleanup(dry_run=False)
+            logger.info(f"Account cleanup: {report['counts']}")
+            await db.cleanup_logs.insert_one({
+                "type": "inactive_accounts",
+                "ran_at": report["ran_at"],
+                "counts": report["counts"],
+                "details": {k: report[k] for k in ("deleted_unverified", "deactivated", "permanent_deleted")},
+            })
+        except Exception as e:
+            logger.error(f"Errore scheduler account cleanup: {e}")
+        await asyncio.sleep(24 * 3600)  # 24 ore
+
 @app.on_event("startup")
 async def startup():
     await db.users.create_index("email", unique=True)
@@ -4423,9 +4698,21 @@ async def startup():
         pass
     # Make testuser admin + verified
     await db.users.update_one({"email": "testuser@example.com"}, {"$set": {"is_admin": True, "email_verified": True}})
+    # Migrazione: Cricut projects - machine_hours -> machine_minutes
+    try:
+        async for d in db.cricut_projects.find({"machine_hours": {"$exists": True}, "machine_minutes": {"$exists": False}}):
+            mh = float(d.get("machine_hours", 0) or 0)
+            await db.cricut_projects.update_one(
+                {"_id": d["_id"]},
+                {"$set": {"machine_minutes": mh * 60.0}, "$unset": {"machine_hours": ""}}
+            )
+    except Exception as e:
+        logger.warning(f"Cricut machine_hours migration failed: {e}")
     # Start newsletter scheduler
     asyncio.create_task(newsletter_scheduler())
-    logger.info("Database indexes created, newsletter scheduler started")
+    # Start account cleanup scheduler (daily)
+    asyncio.create_task(inactive_accounts_scheduler())
+    logger.info("Database indexes created, schedulers started")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

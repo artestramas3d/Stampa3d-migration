@@ -10,12 +10,13 @@ import {
   getAdminInquiries, updateAdminInquiry, deleteAdminInquiry, getAdminProductStats,
   getAdminPageStats,
   getAdminAffiliateLinks, createAffiliateLink, updateAffiliateLink, deleteAffiliateLink, getAdminAffiliateStats,
-  getAdminShopSettings, updateShopSettings
+  getAdminShopSettings, updateShopSettings,
+  runInactiveAccountsCleanup, getCleanupLogs
 } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Textarea } from '../components/ui/textarea';
 import { CsvInput } from '../components/CsvInput';
 import { Badge } from '../components/ui/badge';
@@ -2291,6 +2292,110 @@ function AffiliateStatsCard() {
   );
 }
 
+function CleanupTab() {
+  const [dryRunReport, setDryRunReport] = useState(null);
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  const loadLogs = async () => {
+    try { setLogs(await getCleanupLogs()); } catch { /* ignore */ }
+  };
+  useEffect(() => { loadLogs(); }, []);
+
+  const runPreview = async () => {
+    setLoading(true);
+    try {
+      const r = await runInactiveAccountsCleanup(true);
+      setDryRunReport(r);
+      toast.info(`Anteprima: ${r.counts.deleted_unverified} eliminaz., ${r.counts.deactivated} disatt., ${r.counts.permanent_deleted} perm.`);
+    } catch { toast.error('Errore anteprima'); }
+    setLoading(false);
+  };
+
+  const runReal = async () => {
+    if (!confirming) { setConfirming(true); return; }
+    setLoading(true);
+    try {
+      const r = await runInactiveAccountsCleanup(false);
+      toast.success(`Pulizia completata: ${r.counts.deleted_unverified + r.counts.permanent_deleted} eliminati, ${r.counts.deactivated} disattivati`);
+      setDryRunReport(null);
+      setConfirming(false);
+      loadLogs();
+    } catch { toast.error('Errore pulizia'); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="space-y-4" data-testid="cleanup-tab">
+      <Card className="border-border/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-heading flex items-center gap-2">
+            <Trash2 className="w-4 h-4" /> Pulizia Account Inattivi
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Policy: <b>Non verificati &gt; 90 giorni</b> → eliminati · <b>Verificati inattivi &gt; 12 mesi</b> → disattivati · <b>Disattivati &gt; 12 mesi</b> → eliminati definitivamente.
+            Lo scheduler automatico gira ogni 24 ore. Admin, shop_owner e testuser sono sempre esclusi.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={runPreview} disabled={loading} data-testid="cleanup-preview-btn">
+              Anteprima (Dry-Run)
+            </Button>
+            <Button size="sm" variant={confirming ? 'destructive' : 'default'} onClick={runReal} disabled={loading} data-testid="cleanup-run-btn">
+              {confirming ? 'Conferma esecuzione' : 'Esegui pulizia'}
+            </Button>
+            {confirming && <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>Annulla</Button>}
+          </div>
+
+          {dryRunReport && (
+            <div className="rounded border border-border/40 p-3 space-y-2 bg-muted/30 text-xs">
+              <p className="font-semibold">Anteprima ({dryRunReport.ran_at?.slice(0, 19).replace('T', ' ')})</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div>Da eliminare (non verificati): <b>{dryRunReport.counts.deleted_unverified}</b></div>
+                <div>Da disattivare (12 mesi): <b>{dryRunReport.counts.deactivated}</b></div>
+                <div>Eliminazione definitiva: <b>{dryRunReport.counts.permanent_deleted}</b></div>
+              </div>
+              {dryRunReport.deleted_unverified?.length > 0 && (
+                <details><summary className="cursor-pointer">Non verificati ({dryRunReport.deleted_unverified.length})</summary>
+                  <ul className="pl-4 mt-1 list-disc">{dryRunReport.deleted_unverified.map((u, i) => <li key={i}>{u.email}</li>)}</ul>
+                </details>
+              )}
+              {dryRunReport.deactivated?.length > 0 && (
+                <details><summary className="cursor-pointer">Da disattivare ({dryRunReport.deactivated.length})</summary>
+                  <ul className="pl-4 mt-1 list-disc">{dryRunReport.deactivated.map((u, i) => <li key={i}>{u.email}</li>)}</ul>
+                </details>
+              )}
+              {dryRunReport.permanent_deleted?.length > 0 && (
+                <details><summary className="cursor-pointer">Eliminazione definitiva ({dryRunReport.permanent_deleted.length})</summary>
+                  <ul className="pl-4 mt-1 list-disc">{dryRunReport.permanent_deleted.map((u, i) => <li key={i}>{u.email}</li>)}</ul>
+                </details>
+              )}
+            </div>
+          )}
+
+          <div className="pt-2">
+            <p className="text-xs font-semibold mb-1">Storico esecuzioni</p>
+            {logs.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">Nessuna esecuzione registrata</p>
+            ) : (
+              <div className="space-y-1 max-h-64 overflow-y-auto text-xs">
+                {logs.map(l => (
+                  <div key={l.id} className="flex justify-between items-center p-2 rounded bg-muted/30 border border-border/40">
+                    <span>{l.ran_at?.slice(0, 19).replace('T', ' ')} · <span className="text-muted-foreground">{l.type}</span>{l.triggered_by && <span className="text-muted-foreground"> · da {l.triggered_by}</span>}</span>
+                    <span className="font-mono">−{l.counts?.deleted_unverified || 0} · Ø{l.counts?.deactivated || 0} · ✕{l.counts?.permanent_deleted || 0}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function AffiliateLinksTab() {
   const [links, setLinks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2691,7 +2796,14 @@ export default function AdminPanelPage() {
           <TabsTrigger value="news" data-testid="tab-news">
             <Newspaper className="w-4 h-4 mr-1.5 hidden sm:inline" />Notizie
           </TabsTrigger>
+          <TabsTrigger value="cleanup" data-testid="tab-cleanup">
+            <Trash2 className="w-4 h-4 mr-1.5 hidden sm:inline" />Manutenzione
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="cleanup">
+          <CleanupTab />
+        </TabsContent>
 
         <TabsContent value="news">
           <AdminNewsTab />

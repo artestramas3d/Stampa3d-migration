@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { getPrinters, createPrinter, updatePrinter, deletePrinter } from '../lib/api';
+import { getPrinters, createPrinter, updatePrinter, deletePrinter, getEquipment, createEquipment, updateEquipment, deleteEquipment } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { Plus, Pencil, Trash2, Printer, Zap, Clock } from 'lucide-react';
+import { Plus, Pencil, Trash2, Printer, Zap, Clock, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 const defaultPrinter = {
@@ -24,9 +24,70 @@ export default function SettingsPage() {
   const [editingPrinter, setEditingPrinter] = useState(null);
   const [formData, setFormData] = useState(defaultPrinter);
 
+  // Attrezzature (Equipment 3D — AMS, piatti, ecc.)
+  const defaultEq = { name: '', brand: '', price: 0, life_hours: 5000, notes: '' };
+  const [equipment, setEquipment] = useState([]);
+  const [eqDialogOpen, setEqDialogOpen] = useState(false);
+  const [editingEq, setEditingEq] = useState(null);
+  const [eqForm, setEqForm] = useState(defaultEq);
+
   useEffect(() => {
     loadPrinters();
+    loadEquipment();
   }, []);
+
+  const loadEquipment = async () => {
+    try {
+      const data = await getEquipment();
+      setEquipment(data);
+    } catch {
+      // silent
+    }
+  };
+
+  const handleEqSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingEq) {
+        await updateEquipment(editingEq.id, eqForm);
+        toast.success('Attrezzatura aggiornata');
+      } else {
+        await createEquipment(eqForm);
+        toast.success('Attrezzatura aggiunta');
+      }
+      setEqDialogOpen(false);
+      setEditingEq(null);
+      setEqForm(defaultEq);
+      loadEquipment();
+    } catch {
+      toast.error('Errore nel salvataggio');
+    }
+  };
+
+  const handleEqEdit = (eq) => {
+    setEditingEq(eq);
+    setEqForm({ name: eq.name, brand: eq.brand || '', price: eq.price, life_hours: eq.life_hours, notes: eq.notes || '' });
+    setEqDialogOpen(true);
+  };
+
+  const handleEqDelete = async (id) => {
+    if (!window.confirm('Eliminare questa attrezzatura?')) return;
+    try {
+      await deleteEquipment(id);
+      toast.success('Attrezzatura eliminata');
+      loadEquipment();
+    } catch {
+      toast.error('Errore eliminazione');
+    }
+  };
+
+  const openNewEqDialog = () => {
+    setEditingEq(null);
+    setEqForm(defaultEq);
+    setEqDialogOpen(true);
+  };
+
+  const eqPreviewAmort = eqForm.life_hours > 0 ? eqForm.price / eqForm.life_hours : 0;
 
   const loadPrinters = async () => {
     try {
@@ -296,6 +357,113 @@ export default function SettingsPage() {
                         <span className="font-mono text-primary">€{printer.electricity_cost_per_hour?.toFixed(4)}</span>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Attrezzature 3D Section */}
+      <Card className="border-border/40" data-testid="equipment-section">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="font-heading flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" />Attrezzature & Accessori</CardTitle>
+            <CardDescription>Attrezzature amortizzate a tempo (es. Bambu Lab AMS, piatti texturati, sistemi multicolore)</CardDescription>
+          </div>
+          <Dialog open={eqDialogOpen} onOpenChange={setEqDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openNewEqDialog} data-testid="add-equipment-btn">
+                <Plus className="w-4 h-4 mr-2" />Aggiungi
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="font-heading">{editingEq ? 'Modifica Attrezzatura' : 'Nuova Attrezzatura'}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleEqSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Nome</Label>
+                  <Input value={eqForm.name} onChange={e => setEqForm({...eqForm, name: e.target.value})} placeholder="Es. Bambu Lab AMS 2 Pro" required data-testid="equipment-name-input" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Marca</Label>
+                  <Input value={eqForm.brand} onChange={e => setEqForm({...eqForm, brand: e.target.value})} placeholder="Bambu Lab" data-testid="equipment-brand-input" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Prezzo (€)</Label>
+                    <Input type="number" step="0.01" value={eqForm.price} onChange={e => setEqForm({...eqForm, price: parseFloat(e.target.value) || 0})} className="font-mono" data-testid="equipment-price-input" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Vita Stimata (ore)</Label>
+                    <Input type="number" value={eqForm.life_hours} onChange={e => setEqForm({...eqForm, life_hours: parseFloat(e.target.value) || 0})} className="font-mono" data-testid="equipment-life-input" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Note</Label>
+                  <Input value={eqForm.notes} onChange={e => setEqForm({...eqForm, notes: e.target.value})} placeholder="Opzionale" />
+                </div>
+                <Card className="bg-muted/50 border-dashed">
+                  <CardContent className="p-4 space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Ammortamento/ora:</span>
+                      <span className="font-mono text-primary">€{eqPreviewAmort.toFixed(4)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setEqDialogOpen(false)}>Annulla</Button>
+                  <Button type="submit" data-testid="save-equipment-btn">{editingEq ? 'Aggiorna' : 'Aggiungi'}</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </CardHeader>
+        <CardContent>
+          {equipment.length === 0 ? (
+            <div className="text-center py-8">
+              <Sparkles className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="font-heading font-semibold mb-2">Nessuna attrezzatura</h3>
+              <p className="text-muted-foreground mb-4 text-sm">Aggiungi accessori come AMS, piatti, ecc.</p>
+              <Button onClick={openNewEqDialog}><Plus className="w-4 h-4 mr-2" />Aggiungi</Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {equipment.map(eq => (
+                <Card key={eq.id} className="bg-muted/30 group" data-testid={`equipment-card-${eq.id}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-sm bg-primary/10 flex items-center justify-center">
+                          <Sparkles className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="font-heading font-semibold">{eq.name}</h3>
+                          <p className="text-xs text-muted-foreground">{eq.brand}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleEqEdit(eq)} data-testid={`edit-equipment-${eq.id}`}><Pencil className="w-4 h-4" /></Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleEqDelete(eq.id)} data-testid={`delete-equipment-${eq.id}`}><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div>
+                        <span className="text-xs uppercase tracking-widest text-muted-foreground block">Prezzo</span>
+                        <span className="font-mono">€{eq.price?.toFixed(2)}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs uppercase tracking-widest text-muted-foreground block">Vita</span>
+                        <span className="font-mono">{eq.life_hours}h</span>
+                      </div>
+                      <div>
+                        <span className="text-xs uppercase tracking-widest text-muted-foreground block">€/h</span>
+                        <span className="font-mono text-primary">€{eq.amortization_per_hour?.toFixed(4)}</span>
+                      </div>
+                    </div>
+                    {eq.notes && <p className="text-xs text-muted-foreground mt-2">{eq.notes}</p>}
                   </CardContent>
                 </Card>
               ))}
