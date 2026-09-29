@@ -290,589 +290,854 @@ Buona stampa! 🖨️✂️`
   },
   en: {
     title: "User Guide",
-    subtitle: "3D Printing Cost Calculator",
-    print: "Print / Save PDF",
+    subtitle: "3D Printing Cost Calculator + Cricut",
+    print: "Print",
     download: "Download PDF",
+    version: "v2026.09 — Updated",
     sections: [
       {
         title: "Welcome",
-        content: `Welcome to the 3D Printing Cost Calculator! This application helps you manage printing costs, materials, sales, and profitability of your 3D creations. This guide will show you how to use all features.`
+        content: `Welcome to the Artes&Tramas 3D Cost Calculator! A complete app for makers and professionals tracking 3D printing costs, cutting plotters (Cricut), materials, sales, and clients.
+
+THIS GUIDE COVERS:
+• 3D Printing Calculator (with Equipment/AMS and Cricut integration)
+• Cricut / Cutting Plotter Module
+• Clients, Sales, Quotes, and Purchases
+• Blog / News`
       },
       {
         title: "1. Registration and Login",
-        content: `To get started, register with your email and a password. You will receive a verification email: click the link to activate your account. After verification, you can access all features.
+        content: `To get started, register with your email and a password. You will receive a verification email: click the link to activate your account.
 
-If you forget your password, click "Forgot Password" on the login page and follow the instructions to reset it.`
+If you forget your password, use "Forgot Password" from the login page. You'll receive a temporary link to reset it.
+
+ACCOUNT RETENTION
+For database hygiene:
+• UNVERIFIED accounts inactive for over 90 days are deleted
+• VERIFIED accounts with no login for over 12 months are deactivated (reactivatable by logging in)
+• Deactivated accounts for over 12 months are permanently deleted
+Just log in to reactivate a deactivated account.`
       },
       {
         title: "2. Dashboard",
-        content: `The Dashboard is your general overview. Here you find:
-• Total revenue and net profit
-• Monthly trends with charts
-• Low stock alerts (filaments below 200g)
-• Best-selling products
-• Recent sales
+        content: `Overview with:
+• Total revenue, net profit, and monthly trends
+• Sales charts
+• Low stock alerts (filaments under 200g)
+• Best-selling products and recent sales
+• Monthly shipping summary
 
-The Dashboard updates automatically with your data.`
+The Dashboard updates in real-time with your data.`
       },
       {
         title: "3. Filament Management",
-        content: `In the Filaments section you can register all your spools:
+        content: `Register every spool with:
 • Material (PLA, PETG, ABS, TPU, etc.)
-• Color with visual preview (also supports bicolor!)
-• Brand and spool weight
-• Purchase price
+• Color with preview (BICOLOR support with diagonal split)
+• Brand, weight, and purchase price
 • Remaining grams
 
-For bicolor filaments: select Color 1 and Color 2 in the color pickers. The preview will show a diagonally split circle with both colors.
+The system automatically calculates cost per gram and alerts when stock drops below 200g.
 
-The system automatically calculates cost per gram and alerts you when stock drops below 200g.`
+You can export inventory to CSV for your accountant.`
       },
       {
         title: "4. Accessories Management",
-        content: `Register all accessories you use in prints:
-• Accessory name (hooks, magnets, packaging, etc.)
-• Unit cost
-• Quantity in stock
+        content: `Register accessories used in prints (hooks, magnets, packaging, etc.) with name, unit cost, and stock quantity.
 
-Accessories are included in the final cost calculation when you select them in the Calculator.`
+ACCESSORY CATEGORIES are customizable: add new ones from the Accessories menu.
+
+Accessories are automatically added to the calculation when selected in the Calculator.`
       },
       {
-        title: "5. Cost Calculator",
-        content: `The Calculator is the heart of the application. Here's how to use it:
+        title: "5. Settings: Printers and Equipment",
+        content: `On the "Settings" page you manage:
 
-STEP 1 — Select Printer
-Choose the printer you'll use. The system automatically includes depreciation and electricity costs.
+3D PRINTERS
+• Name/model, purchase cost, estimated life in hours
+• Power (W) and electricity cost (€/kWh)
+• Maintenance (€/print hour): covers nozzles, belts, lubricants, etc.
+The system automatically calculates depreciation €/h and electricity €/h.
 
-STEP 2 — Add Filaments
-Select the filament and enter the grams you'll use. You can add multiple filaments for multicolor prints.
+⭐ EQUIPMENT & ACCESSORIES (NEW)
+Section dedicated to time-amortized equipment:
+• Bambu Lab AMS / AMS 2 Pro (multicolor)
+• Textured plates, PEI, etc.
+• Filament drying systems
+Enter: Name, Brand, Price, Useful Life (hours). The system calculates amortization €/hour.
 
-STEP 3 — Print Time
-Enter hours and minutes of print time. You can also import this data from a .3mf file using the "Import .3mf" button.
+In the 3D Calculator you can then SELECT MULTIPLE EQUIPMENT items simultaneously for each print, specifying usage hours for each.`
+      },
+      {
+        title: "6. 3D Printing Cost Calculator",
+        content: `The Calculator is the heart of the app. Steps:
 
-STEP 4 — Design Time
-If you spent time on design/modeling, enter it here.
+STEP 1 — Printer
+Choose the printer. Automatically includes depreciation + electricity + hourly maintenance.
 
-STEP 5 — Accessories and Quantity
-Add any accessories and set the number of pieces to produce. If quantity is greater than 1, sales will be registered as individual pieces you can manage separately.
+STEP 2 — Filaments
+Select filaments and grams. You can add more than one (multicolor).
 
-STEP 6 — Profit Margin
-Set the desired percentage margin or enter a manual price.
+STEP 3 — Print time
+Hours and minutes separately. You can import them from .3mf file with "Import .3mf".
 
-STEP 7 — Client (optional)
-Select a client from your address book to link to the sale.
+STEP 4 — Design time
+If you modeled the piece yourself, add design hours (default €20/h).
 
-The system calculates: filament cost + electricity + depreciation + accessories + design = total cost. Then applies the margin for the suggested selling price.
+STEP 5 — Accessories and quantity
+Add accessories and set quantity (if > 1, each piece becomes an independent sale row).
+
+⭐ STEP 6 — Equipment (AMS, plates, etc.)
+If you configured equipment in Settings, it will appear here. Check the ones used and specify hours. The amortization cost is added to the total.
+
+⭐ STEP 7 — Cricut Jobs (IF YOU USED THE PLOTTER)
+If you created Cricut quotes with "Add to 3D Calculator", you'll see them here. Select to include their cost. IMPORTANT: you can choose whether to apply the margin to the Cricut cost too:
+• Checkbox ACTIVE (default): Cricut cost contributes to margin like any other cost → you also earn on Cricut jobs
+• Checkbox INACTIVE: Cricut cost is added to sale price as pass-through (client pays exactly the Cricut quote value, no additional markup)
+
+STEP 8 — Price
+Set a margin % or a manual price. You can also set VAT (22%), yield rate (% successful prints), and custom hourly maintenance.
+
+STEP 9 — Client (optional)
+Associate the sale with a client from your address book.
 
 .3MF IMPORT
-Click "Import .3mf" and upload the file exported from your slicer. Supported slicers:
-• Bambu Studio (v2.05+)
-• OrcaSlicer
-• Creality Print
-• PrusaSlicer
-• Cura
+Bambu Studio (2.05+), OrcaSlicer, Creality Print, PrusaSlicer, Cura are supported. The file must be SLICED (export the sliced plate, not the project).
 
-IMPORTANT: The file must be exported AFTER slicing. In Bambu Studio use "File → Export → Export plate sliced file" (NOT "Save project").
-
-For multicolor prints, the system automatically detects each filament with type, color and grams.
-
-GENERATE QUOTE PDF
-After calculating costs, you can generate a Quote PDF directly from the calculator by clicking "Generate Quote PDF". The quote shows only the product and final price (not internal costs) and is customized with your business details and logo.`
+The system calculates: material + electricity + printer depreciation + maintenance + accessories + equipment + design + any Cricut costs = total cost. Then applies the margin.`
       },
       {
-        title: "6. Sales Register",
-        content: `In the Sales section you can:
-• Save every sale from the Calculator
-• View product name, cost, selling price and profit
-• Mark whether a sale has been paid or not
-• Filter by month and payment status
-• Sort by date, price, profit or name
-• Export everything in CSV format
-• Edit price and name of any sale (pencil icon)
+        title: "7. Cricut / Cutting Plotter Module ⭐",
+        content: `If you own a Cricut, Silhouette, Brother, or other cutting plotter, the Cricut module is for you. Three sections in "Plotter Cost Calculator":
+
+MATERIALS
+Register each material with:
+• Category (HTV, Adhesive/Removable Vinyl, Transfer Tape, Cardstock, etc.)
+• Brand, color + hex, supplier
+• Price, purchase quantity, unit (m², cm², linear meters, sheets, pieces)
+• Waste % (typical scrap)
+• Remaining + low stock threshold
+The system auto-calculates unit cost.
+
+MACHINES
+Register your plotter with:
+• Name, brand/model, price, purchase date
+• Consumption (W) and electricity cost (€/kWh)
+• Depreciation: "simple" formula (price/life hours) or "fiscal" (price/years/12/monthly hours)
+The system calculates €/h depreciation and energy.
+
+CONSUMABLES
+Blades, mats, pens, nibs, rollers, protective sheets. For each: price + number of expected uses → cost per use auto.
+
+CRICUT QUOTE CALCULATOR
+In the project calculator you find 7 sections:
+1. Info (name, client, category, date, notes)
+2. Main material + extra materials
+3. Processing times: preparation, cutting, peeling, transfer tape, pressing, assembly (⭐ ALL IN MINUTES, not hours)
+4. Machine + minutes of use (⭐ NEW: from hours to minutes, more realistic for short jobs)
+5. Consumables (multi-select with number of uses per project)
+6. Packaging: bag, box, cardstock, label, card, ribbon
+7. Indirect costs (marketplace %, payment fees %, fixed overhead, VAT %)
+
+PRICE
+Set margin % or manual price. The sticky summary on the right shows live: production, indirect costs, price, net profit, and effective margin.
+
+3D INTEGRATION
+By activating "Add to 3D Print Calculator" on the Cricut quote, it will appear in the "Cricut Jobs" section of the 3D Calculator. Useful for mixed products (e.g. HTV t-shirt + 3D-printed gadget).
+
+DUPLICATE / SAVE AS SALE
+Each Cricut quote can be duplicated (useful for variants) or saved directly as a sale in the Sales Registry.`
+      },
+      {
+        title: "8. Clients (CRM Address Book)",
+        content: `Client address book with:
+• First name, last name, phone, email, address, notes
+• Quick search and sorting
+• Purchase history per client (bag icon)
+• CSV export
+
+Clients are linked to sales from the Calculator ("Client" menu). In PDF quotes they are auto-filled.`
+      },
+      {
+        title: "9. Sales Registry",
+        content: `Every sale saved from the Calculator shows:
+• Product name, cost, sale price, profit, client
+• Payment status (Paid / Unpaid) quick toggle
+• Shipping (separate cost)
+• Origin module (3D / Cricut / Manual)
+
+FILTERS AND SORTING
+By month, payment status, sortable by date/price/profit/name.
 
 MULTIPLE QUANTITIES
-If you printed multiple copies (e.g. 4 keychains), each piece is registered as a single row. You can:
-• Mark paid/unpaid for each piece individually
-• Edit the price of each piece
-• See the batch indicator (1/4, 2/4, etc.)
+If you printed 4 keychains, each piece becomes a single row with batch indicator (1/4, 2/4...). You can:
+• Mark paid/unpaid each piece
+• Edit price of the single piece
+• See them aggregated or singularly
 
 REPRINT
-Every sale has a "Reprint" button (printer icon). Clicking it takes you back to the Calculator with all data pre-filled: filaments, printer, print time and accessories.`
+Printer icon → returns to Calculator with all data pre-filled.
+
+EDIT
+Pencil icon → edit name, price, client, shipping (automatic profit recalculation).
+
+QUOTE FROM SALE
+Blue document icon → generate a PDF quote from an existing sale. If quotes were already generated for that sale, the icon turns green with dot (avoids unintended duplicates).
+
+CSV EXPORT
+Export everything to CSV for your accountant.`
       },
       {
-        title: "7. Purchases",
-        content: `Record every material purchase:
-• Material type, brand and color
-• Number of spools and total price
-• Total grams
+        title: "10. Purchases",
+        content: `Register every material purchase (type, brand, color, spool quantity, price, grams).
 
-When you record a purchase, the system can:
-• Automatically update an existing filament in stock
-• Create a new filament if it doesn't exist yet
-
-You can sort purchases by date, price, grams, material or brand and export to CSV.`
+The system:
+• Automatically updates an existing filament
+• Or creates a new one if it doesn't exist
+You can sort purchases by date, price, grams, material, or brand and export to CSV.`
       },
       {
-        title: "8. Settings (Printers)",
-        content: `In Settings, manage your printers:
-• Name and model
-• Purchase cost
-• Estimated life in hours
-• Power in Watts
-• Electricity cost per kWh
+        title: "11. Professional PDF Quotes",
+        content: `Three ways to generate quotes:
 
-This data is used by the Calculator to precisely calculate depreciation and electricity cost for each print.`
+A) FROM THE CALCULATOR (fast)
+After calculation, click "Generate PDF Quote". The quote shows only product and price (no internal costs).
+
+B) FROM SALES (retroactive)
+Blue document icon on each sale → pre-filled dialog → PDF.
+
+C) FROM THE QUOTES PAGE (multi-product)
+In the "Quotes" menu you can create complex quotes with multiple products, client from address book or manual, notes, validity.
+
+COMPANY DATA
+"Company Data" tab: company name, address, ZIP, city, VAT, phone, email, logo (max 500KB). They appear in the header of ALL quotes.
+
+DOWNLOAD & PRINT
+Each quote has:
+• Download PDF → real .pdf file download (white background guaranteed even in dark mode)
+• Print → browser print dialog
+
+HISTORY
+"History" tab in Quotes page. Each quote shows: number PRV-YYYYMMDD-HHMMSS, client, products, value, send date (if sent via email).`
       },
       {
-        title: "9. Profile",
-        content: `In your Profile you can:
-• Change your display name
-• Change the interface language (Italian, English, Spanish, French)
-• Change your password
+        title: "12. News / Blog",
+        content: `Public Blog module to read articles, guides, and news from Artes&Tramas 3D. Each article has:
+• Title, category (Guides / News / Case study / etc.)
+• Formatted content (bold, lists, links, images)
+• Cover, publication date
 
-Profile statistics show a summary of your data.`
+PUBLIC ROUTES
+• /notizie — public articles list with category filter
+• /notizie/:slug — article detail (readable also in dark mode)`
       },
       {
-        title: "10. Report a Problem",
-        content: `If you find a bug or malfunction:
-• Go to "Report Problem" in the sidebar
-• Enter a title and detailed description
-• Choose priority (low, medium, high)
-• Attach a screenshot if necessary
+        title: "13. Profile, Theme, Language",
+        content: `In Profile you can:
+• Change name, UI language (IT/EN/ES/FR)
+• Change password
+• See personal statistics
 
-The administrator will receive the report and you can see the resolution status.`
+LIGHT/DARK THEME
+Sun/moon icon in the sidebar. The theme also applies to modals, forms, and exports.
+
+PRE-LOGIN LANGUAGE SELECTOR
+Login/register/forgot password pages have a language selector (IT/EN/ES/FR). The choice is saved in localStorage.`
       },
       {
-        title: "11. Light/Dark Theme",
-        content: `You can change the interface theme by clicking the sun/moon icon in the sidebar. Dark theme is easier on the eyes, especially in low-light environments.`
+        title: "14. Report a Problem",
+        content: `If you find a bug: "Report Problem" in the sidebar. Enter title, description, priority (low/medium/high), attach a screenshot (max 5MB). You will receive updates on the resolution status.`
       },
       {
-        title: "12. Client Management",
-        content: `In the Clients section you can manage your address book:
-• Name, surname, phone, email, address and notes
-• Quick search among clients
-• Purchase history for each client (bag icon)
-• Export address book to CSV
+        title: "15. Cookies and Privacy (GDPR)",
+        content: `On first access, you will see a GDPR-compliant banner to manage cookies:
+• Technical (always active)
+• Analytics (optional)
+• Marketing (optional)
 
-Clients can be linked to sales directly from the Calculator by selecting them from the "Client" dropdown.`
+Modify preferences at any time from the site footer (Cookie Policy).`
       },
       {
-        title: "13. PDF Quotes",
-        content: `You can generate professional quotes in two ways:
+        title: "Getting Started Tips",
+        content: `1. Add your 3D printer in Settings
+2. Add amortized equipment (AMS, etc.) if you have any
+3. Register filaments in stock
+4. Add frequent accessories
+5. If you have a Cricut: register materials, machines, and consumables in the Cricut module
+6. Use the Calculator for your first print
+7. Save the sale, link the client, and start tracking profits
 
-FROM THE CALCULATOR (quick method):
-After calculating costs, click "Generate Quote PDF". The system creates a quote with the product and selling price. Internal costs are not shown.
-
-FROM THE QUOTES PAGE (custom quotes):
-Go to "Quotes" in the sidebar. Here you can:
-• Create quotes with multiple products
-• Select a client from your address book or enter manually
-• Add notes and validity period
-• Preview and print/save as PDF
-
-BUSINESS DETAILS:
-In the "Business Details" tab, enter:
-• Company name, address, ZIP, city
-• VAT number, phone, email
-• Logo (image upload, max 500KB)
-
-These details will appear in the header of all quotes.
-
-The history of generated quotes is available in the "History" tab.`
-      },
-      {
-        title: "14. Cookies and Privacy",
-        content: `The site is GDPR compliant. On first visit you'll see a banner that lets you:
-• Accept all cookies
-• Accept only necessary ones
-• Customize preferences (technical, analytics, marketing)
-
-You can change your preferences at any time from the Cookie Policy page, accessible from the site footer.`
-      },
-      {
-        title: "Tips to Get Started",
-        content: `1. Add your printers in Settings
-2. Register the filaments you have in stock
-3. Add the accessories you frequently use
-4. Use the Calculator for your first print
-5. Save the sale and start tracking profits!
-
-Happy printing! 🖨️`
+Happy printing! 🖨️✂️`
       }
     ]
   },
   de: {
     title: "Benutzerhandbuch",
-    subtitle: "3D-Druck Kostenkalkulator",
-    print: "Drucken / Als PDF speichern",
+    subtitle: "3D-Druck Kostenkalkulator + Cricut",
+    print: "Drucken",
     download: "PDF herunterladen",
+    version: "v2026.09 — Aktualisiert",
     sections: [
       {
         title: "Willkommen",
-        content: `Willkommen beim 3D-Druck Kostenkalkulator! Diese Anwendung hilft Ihnen bei der Verwaltung von Druckkosten, Materialien, Verkäufen und der Rentabilität Ihrer 3D-Kreationen. Diese Anleitung zeigt Ihnen, wie Sie alle Funktionen nutzen können.`
+        content: `Willkommen beim Artes&Tramas 3D Kostenkalkulator! Eine vollständige App für Maker und Profis, die 3D-Druckkosten, Schneideplotter (Cricut), Materialien, Verkäufe und Kunden verfolgen.
+
+DIESES HANDBUCH DECKT AB:
+• 3D-Druck-Rechner (mit Zubehör/AMS und Cricut-Integration)
+• Cricut / Schneideplotter-Modul
+• Kunden, Verkäufe, Angebote und Einkäufe
+• Blog / News`
       },
       {
         title: "1. Registrierung und Anmeldung",
-        content: `Um zu beginnen, registrieren Sie sich mit Ihrer E-Mail und einem Passwort. Sie erhalten eine Bestätigungs-E-Mail: Klicken Sie auf den Link, um Ihr Konto zu aktivieren. Nach der Bestätigung können Sie auf alle Funktionen zugreifen.
+        content: `Um zu beginnen, registriere dich mit deiner E-Mail und einem Passwort. Du erhältst eine Bestätigungs-E-Mail: Klicke auf den Link, um dein Konto zu aktivieren.
 
-Wenn Sie Ihr Passwort vergessen haben, klicken Sie auf "Passwort vergessen" auf der Anmeldeseite und folgen Sie den Anweisungen.`
+Wenn du dein Passwort vergisst, verwende "Passwort vergessen" auf der Anmeldeseite. Du erhältst einen temporären Link zum Zurücksetzen.
+
+KONTO-AUFBEWAHRUNG
+Für Datenbankhygiene:
+• NICHT verifizierte Konten, die über 90 Tage inaktiv sind, werden gelöscht
+• VERIFIZIERTE Konten ohne Login über 12 Monate werden deaktiviert (durch Anmelden reaktivierbar)
+• Über 12 Monate deaktivierte Konten werden dauerhaft gelöscht
+Melde dich einfach an, um ein deaktiviertes Konto zu reaktivieren.`
       },
       {
         title: "2. Dashboard",
-        content: `Das Dashboard ist Ihre allgemeine Übersicht. Hier finden Sie:
-• Gesamtumsatz und Nettogewinn
-• Monatliche Trends mit Diagrammen
+        content: `Übersicht mit:
+• Gesamtumsatz, Nettogewinn und Monatstrends
+• Verkaufsdiagramme
 • Warnungen bei niedrigem Bestand (Filamente unter 200g)
-• Meistverkaufte Produkte
-• Letzte Verkäufe
+• Meistverkaufte Produkte und aktuelle Verkäufe
+• Monatliche Versandübersicht
 
-Das Dashboard wird automatisch mit Ihren Daten aktualisiert.`
+Das Dashboard aktualisiert sich in Echtzeit mit deinen Daten.`
       },
       {
-        title: "3. Filament-Verwaltung",
-        content: `Im Bereich Filamente können Sie alle Ihre Spulen registrieren:
-• Material (PLA, PETG, ABS, TPU, usw.)
-• Farbe mit visueller Vorschau (auch zweifarbig!)
-• Marke und Spulengewicht
-• Einkaufspreis
+        title: "3. Filamentverwaltung",
+        content: `Registriere jede Spule mit:
+• Material (PLA, PETG, ABS, TPU usw.)
+• Farbe mit Vorschau (BICOLOR-Unterstützung mit diagonalem Split)
+• Marke, Gewicht und Kaufpreis
 • Verbleibende Gramm
 
-Für zweifarbige Filamente: Wählen Sie Farbe 1 und Farbe 2 in den Farbwählern. Die Vorschau zeigt einen diagonal geteilten Kreis mit beiden Farben.
+Das System berechnet automatisch die Kosten pro Gramm und warnt, wenn der Bestand unter 200g fällt.
 
-Das System berechnet automatisch die Kosten pro Gramm und warnt Sie, wenn der Bestand unter 200g fällt.`
+Du kannst das Inventar für deinen Buchhalter als CSV exportieren.`
       },
       {
-        title: "4. Zubehör-Verwaltung",
-        content: `Registrieren Sie alle Zubehörteile, die Sie bei Drucken verwenden:
-• Name des Zubehörs (Haken, Magnete, Verpackung usw.)
-• Stückkosten
-• Lagerbestand
+        title: "4. Zubehörverwaltung",
+        content: `Registriere Zubehör, das du in Drucken verwendest (Haken, Magnete, Verpackung usw.) mit Name, Einzelkosten und Lagerbestand.
 
-Zubehör wird in die Endkostenberechnung einbezogen, wenn Sie es im Kalkulator auswählen.`
+ZUBEHÖRKATEGORIEN sind anpassbar: Füge neue aus dem Zubehör-Menü hinzu.
+
+Zubehör wird automatisch zur Berechnung hinzugefügt, wenn du es im Rechner auswählst.`
       },
       {
-        title: "5. Kostenkalkulator",
-        content: `Der Kalkulator ist das Herzstück der Anwendung. So verwenden Sie ihn:
+        title: "5. Einstellungen: Drucker und Zubehör",
+        content: `Auf der Seite "Einstellungen" verwaltest du:
 
-SCHRITT 1 — Drucker auswählen
-Wählen Sie den Drucker, den Sie verwenden werden. Das System berücksichtigt automatisch Abschreibungs- und Stromkosten.
+3D-DRUCKER
+• Name/Modell, Kaufkosten, geschätzte Lebensdauer in Stunden
+• Leistung (W) und Stromkosten (€/kWh)
+• Wartung (€/Druckstunde): deckt Düsen, Riemen, Schmiermittel usw. ab
+Das System berechnet automatisch Abschreibung €/h und Strom €/h.
 
-SCHRITT 2 — Filamente hinzufügen
-Wählen Sie das Filament und geben Sie die Gramm ein. Sie können mehrere Filamente für mehrfarbige Drucke hinzufügen.
+⭐ ZUBEHÖR (NEU)
+Bereich für zeitlich abgeschriebenes Zubehör:
+• Bambu Lab AMS / AMS 2 Pro (Multicolor)
+• Texturierte Platten, PEI usw.
+• Filament-Trocknungssysteme
+Gebe ein: Name, Marke, Preis, Nutzungsdauer (Stunden). Das System berechnet die Abschreibung €/Stunde.
+
+Im 3D-Rechner kannst du dann MEHRERE ZUBEHÖRTEILE gleichzeitig für jeden Druck AUSWÄHLEN und die Nutzungsstunden jedes Einzelnen angeben.`
+      },
+      {
+        title: "6. 3D-Druck Kostenrechner",
+        content: `Der Rechner ist das Herzstück der App. Schritte:
+
+SCHRITT 1 — Drucker
+Wähle den Drucker. Beinhaltet automatisch Abschreibung + Strom + Stundenwartung.
+
+SCHRITT 2 — Filamente
+Wähle Filamente und Gramm. Du kannst mehr als eines hinzufügen (Multicolor).
 
 SCHRITT 3 — Druckzeit
-Geben Sie Stunden und Minuten der Druckzeit ein. Sie können diese Daten auch aus einer Bambu Studio .3mf-Datei importieren.
+Stunden und Minuten getrennt. Du kannst sie aus einer .3mf-Datei mit "Importieren .3mf" importieren.
 
 SCHRITT 4 — Designzeit
-Wenn Sie Zeit für Design/Modellierung aufgewendet haben, geben Sie sie hier ein.
+Wenn du das Stück selbst modelliert hast, füge Designstunden hinzu (Standard 20€/h).
 
 SCHRITT 5 — Zubehör und Menge
-Fügen Sie Zubehör hinzu und legen Sie die Stückzahl fest.
+Füge Zubehör hinzu und lege die Menge fest (bei > 1 wird jedes Stück eine unabhängige Verkaufszeile).
 
-SCHRITT 6 — Gewinnmarge
-Legen Sie die gewünschte prozentuale Marge fest oder geben Sie einen manuellen Preis ein.
+⭐ SCHRITT 6 — Zubehör (AMS, Platten usw.)
+Wenn du in den Einstellungen Zubehör konfiguriert hast, erscheint es hier. Kreuze die verwendeten an und gebe die Stunden an. Die Abschreibungskosten werden zur Summe addiert.
 
-Das System berechnet: Filamentkosten + Strom + Abschreibung + Zubehör + Design = Gesamtkosten. Dann wird die Marge für den vorgeschlagenen Verkaufspreis angewendet.
+⭐ SCHRITT 7 — Cricut-Arbeiten (WENN DU DEN PLOTTER VERWENDET HAST)
+Wenn du Cricut-Angebote mit "Zum 3D-Rechner hinzufügen" erstellt hast, siehst du sie hier. Wähle sie aus, um ihre Kosten einzubeziehen. WICHTIG: Du kannst wählen, ob die Marge auch auf die Cricut-Kosten angewendet wird:
+• Checkbox AKTIV (Standard): Cricut-Kosten tragen wie andere Kosten zur Marge bei → du verdienst auch an Cricut-Arbeiten
+• Checkbox INAKTIV: Cricut-Kosten werden zum Verkaufspreis als Durchgang addiert (Kunde zahlt genau den Cricut-Angebotswert, kein zusätzlicher Aufschlag)
+
+SCHRITT 8 — Preis
+Lege eine Marge % oder einen manuellen Preis fest. Du kannst auch MwSt (22%), Yield Rate (% erfolgreiche Drucke) und benutzerdefinierte stündliche Wartung festlegen.
+
+SCHRITT 9 — Kunde (optional)
+Verknüpfe den Verkauf mit einem Kunden aus deinem Adressbuch.
 
 .3MF-IMPORT
-Klicken Sie auf "Import .3mf" und laden Sie die aus Bambu Studio exportierte Datei hoch. Das System extrahiert automatisch Druckzeit und benötigte Filamentgramm.`
+Bambu Studio (2.05+), OrcaSlicer, Creality Print, PrusaSlicer, Cura werden unterstützt. Die Datei muss GESLICED sein (exportiere die geslicete Platte, nicht das Projekt).
+
+Das System berechnet: Material + Strom + Druckerabschreibung + Wartung + Zubehör + Ausrüstung + Design + eventuelle Cricut-Kosten = Gesamtkosten. Dann wird die Marge angewendet.`
       },
       {
-        title: "6. Verkaufsregister",
-        content: `Im Bereich Verkäufe können Sie:
-• Jeden Verkauf aus dem Kalkulator speichern
-• Produktname, Kosten, Verkaufspreis und Gewinn einsehen
-• Markieren, ob ein Verkauf bezahlt wurde oder nicht
-• Nach Monat und Zahlungsstatus filtern
-• Nach Datum, Preis, Gewinn oder Name sortieren
-• Alles im CSV-Format exportieren`
+        title: "7. Cricut / Schneideplotter-Modul ⭐",
+        content: `Wenn du eine Cricut, Silhouette, Brother oder einen anderen Schneideplotter besitzt, ist das Cricut-Modul für dich. Drei Bereiche in "Plotter-Kostenrechner":
+
+MATERIALIEN
+Registriere jedes Material mit:
+• Kategorie (HTV, Klebe-/Ablösvinyl, Transferband, Karton usw.)
+• Marke, Farbe + Hex, Lieferant
+• Preis, Kaufmenge, Einheit (m², cm², Laufmeter, Blätter, Stück)
+• Verschnitt % (typischer Ausschuss)
+• Rest + Warnschwelle
+Das System berechnet auto die Einheitskosten.
+
+MASCHINEN
+Registriere deinen Plotter mit:
+• Name, Marke/Modell, Preis, Kaufdatum
+• Verbrauch (W) und Stromkosten (€/kWh)
+• Abschreibung: "einfache" Formel (Preis/Lebensdauer Stunden) oder "steuerlich" (Preis/Jahre/12/Monatsstunden)
+Das System berechnet €/h Abschreibung und Energie.
+
+VERBRAUCHSMATERIALIEN
+Klingen, Matten, Stifte, Spitzen, Rollen, Schutzblätter. Für jedes: Preis + Anzahl erwarteter Nutzungen → Kosten pro Nutzung auto.
+
+CRICUT-ANGEBOTSRECHNER
+Im Projektrechner findest du 7 Bereiche:
+1. Info (Name, Kunde, Kategorie, Datum, Notizen)
+2. Hauptmaterial + Zusatzmaterialien
+3. Bearbeitungszeiten: Vorbereitung, Schneiden, Ablösen, Transferband, Pressen, Montage (⭐ ALLE IN MINUTEN, keine Stunden)
+4. Maschine + Nutzungsminuten (⭐ NEU: von Stunden zu Minuten, realistischer für kurze Arbeiten)
+5. Verbrauchsmaterialien (Multi-Select mit Anzahl der Nutzungen pro Projekt)
+6. Verpackung: Beutel, Box, Karton, Etikett, Karte, Band
+7. Indirekte Kosten (Marketplace %, Zahlungsgebühren %, feste Gemeinkosten, MwSt %)
+
+PREIS
+Lege Marge % oder manuellen Preis fest. Die klebrige Zusammenfassung rechts zeigt live: Produktion, indirekte Kosten, Preis, Nettogewinn und effektive Marge.
+
+3D-INTEGRATION
+Durch Aktivieren von "Zum 3D-Druck-Rechner hinzufügen" auf dem Cricut-Angebot erscheint es im Abschnitt "Cricut-Arbeiten" des 3D-Rechners. Nützlich für Mischprodukte (z.B. HTV-T-Shirt + 3D-gedrucktes Gadget).
+
+DUPLIZIEREN / ALS VERKAUF SPEICHERN
+Jedes Cricut-Angebot kann dupliziert (nützlich für Varianten) oder direkt als Verkauf im Verkaufsregister gespeichert werden.`
       },
       {
-        title: "7. Einkäufe",
-        content: `Erfassen Sie jeden Materialeinkauf:
-• Materialtyp, Marke und Farbe
-• Anzahl der Spulen und Gesamtpreis
-• Gesamtgramm
+        title: "8. Kunden (CRM Adressbuch)",
+        content: `Kundenadressbuch mit:
+• Vorname, Nachname, Telefon, E-Mail, Adresse, Notizen
+• Schnellsuche und Sortierung
+• Kaufhistorie pro Kunde (Taschensymbol)
+• CSV-Export
 
-Bei der Erfassung eines Einkaufs kann das System:
-• Ein bestehendes Filament im Lager automatisch aktualisieren
-• Ein neues Filament erstellen, wenn es noch nicht existiert
-
-Sie können Einkäufe nach Datum, Preis, Gramm, Material oder Marke sortieren und als CSV exportieren.`
+Kunden werden mit Verkäufen im Rechner verknüpft (Menü "Kunde"). In PDF-Angeboten werden sie automatisch ausgefüllt.`
       },
       {
-        title: "8. Einstellungen (Drucker)",
-        content: `In den Einstellungen verwalten Sie Ihre Drucker:
-• Name und Modell
-• Anschaffungskosten
-• Geschätzte Lebensdauer in Stunden
-• Leistung in Watt
-• Stromkosten pro kWh
+        title: "9. Verkaufsregister",
+        content: `Jeder aus dem Rechner gespeicherte Verkauf zeigt:
+• Produktname, Kosten, Verkaufspreis, Gewinn, Kunde
+• Zahlungsstatus (Bezahlt / Unbezahlt) Schnellumschalter
+• Versand (separate Kosten)
+• Herkunftsmodul (3D / Cricut / Manuell)
 
-Diese Daten werden vom Kalkulator verwendet, um Abschreibung und Stromkosten für jeden Druck genau zu berechnen.`
+FILTER UND SORTIERUNG
+Nach Monat, Zahlungsstatus, sortierbar nach Datum/Preis/Gewinn/Name.
+
+MEHRERE MENGEN
+Wenn du 4 Schlüsselanhänger gedruckt hast, wird jedes Stück eine einzelne Zeile mit Batch-Indikator (1/4, 2/4...). Du kannst:
+• Jedes Stück bezahlt/unbezahlt markieren
+• Preis des einzelnen Stücks bearbeiten
+• Sie zusammen oder einzeln sehen
+
+NACHDRUCKEN
+Druckersymbol → kehre mit allen vorausgefüllten Daten zum Rechner zurück.
+
+BEARBEITEN
+Bleistiftsymbol → bearbeite Name, Preis, Kunde, Versand (automatische Gewinnneuberechnung).
+
+ANGEBOT AUS VERKAUF
+Blaues Dokumentsymbol → generiere ein PDF-Angebot aus einem bestehenden Verkauf. Wenn bereits Angebote für diesen Verkauf generiert wurden, wird das Symbol grün mit Punkt (vermeidet unbeabsichtigte Duplikate).
+
+CSV-EXPORT
+Alles als CSV für deinen Buchhalter exportieren.`
       },
       {
-        title: "9. Profil",
-        content: `In Ihrem Profil können Sie:
-• Ihren Anzeigenamen ändern
-• Die Oberflächensprache ändern (Italienisch, Englisch, Spanisch, Französisch)
-• Ihr Passwort ändern
+        title: "10. Einkäufe",
+        content: `Registriere jeden Materialeinkauf (Typ, Marke, Farbe, Spulenmenge, Preis, Gramm).
 
-Die Profilstatistiken zeigen eine Zusammenfassung Ihrer Daten.`
+Das System:
+• Aktualisiert automatisch ein bestehendes Filament
+• Oder erstellt ein neues, wenn es nicht existiert
+Du kannst Einkäufe nach Datum, Preis, Gramm, Material oder Marke sortieren und als CSV exportieren.`
       },
       {
-        title: "10. Problem melden",
-        content: `Wenn Sie einen Fehler finden:
-• Gehen Sie zu "Problem melden" in der Seitenleiste
-• Geben Sie einen Titel und eine detaillierte Beschreibung ein
-• Wählen Sie die Priorität (niedrig, mittel, hoch)
-• Hängen Sie bei Bedarf einen Screenshot an
+        title: "11. Professionelle PDF-Angebote",
+        content: `Drei Wege zum Generieren von Angeboten:
 
-Der Administrator erhält die Meldung und Sie können den Lösungsstatus einsehen.`
+A) AUS DEM RECHNER (schnell)
+Nach der Berechnung, klicke "PDF-Angebot generieren". Das Angebot zeigt nur Produkt und Preis (keine internen Kosten).
+
+B) AUS VERKÄUFEN (rückwirkend)
+Blaues Dokumentsymbol auf jedem Verkauf → vorausgefüllter Dialog → PDF.
+
+C) AUS DER ANGEBOTSSEITE (Multi-Produkt)
+Im Menü "Angebote" kannst du komplexe Angebote mit mehreren Produkten, Kunden aus dem Adressbuch oder manuell, Notizen, Gültigkeit erstellen.
+
+FIRMENDATEN
+Tab "Firmendaten": Firmenname, Adresse, PLZ, Stadt, USt-IdNr, Telefon, E-Mail, Logo (max 500KB). Sie erscheinen im Kopf ALLER Angebote.
+
+HERUNTERLADEN & DRUCKEN
+Jedes Angebot hat:
+• PDF herunterladen → echter .pdf-Dateidownload (weißer Hintergrund auch im Dunkelmodus garantiert)
+• Drucken → Browser-Druckdialog
+
+VERLAUF
+Tab "Verlauf" auf der Angebotsseite. Jedes Angebot zeigt: Nummer PRV-JJJJMMTT-HHMMSS, Kunde, Produkte, Wert, Versanddatum (wenn per E-Mail gesendet).`
       },
       {
-        title: "11. Helles/Dunkles Design",
-        content: `Sie können das Design ändern, indem Sie auf das Sonnen-/Mondsymbol in der Seitenleiste klicken. Das dunkle Design ist augenschonender, besonders in schwach beleuchteten Umgebungen.`
+        title: "12. News / Blog",
+        content: `Öffentliches Blog-Modul zum Lesen von Artikeln, Anleitungen und Neuigkeiten von Artes&Tramas 3D. Jeder Artikel hat:
+• Titel, Kategorie (Anleitungen / News / Case Study usw.)
+• Formatierter Inhalt (fett, Listen, Links, Bilder)
+• Cover, Veröffentlichungsdatum
+
+ÖFFENTLICHE ROUTEN
+• /notizie — öffentliche Artikelliste mit Kategoriefilter
+• /notizie/:slug — Artikeldetail (auch im Dunkelmodus lesbar)`
       },
       {
-        title: "12. Kundenverwaltung",
-        content: `Im Bereich Kunden können Sie Ihr Adressbuch verwalten:
-• Name, Nachname, Telefon, E-Mail, Adresse und Notizen
-• Schnellsuche unter Kunden
-• Kaufhistorie für jeden Kunden (Taschensymbol)
-• Adressbuch als CSV exportieren
+        title: "13. Profil, Thema, Sprache",
+        content: `Im Profil kannst du:
+• Name, UI-Sprache (IT/EN/ES/FR) ändern
+• Passwort ändern
+• Persönliche Statistiken sehen
 
-Kunden können direkt im Kalkulator mit Verkäufen verknüpft werden.`
+HELLES/DUNKLES THEMA
+Sonnen-/Mondsymbol in der Seitenleiste. Das Thema gilt auch für Modale, Formulare und Exporte.
+
+SPRACHUMSCHALTER VOR LOGIN
+Anmelde-/Registrierungs-/Passwort-Vergessen-Seiten haben einen Sprachumschalter (IT/EN/ES/FR). Die Auswahl wird in localStorage gespeichert.`
       },
       {
-        title: "13. PDF-Angebote",
-        content: `Sie können professionelle Angebote auf zwei Arten erstellen:
-
-AUS DEM KALKULATOR (Schnellmethode):
-Nach der Kostenberechnung klicken Sie auf "Angebot PDF erstellen". Das System erstellt ein Angebot mit Produkt und Verkaufspreis. Interne Kosten werden nicht angezeigt.
-
-VON DER ANGEBOTE-SEITE (individuelle Angebote):
-Gehen Sie zu "Angebote" in der Seitenleiste. Hier können Sie:
-• Angebote mit mehreren Produkten erstellen
-• Kunden aus dem Adressbuch auswählen oder manuell eingeben
-• Notizen und Gültigkeitsdauer hinzufügen
-• Vorschau anzeigen und als PDF drucken/speichern
-
-GESCHÄFTSDATEN:
-Im Tab "Geschäftsdaten" geben Sie ein:
-• Firmenname, Adresse, PLZ, Stadt
-• USt-IdNr., Telefon, E-Mail
-• Logo (Bild-Upload, max 500KB)
-
-Diese Daten erscheinen in der Kopfzeile aller Angebote.`
+        title: "14. Problem melden",
+        content: `Wenn du einen Fehler findest: "Problem melden" in der Seitenleiste. Gib Titel, Beschreibung, Priorität (niedrig/mittel/hoch), Screenshot (max 5MB) ein. Du erhältst Updates zum Lösungsstatus.`
       },
       {
-        title: "14. Cookies und Datenschutz",
-        content: `Die Website ist DSGVO-konform. Beim ersten Besuch sehen Sie ein Banner, das Ihnen ermöglicht:
-• Alle Cookies akzeptieren
-• Nur notwendige akzeptieren
-• Präferenzen anpassen (technische, analytische, Marketing)
+        title: "15. Cookies und Datenschutz (DSGVO)",
+        content: `Beim ersten Zugriff siehst du ein DSGVO-konformes Banner zur Verwaltung von Cookies:
+• Technisch (immer aktiv)
+• Analytisch (optional)
+• Marketing (optional)
 
-Sie können Ihre Präferenzen jederzeit auf der Cookie-Richtlinien-Seite ändern.`
+Ändere die Präferenzen jederzeit im Footer der Website (Cookie-Richtlinie).`
       },
       {
         title: "Tipps zum Einstieg",
-        content: `1. Fügen Sie Ihre Drucker in den Einstellungen hinzu
-2. Registrieren Sie die Filamente, die Sie auf Lager haben
-3. Fügen Sie häufig verwendetes Zubehör hinzu
-4. Verwenden Sie den Kalkulator für Ihren ersten Druck
-5. Speichern Sie den Verkauf und beginnen Sie, Gewinne zu verfolgen!
+        content: `1. Füge deinen 3D-Drucker in den Einstellungen hinzu
+2. Füge amortisiertes Zubehör (AMS usw.) hinzu, wenn vorhanden
+3. Registriere Filamente im Bestand
+4. Füge häufig verwendetes Zubehör hinzu
+5. Wenn du eine Cricut hast: Registriere Materialien, Maschinen und Verbrauchsmaterialien im Cricut-Modul
+6. Verwende den Rechner für deinen ersten Druck
+7. Speichere den Verkauf, verknüpfe den Kunden und beginne Gewinne zu verfolgen
 
-Viel Spaß beim Drucken! 🖨️`
+Viel Spaß beim Drucken! 🖨️✂️`
       }
     ]
   },
   fr: {
     title: "Guide Utilisateur",
-    subtitle: "Calculateur de Coûts d'Impression 3D",
-    print: "Imprimer / Enregistrer PDF",
+    subtitle: "Calculateur de Coûts d'Impression 3D + Cricut",
+    print: "Imprimer",
     download: "Télécharger PDF",
+    version: "v2026.09 — Mis à jour",
     sections: [
       {
         title: "Bienvenue",
-        content: `Bienvenue dans le Calculateur de Coûts d'Impression 3D ! Cette application vous aide à gérer les coûts d'impression, les matériaux, les ventes et la rentabilité de vos créations 3D. Ce guide vous montrera comment utiliser toutes les fonctionnalités.`
+        content: `Bienvenue dans le Calculateur de Coûts Artes&Tramas 3D ! Une application complète pour makers et professionnels qui suivent les coûts d'impression 3D, plotters de découpe (Cricut), matériaux, ventes et clients.
+
+CE GUIDE COUVRE :
+• Calculateur d'Impression 3D (avec Équipement/AMS et intégration Cricut)
+• Module Cricut / Plotter de Découpe
+• Clients, Ventes, Devis et Achats
+• Blog / Actualités`
       },
       {
         title: "1. Inscription et Connexion",
-        content: `Pour commencer, inscrivez-vous avec votre email et un mot de passe. Vous recevrez un email de vérification : cliquez sur le lien pour activer votre compte. Après la vérification, vous pourrez accéder à toutes les fonctionnalités.
+        content: `Pour commencer, inscris-toi avec ton email et un mot de passe. Tu recevras un email de vérification : clique sur le lien pour activer ton compte.
 
-Si vous oubliez votre mot de passe, cliquez sur "Mot de passe oublié" sur la page de connexion et suivez les instructions pour le réinitialiser.`
+Si tu oublies ton mot de passe, utilise "Mot de passe oublié" sur la page de connexion. Tu recevras un lien temporaire pour le réinitialiser.
+
+RÉTENTION DE COMPTE
+Pour l'hygiène de la base de données :
+• Comptes NON vérifiés inactifs depuis plus de 90 jours sont supprimés
+• Comptes VÉRIFIÉS sans connexion depuis plus de 12 mois sont désactivés (réactivables en se connectant)
+• Comptes désactivés depuis plus de 12 mois sont supprimés définitivement
+Il suffit de se connecter pour réactiver un compte désactivé.`
       },
       {
-        title: "2. Tableau de Bord",
-        content: `Le Tableau de Bord est votre vue d'ensemble. Vous y trouvez :
-• Chiffre d'affaires total et bénéfice net
-• Tendances mensuelles avec graphiques
-• Alertes de stock bas (filaments en dessous de 200g)
-• Produits les plus vendus
-• Ventes récentes
+        title: "2. Tableau de bord",
+        content: `Aperçu avec :
+• Chiffre d'affaires total, profit net et tendances mensuelles
+• Graphiques des ventes
+• Alertes de stock bas (filaments sous 200g)
+• Produits les plus vendus et ventes récentes
+• Résumé mensuel des expéditions
 
-Le Tableau de Bord se met à jour automatiquement avec vos données.`
+Le tableau de bord se met à jour en temps réel avec tes données.`
       },
       {
         title: "3. Gestion des Filaments",
-        content: `Dans la section Filaments, vous pouvez enregistrer toutes vos bobines :
+        content: `Enregistre chaque bobine avec :
 • Matériau (PLA, PETG, ABS, TPU, etc.)
-• Couleur avec aperçu visuel (supporte aussi le bicolore !)
-• Marque et poids de la bobine
-• Prix d'achat
+• Couleur avec aperçu (support BICOLORE avec split diagonal)
+• Marque, poids et prix d'achat
 • Grammes restants
 
-Pour les filaments bicolores : sélectionnez la Couleur 1 et la Couleur 2 dans les sélecteurs. L'aperçu montrera un cercle divisé en diagonale avec les deux couleurs.
+Le système calcule automatiquement le coût par gramme et alerte quand le stock descend sous 200g.
 
-Le système calcule automatiquement le coût par gramme et vous alerte quand le stock descend sous 200g.`
+Tu peux exporter l'inventaire en CSV pour ton comptable.`
       },
       {
         title: "4. Gestion des Accessoires",
-        content: `Enregistrez tous les accessoires que vous utilisez :
-• Nom de l'accessoire (crochets, aimants, emballage, etc.)
-• Coût unitaire
-• Quantité en stock
+        content: `Enregistre les accessoires utilisés dans les impressions (crochets, aimants, emballage, etc.) avec nom, coût unitaire et quantité en stock.
 
-Les accessoires sont inclus dans le calcul du coût final lorsque vous les sélectionnez dans le Calculateur.`
+Les CATÉGORIES D'ACCESSOIRES sont personnalisables : ajoute-en de nouvelles depuis le menu Accessoires.
+
+Les accessoires sont automatiquement ajoutés au calcul lorsque tu les sélectionnes dans le Calculateur.`
       },
       {
-        title: "5. Calculateur de Coûts",
-        content: `Le Calculateur est le cœur de l'application. Voici comment l'utiliser :
+        title: "5. Paramètres : Imprimantes et Équipement",
+        content: `Sur la page "Paramètres" tu gères :
 
-ÉTAPE 1 — Sélectionner l'imprimante
-Choisissez l'imprimante que vous utiliserez. Le système inclut automatiquement l'amortissement et les coûts d'électricité.
+IMPRIMANTES 3D
+• Nom/modèle, coût d'achat, durée de vie estimée en heures
+• Puissance (W) et coût électricité (€/kWh)
+• Maintenance (€/heure d'impression) : couvre buses, courroies, lubrifiants, etc.
+Le système calcule automatiquement l'amortissement €/h et l'électricité €/h.
 
-ÉTAPE 2 — Ajouter des filaments
-Sélectionnez le filament et entrez les grammes. Vous pouvez ajouter plusieurs filaments pour des impressions multicolores.
+⭐ ÉQUIPEMENT & ACCESSOIRES (NOUVEAU)
+Section dédiée aux équipements amortis dans le temps :
+• Bambu Lab AMS / AMS 2 Pro (multicolore)
+• Plateaux texturés, PEI, etc.
+• Systèmes de séchage de filament
+Entre : Nom, Marque, Prix, Durée de vie utile (heures). Le système calcule l'amortissement €/heure.
+
+Dans le Calculateur 3D, tu pourras alors SÉLECTIONNER PLUSIEURS ÉQUIPEMENTS simultanément pour chaque impression, en indiquant les heures d'utilisation de chacun.`
+      },
+      {
+        title: "6. Calculateur de Coûts d'Impression 3D",
+        content: `Le Calculateur est le cœur de l'app. Étapes :
+
+ÉTAPE 1 — Imprimante
+Choisis l'imprimante. Inclut automatiquement amortissement + électricité + maintenance horaire.
+
+ÉTAPE 2 — Filaments
+Sélectionne les filaments et grammes. Tu peux en ajouter plus d'un (multicolore).
 
 ÉTAPE 3 — Temps d'impression
-Entrez les heures et minutes d'impression. Vous pouvez aussi importer ces données depuis un fichier .3mf de Bambu Studio.
+Heures et minutes séparément. Tu peux les importer depuis un fichier .3mf avec "Importer .3mf".
 
-ÉTAPE 4 — Temps de conception
-Si vous avez consacré du temps au design/modélisation, entrez-le ici.
+ÉTAPE 4 — Temps de design
+Si tu as modélisé la pièce toi-même, ajoute des heures de design (défaut 20€/h).
 
 ÉTAPE 5 — Accessoires et quantité
-Ajoutez les accessoires et définissez le nombre de pièces à produire.
+Ajoute les accessoires et définis la quantité (si > 1, chaque pièce devient une ligne de vente indépendante).
 
-ÉTAPE 6 — Marge bénéficiaire
-Définissez la marge en pourcentage souhaitée ou entrez un prix manuel.
+⭐ ÉTAPE 6 — Équipement (AMS, plateaux, etc.)
+Si tu as configuré des équipements dans les Paramètres, ils apparaîtront ici. Coche ceux utilisés et indique les heures. Le coût d'amortissement s'ajoute au total.
 
-Le système calcule : coût filament + électricité + amortissement + accessoires + design = coût total. Puis applique la marge pour le prix de vente suggéré.
+⭐ ÉTAPE 7 — Travaux Cricut (SI TU AS UTILISÉ LE PLOTTER)
+Si tu as créé des devis Cricut avec "Ajouter au Calculateur 3D", tu les verras ici. Sélectionne-les pour inclure leur coût. IMPORTANT : tu peux choisir si appliquer la marge aussi au coût Cricut :
+• Case COCHÉE (défaut) : le coût Cricut contribue à la marge comme tout autre coût → tu gagnes aussi sur les travaux Cricut
+• Case DÉCOCHÉE : le coût Cricut est ajouté au prix de vente comme pass-through (le client paie exactement la valeur du devis Cricut, sans majoration supplémentaire)
+
+ÉTAPE 8 — Prix
+Définis une marge % ou un prix manuel. Tu peux aussi définir la TVA (22%), le taux de réussite (% impressions réussies) et la maintenance horaire personnalisée.
+
+ÉTAPE 9 — Client (optionnel)
+Associe la vente à un client de ton carnet d'adresses.
 
 IMPORT .3MF
-Cliquez sur "Import .3mf" et chargez le fichier exporté de Bambu Studio. Le système extraira automatiquement le temps d'impression et les grammes de filament nécessaires.`
+Bambu Studio (2.05+), OrcaSlicer, Creality Print, PrusaSlicer, Cura sont supportés. Le fichier doit être SLICÉ (exporte le plateau slicé, pas le projet).
+
+Le système calcule : matériau + électricité + amortissement imprimante + maintenance + accessoires + équipement + design + éventuels coûts Cricut = coût total. Puis applique la marge.`
       },
       {
-        title: "6. Registre des Ventes",
-        content: `Dans la section Ventes, vous pouvez :
-• Enregistrer chaque vente depuis le Calculateur
-• Voir nom du produit, coût, prix de vente et bénéfice
-• Marquer si une vente a été payée ou non
-• Filtrer par mois et statut de paiement
-• Trier par date, prix, bénéfice ou nom
-• Exporter tout en format CSV`
+        title: "7. Module Cricut / Plotter de Découpe ⭐",
+        content: `Si tu possèdes un Cricut, Silhouette, Brother ou autre plotter de découpe, le module Cricut est pour toi. Trois sections dans "Calculateur Coûts Plotter" :
+
+MATÉRIAUX
+Enregistre chaque matériau avec :
+• Catégorie (HTV, Vinyle adhésif/removable, Transfer Tape, Cartonnage, etc.)
+• Marque, couleur + hex, fournisseur
+• Prix, quantité d'achat, unité (m², cm², mètres linéaires, feuilles, pièces)
+• % rebut (chute typique)
+• Reste + seuil de stock bas
+Le système calcule auto le coût unitaire.
+
+MACHINES
+Enregistre ton plotter avec :
+• Nom, marque/modèle, prix, date d'achat
+• Consommation (W) et coût électricité (€/kWh)
+• Amortissement : formule "simple" (prix/heures de vie) ou "fiscale" (prix/années/12/heures mois)
+Le système calcule €/h d'amortissement et d'énergie.
+
+CONSOMMABLES
+Lames, tapis, stylos, pointes, rouleaux, feuilles protectrices. Pour chacun : prix + nombre d'utilisations prévues → coût par utilisation auto.
+
+CALCULATEUR DEVIS CRICUT
+Dans le calculateur projet tu trouves 7 sections :
+1. Info (nom, client, catégorie, date, notes)
+2. Matériau principal + matériaux extra
+3. Temps de traitement : préparation, découpe, épluchage, transfer tape, pressage, assemblage (⭐ TOUS EN MINUTES, pas heures)
+4. Machine + minutes d'utilisation (⭐ NOUVEAU : d'heures à minutes, plus réaliste pour travaux courts)
+5. Consommables (multi-select avec nombre d'utilisations par projet)
+6. Emballage : sachet, boîte, cartonnage, étiquette, carte, ruban
+7. Coûts indirects (marketplace %, frais paiement %, frais généraux fixes, TVA %)
+
+PRIX
+Définis marge % ou prix manuel. Le résumé collant à droite montre en direct : production, coûts indirects, prix, profit net et marge effective.
+
+INTÉGRATION 3D
+En activant "Ajouter au Calculateur Impression 3D" sur le devis Cricut, il apparaîtra dans la section "Travaux Cricut" du Calculateur 3D. Utile pour produits mixtes (ex. t-shirt HTV + gadget imprimé en 3D).
+
+DUPLIQUER / ENREGISTRER COMME VENTE
+Chaque devis Cricut peut être dupliqué (utile pour variantes) ou enregistré directement comme vente dans le Registre des Ventes.`
       },
       {
-        title: "7. Achats",
-        content: `Enregistrez chaque achat de matériel :
-• Type de matériau, marque et couleur
-• Nombre de bobines et prix total
-• Grammes totaux
+        title: "8. Clients (Carnet CRM)",
+        content: `Carnet clients avec :
+• Prénom, nom, téléphone, email, adresse, notes
+• Recherche rapide et tri
+• Historique d'achats par client (icône sac)
+• Export CSV
 
-Lors de l'enregistrement d'un achat, le système peut :
-• Mettre à jour automatiquement un filament existant en stock
-• Créer un nouveau filament s'il n'existe pas encore
-
-Vous pouvez trier les achats par date, prix, grammes, matériau ou marque et exporter en CSV.`
+Les clients sont liés aux ventes depuis le Calculateur (menu "Client"). Dans les devis PDF ils sont pré-remplis.`
       },
       {
-        title: "8. Paramètres (Imprimantes)",
-        content: `Dans les Paramètres, gérez vos imprimantes :
-• Nom et modèle
-• Coût d'achat
-• Durée de vie estimée en heures
-• Puissance en Watts
-• Coût de l'électricité par kWh
+        title: "9. Registre des Ventes",
+        content: `Chaque vente enregistrée depuis le Calculateur montre :
+• Nom produit, coût, prix de vente, profit, client
+• Statut paiement (Payé / Non payé) toggle rapide
+• Expédition (coût séparé)
+• Module d'origine (3D / Cricut / Manuel)
 
-Ces données sont utilisées par le Calculateur pour calculer précisément l'amortissement et le coût de l'électricité pour chaque impression.`
+FILTRES ET TRI
+Par mois, statut paiement, triable par date/prix/profit/nom.
+
+QUANTITÉS MULTIPLES
+Si tu as imprimé 4 porte-clés, chaque pièce devient une ligne unique avec indicateur batch (1/4, 2/4...). Tu peux :
+• Marquer payé/non payé chaque pièce
+• Modifier le prix de la pièce unique
+• Les voir agrégés ou singuliers
+
+RÉIMPRIMER
+Icône imprimante → retourne au Calculateur avec toutes les données pré-remplies.
+
+MODIFIER
+Icône crayon → modifie nom, prix, client, expédition (recalcul profit automatique).
+
+DEVIS DEPUIS VENTE
+Icône document bleu → génère un devis PDF depuis une vente existante. Si des devis ont déjà été générés pour cette vente, l'icône devient verte avec point (évite duplicatas involontaires).
+
+EXPORT CSV
+Exporte tout en CSV pour ton comptable.`
       },
       {
-        title: "9. Profil",
-        content: `Dans votre Profil, vous pouvez :
-• Changer votre nom affiché
-• Changer la langue de l'interface (Italien, Anglais, Espagnol, Français)
-• Changer votre mot de passe
+        title: "10. Achats",
+        content: `Enregistre chaque achat de matériau (type, marque, couleur, quantité bobines, prix, grammes).
 
-Les statistiques du profil montrent un résumé de vos données.`
+Le système :
+• Met automatiquement à jour un filament existant
+• Ou en crée un nouveau s'il n'existe pas
+Tu peux trier les achats par date, prix, grammes, matériau ou marque et exporter en CSV.`
       },
       {
-        title: "10. Signaler un Problème",
-        content: `Si vous trouvez un bug :
-• Allez dans "Signaler un Problème" dans la barre latérale
-• Entrez un titre et une description détaillée
-• Choisissez la priorité (basse, moyenne, haute)
-• Joignez une capture d'écran si nécessaire
+        title: "11. Devis PDF Professionnels",
+        content: `Trois façons de générer des devis :
 
-L'administrateur recevra le signalement et vous pourrez voir le statut de la résolution.`
+A) DEPUIS LE CALCULATEUR (rapide)
+Après le calcul, clique "Générer Devis PDF". Le devis montre seulement produit et prix (pas les coûts internes).
+
+B) DEPUIS LES VENTES (rétroactif)
+Icône document bleu sur chaque vente → dialog pré-rempli → PDF.
+
+C) DEPUIS LA PAGE DEVIS (multi-produit)
+Dans le menu "Devis" tu peux créer des devis complexes avec plusieurs produits, client du carnet ou manuel, notes, validité.
+
+DONNÉES ENTREPRISE
+Onglet "Données Entreprise" : nom entreprise, adresse, CP, ville, TVA, téléphone, email, logo (max 500KB). Ils apparaîtront dans l'en-tête de TOUS les devis.
+
+TÉLÉCHARGEMENT & IMPRESSION
+Chaque devis a :
+• Télécharger PDF → téléchargement réel du fichier .pdf (fond blanc garanti même en mode sombre)
+• Imprimer → dialog d'impression navigateur
+
+HISTORIQUE
+Onglet "Historique" dans la page Devis. Chaque devis montre : numéro PRV-AAAAMMJJ-HHMMSS, client, produits, valeur, date d'envoi (si envoyé par email).`
       },
       {
-        title: "11. Thème Clair/Sombre",
-        content: `Vous pouvez changer le thème en cliquant sur l'icône soleil/lune dans la barre latérale. Le thème sombre est plus reposant pour les yeux, surtout dans les environnements peu éclairés.`
+        title: "12. Actualités / Blog",
+        content: `Module Blog public pour lire articles, guides et actualités d'Artes&Tramas 3D. Chaque article a :
+• Titre, catégorie (Guides / Actualités / Étude de cas / etc.)
+• Contenu formaté (gras, listes, liens, images)
+• Couverture, date de publication
+
+ROUTES PUBLIQUES
+• /notizie — liste articles publics avec filtre catégorie
+• /notizie/:slug — détail article (lisible aussi en mode sombre)`
       },
       {
-        title: "12. Gestion des Clients",
-        content: `Dans la section Clients, vous pouvez gérer votre carnet d'adresses :
-• Nom, prénom, téléphone, email, adresse et notes
-• Recherche rapide parmi les clients
-• Historique des achats pour chaque client (icône sac)
-• Export du carnet d'adresses en CSV
+        title: "13. Profil, Thème, Langue",
+        content: `Dans le Profil tu peux :
+• Changer nom, langue UI (IT/EN/ES/FR)
+• Changer mot de passe
+• Voir statistiques personnelles
 
-Les clients peuvent être associés aux ventes directement depuis le Calculateur en les sélectionnant dans le menu déroulant "Client".`
+THÈME CLAIR/SOMBRE
+Icône soleil/lune dans la barre latérale. Le thème s'applique aussi aux modales, formulaires et exports.
+
+SÉLECTEUR LANGUE PRÉ-LOGIN
+Les pages login/inscription/mot de passe oublié ont un sélecteur langue (IT/EN/ES/FR). Le choix est sauvegardé dans localStorage.`
       },
       {
-        title: "13. Devis PDF",
-        content: `Vous pouvez générer des devis professionnels de deux manières :
-
-DEPUIS LE CALCULATEUR (méthode rapide) :
-Après avoir calculé les coûts, cliquez sur "Générer Devis PDF". Le système crée un devis avec le produit et le prix de vente. Les coûts internes ne sont pas affichés.
-
-DEPUIS LA PAGE DEVIS (devis personnalisés) :
-Allez dans "Devis" dans la barre latérale. Vous pouvez :
-• Créer des devis avec plusieurs produits
-• Sélectionner un client du carnet d'adresses ou saisir manuellement
-• Ajouter des notes et une durée de validité
-• Prévisualiser et imprimer/enregistrer en PDF
-
-DONNÉES ENTREPRISE :
-Dans l'onglet "Données Entreprise", saisissez :
-• Nom de l'entreprise, adresse, code postal, ville
-• N° TVA, téléphone, email
-• Logo (téléchargement d'image, max 500 Ko)
-
-Ces données apparaîtront dans l'en-tête de tous les devis.`
+        title: "14. Signaler un Problème",
+        content: `Si tu trouves un bug : "Signaler Problème" dans la barre latérale. Entre titre, description, priorité (basse/moyenne/haute), joins une capture d'écran (max 5MB). Tu recevras des mises à jour sur le statut de résolution.`
       },
       {
-        title: "14. Cookies et Confidentialité",
-        content: `Le site est conforme au RGPD. Lors de votre première visite, vous verrez une bannière qui vous permet de :
-• Accepter tous les cookies
-• Accepter uniquement les nécessaires
-• Personnaliser les préférences (techniques, analytiques, marketing)
+        title: "15. Cookies et Vie Privée (RGPD)",
+        content: `Au premier accès, tu verras une bannière conforme RGPD pour gérer les cookies :
+• Techniques (toujours actifs)
+• Analytiques (optionnels)
+• Marketing (optionnels)
 
-Vous pouvez modifier vos préférences à tout moment depuis la page Politique de Cookies.`
+Modifie les préférences à tout moment depuis le pied de page (Politique Cookies).`
       },
       {
         title: "Conseils pour Démarrer",
-        content: `1. Ajoutez vos imprimantes dans les Paramètres
-2. Enregistrez les filaments que vous avez en stock
-3. Ajoutez les accessoires que vous utilisez fréquemment
-4. Utilisez le Calculateur pour votre première impression
-5. Enregistrez la vente et commencez à suivre vos bénéfices !
+        content: `1. Ajoute ton imprimante 3D dans les Paramètres
+2. Ajoute l'équipement amorti (AMS, etc.) si tu en as
+3. Enregistre les filaments en stock
+4. Ajoute les accessoires fréquents
+5. Si tu as un Cricut : enregistre matériaux, machines et consommables dans le module Cricut
+6. Utilise le Calculateur pour ta première impression
+7. Enregistre la vente, associe le client et commence à suivre les profits
 
-Bonne impression ! 🖨️`
+Bonne impression ! 🖨️✂️`
       }
     ]
   }
+
 };
 
 export default function GuidePage() {
