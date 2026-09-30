@@ -21,13 +21,14 @@ import { Textarea } from '../components/ui/textarea';
 import { CsvInput } from '../components/CsvInput';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '../components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import {
   Users, Mail, Send, Shield, ShieldCheck, Trash2, CheckCircle,
   XCircle, Newspaper, Copy, Settings2, Bug, Image, Calendar, Clock, Wrench, X, Globe, MessageSquare, Plus,
   ShoppingBag, Pencil, ImagePlus, Eye, EyeOff, Package, ExternalLink, UserCircle, Code,
-  Inbox, Phone, Palette, Ruler, Sparkles, FileText, BarChart3, TrendingUp, LineChart, Link2, MousePointerClick, Save, Check, Download, Building2
+  Inbox, Phone, Palette, Ruler, Sparkles, FileText, BarChart3, TrendingUp, LineChart, Link2, MousePointerClick, Save, Check, Download, Building2, Menu, Cog
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Switch } from '../components/ui/switch';
@@ -2594,6 +2595,43 @@ export default function AdminPanelPage() {
   const [newsletters, setNewsletters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [demoStats, setDemoStats] = useState({ total: 0, today: 0, daily: [] });
+  const [activeTab, setActiveTab] = useState('users');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Menu principale a 2 livelli: Gruppo → Sub-tab
+  const MENU_GROUPS = [
+    { id: 'users', label: 'Utenti', icon: Users, subs: [
+      { id: 'users', label: 'Elenco Utenti', icon: Users },
+      { id: 'cleanup', label: 'Manutenzione', icon: Trash2 },
+    ]},
+    ...(isShopOwner ? [{ id: 'shop', label: 'Vetrina', icon: ShoppingBag, subs: [
+      { id: 'vetrina', label: 'Gestione Prodotti', icon: Package },
+      { id: 'shop-settings', label: 'Impostazioni Shop', icon: Settings2 },
+    ]}] : []),
+    { id: 'comm', label: 'Comunicazioni', icon: Send, subs: [
+      { id: 'newsletter', label: 'Newsletter', icon: Newspaper },
+      { id: 'sent', label: 'Newsletter Inviate', icon: Send },
+      { id: 'emails', label: 'Email Log', icon: Mail },
+    ]},
+    { id: 'requests', label: 'Richieste', icon: Inbox, subs: [
+      { id: 'bugs', label: 'Segnalazioni Bug', icon: Bug },
+      { id: 'contacts', label: 'Preventivi', icon: MessageSquare },
+      { id: 'orders', label: 'Ordini/Info', icon: Inbox },
+    ]},
+    { id: 'content', label: 'Contenuti', icon: FileText, subs: [
+      { id: 'news', label: 'Notizie & Blog', icon: Newspaper },
+      { id: 'affiliates', label: 'Link Affiliati', icon: Link2 },
+    ]},
+    { id: 'analytics', label: 'Analytics', icon: BarChart3, subs: [
+      { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    ]},
+    { id: 'system', label: 'Sistema', icon: Cog, subs: [
+      { id: 'scripts', label: 'Script GA/Meta', icon: Code },
+    ]},
+  ];
+
+  // Deriva il gruppo attivo dal sub-tab attivo
+  const activeGroup = MENU_GROUPS.find(g => g.subs.some(s => s.id === activeTab)) || MENU_GROUPS[0];
 
   useEffect(() => { loadAll(); }, []);
 
@@ -2751,54 +2789,99 @@ export default function AdminPanelPage() {
         </Card>
       )}
 
-      <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 sm:grid-cols-12">
-          <TabsTrigger value="users" data-testid="tab-users">
-            <Users className="w-4 h-4 mr-1.5 hidden sm:inline" />Utenti
-          </TabsTrigger>
-          {isShopOwner && (
-            <TabsTrigger value="vetrina" data-testid="tab-vetrina">
-              <ShoppingBag className="w-4 h-4 mr-1.5 hidden sm:inline" />Gestione Vetrina
-            </TabsTrigger>
-          )}
-          {isShopOwner && (
-            <TabsTrigger value="shop-settings" data-testid="tab-shop-settings">
-              <Settings2 className="w-4 h-4 mr-1.5 hidden sm:inline" />Impostazioni Shop
-            </TabsTrigger>
-          )}
-          <TabsTrigger value="newsletter" data-testid="tab-newsletter">
-            <Newspaper className="w-4 h-4 mr-1.5 hidden sm:inline" />Newsletter
-          </TabsTrigger>
-          <TabsTrigger value="bugs" data-testid="tab-bugs">
-            <Bug className="w-4 h-4 mr-1.5 hidden sm:inline" />Segnalazioni
-          </TabsTrigger>
-          <TabsTrigger value="contacts" data-testid="tab-contacts">
-            <MessageSquare className="w-4 h-4 mr-1.5 hidden sm:inline" />Preventivi
-          </TabsTrigger>
-          <TabsTrigger value="orders" data-testid="tab-orders">
-            <Inbox className="w-4 h-4 mr-1.5 hidden sm:inline" />Richieste
-          </TabsTrigger>
-          <TabsTrigger value="analytics" data-testid="tab-analytics">
-            <BarChart3 className="w-4 h-4 mr-1.5 hidden sm:inline" />Analytics
-          </TabsTrigger>
-          <TabsTrigger value="affiliates" data-testid="tab-affiliates">
-            <Link2 className="w-4 h-4 mr-1.5 hidden sm:inline" />Affiliati
-          </TabsTrigger>
-          <TabsTrigger value="emails" data-testid="tab-emails">
-            <Mail className="w-4 h-4 mr-1.5 hidden sm:inline" />Email Log
-          </TabsTrigger>
-          <TabsTrigger value="sent" data-testid="tab-sent">
-            <Send className="w-4 h-4 mr-1.5 hidden sm:inline" />Inviate
-          </TabsTrigger>
-          <TabsTrigger value="scripts" data-testid="tab-scripts">
-            <Code className="w-4 h-4 mr-1.5 hidden sm:inline" />Codici
-          </TabsTrigger>
-          <TabsTrigger value="news" data-testid="tab-news">
-            <Newspaper className="w-4 h-4 mr-1.5 hidden sm:inline" />Notizie
-          </TabsTrigger>
-          <TabsTrigger value="cleanup" data-testid="tab-cleanup">
-            <Trash2 className="w-4 h-4 mr-1.5 hidden sm:inline" />Manutenzione
-          </TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        {/* ==== Livello 1: Gruppi (Desktop = tabs orizzontali, Mobile = hamburger drawer) ==== */}
+        <div className="flex items-center gap-2 mb-3 border-b border-border/40 pb-2">
+          {/* Hamburger drawer per mobile */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm" className="md:hidden" data-testid="admin-mobile-menu-btn">
+                <Menu className="w-4 h-4 mr-2" />
+                <span className="text-xs">Menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 p-0">
+              <SheetHeader className="p-4 border-b">
+                <SheetTitle className="font-heading">Menu Admin</SheetTitle>
+              </SheetHeader>
+              <nav className="p-2 space-y-4 overflow-y-auto max-h-[calc(100vh-4rem)]" data-testid="admin-mobile-nav">
+                {MENU_GROUPS.map(group => {
+                  const GroupIcon = group.icon;
+                  const isCurrent = group.id === activeGroup.id;
+                  return (
+                    <div key={group.id}>
+                      <div className={`flex items-center gap-2 px-3 py-1.5 text-xs uppercase tracking-wider font-semibold ${isCurrent ? 'text-primary' : 'text-muted-foreground'}`}>
+                        <GroupIcon className="w-3.5 h-3.5" />
+                        {group.label}
+                      </div>
+                      <div className="space-y-0.5 mt-1">
+                        {group.subs.map(sub => {
+                          const SubIcon = sub.icon;
+                          const isActive = sub.id === activeTab;
+                          return (
+                            <button
+                              key={sub.id}
+                              onClick={() => { setActiveTab(sub.id); setMobileMenuOpen(false); }}
+                              className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm transition-colors ${isActive ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+                              data-testid={`admin-mobile-tab-${sub.id}`}
+                            >
+                              <SubIcon className="w-3.5 h-3.5" />
+                              {sub.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </nav>
+            </SheetContent>
+          </Sheet>
+
+          {/* Group tabs - Desktop */}
+          <div className="hidden md:flex flex-wrap gap-1 flex-1">
+            {MENU_GROUPS.map(group => {
+              const GroupIcon = group.icon;
+              const isCurrent = group.id === activeGroup.id;
+              return (
+                <button
+                  key={group.id}
+                  onClick={() => setActiveTab(group.subs[0].id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${isCurrent
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                  data-testid={`admin-group-${group.id}`}
+                >
+                  <GroupIcon className="w-3.5 h-3.5" />
+                  {group.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Current group indicator on mobile */}
+          <div className="md:hidden flex items-center gap-1.5 text-sm font-medium">
+            <activeGroup.icon className="w-4 h-4 text-primary" />
+            {activeGroup.label}
+          </div>
+        </div>
+
+        {/* ==== Livello 2: Sub-tabs del gruppo attivo ==== */}
+        <TabsList className="w-full flex flex-wrap justify-start h-auto p-1 bg-muted/40 mb-4">
+          {activeGroup.subs.map(sub => {
+            const SubIcon = sub.icon;
+            return (
+              <TabsTrigger
+                key={sub.id}
+                value={sub.id}
+                data-testid={`tab-${sub.id}`}
+                className="flex items-center gap-1.5 data-[state=active]:bg-background"
+              >
+                <SubIcon className="w-3.5 h-3.5" />
+                {sub.label}
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
 
         <TabsContent value="cleanup">
