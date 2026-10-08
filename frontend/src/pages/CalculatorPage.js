@@ -604,7 +604,7 @@ export default function CalculatorPage() {
                   const filamentData = filaments.find(fil => fil.id === f.filament_id);
                   return (
                     <div key={index} className="flex items-center gap-1.5 p-1.5 rounded-sm bg-muted/30 border border-border/40">
-                      <FilamentColorDot color={filamentData?.color_hex || '#FFF'} color2={filamentData?.color_hex2} size="w-5 h-5" />
+                      <FilamentColorDot color={filamentData?.color_hex || '#FFF'} color2={filamentData?.color_hex2} finish={filamentData?.finish} size="w-5 h-5" />
                       <Select value={f.filament_id} onValueChange={(v) => updateFilament(index, 'filament_id', v)}>
                         <SelectTrigger className="flex-1 h-7 text-xs">
                           <SelectValue />
@@ -613,8 +613,8 @@ export default function CalculatorPage() {
                           {filaments.map(fil => (
                             <SelectItem key={fil.id} value={fil.id}>
                               <div className="flex items-center gap-1.5">
-                                <FilamentColorDot color={fil.color_hex} color2={fil.color_hex2} size="w-2.5 h-2.5" />
-                                {fil.material_type} {fil.color}
+                                <FilamentColorDot color={fil.color_hex} color2={fil.color_hex2} finish={fil.finish} size="w-3 h-3" />
+                                <span>{fil.material_type} {fil.color}{fil.brand ? ` - ${fil.brand}` : ''}</span>
                               </div>
                             </SelectItem>
                           ))}
@@ -953,8 +953,8 @@ export default function CalculatorPage() {
                 <div className="space-y-1">
                   {result.filaments_details?.map((f, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs">
-                      <FilamentColorDot color={f.color_hex} color2={f.color_hex2} size="w-3 h-3" />
-                      <span className="flex-1">{f.material_type} {f.color}</span>
+                      <FilamentColorDot color={f.color_hex} color2={f.color_hex2} finish={f.finish} size="w-3 h-3" />
+                      <span className="flex-1">{f.material_type} {f.color}{f.brand ? ` - ${f.brand}` : ''}</span>
                       <span className="font-mono text-muted-foreground">{f.grams_used}g</span>
                       <span className="font-mono">€{f.total.toFixed(2)}</span>
                     </div>

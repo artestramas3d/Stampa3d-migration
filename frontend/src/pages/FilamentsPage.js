@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { Progress } from '../components/ui/progress';
 import { Plus, Pencil, Trash2, Cylinder, AlertTriangle, Download } from 'lucide-react';
 import { toast } from 'sonner';
-import { FilamentColorDot } from '../components/FilamentColorDot';
+import { FilamentColorDot, FINISH_PRESETS } from '../components/FilamentColorDot';
 import { DecimalInput } from '../components/DecimalInput';
 import { AffiliateLinks } from '../components/AffiliateLinks';
 
@@ -26,6 +26,7 @@ const defaultFilament = {
   spool_price: 25,
   color_hex: '#FFFFFF',
   color_hex2: '',
+  finish: 'normale',
   notes: ''
 };
 
@@ -80,6 +81,7 @@ export default function FilamentsPage() {
       spool_price: filament.spool_price,
       color_hex: filament.color_hex,
       color_hex2: filament.color_hex2 || '',
+      finish: filament.finish || 'normale',
       notes: filament.notes || '',
       remaining_grams: filament.remaining_grams
     });
@@ -214,10 +216,31 @@ export default function FilamentsPage() {
                 <div className="space-y-2">
                   <Label>Anteprima</Label>
                   <div className="flex items-center gap-2 h-9">
-                    <FilamentColorDot color={formData.color_hex} color2={formData.color_hex2} size="w-8 h-8" />
-                    <span className="text-xs text-muted-foreground">{formData.color_hex2 ? 'Bicolore' : 'Monocolore'}</span>
+                    <FilamentColorDot color={formData.color_hex} color2={formData.color_hex2} finish={formData.finish} size="w-8 h-8" />
+                    <span className="text-xs text-muted-foreground">
+                      {formData.color_hex2 ? 'Bicolore' : 'Monocolore'}
+                      {formData.finish && formData.finish !== 'normale' && ` · ${formData.finish}`}
+                    </span>
                   </div>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Effetto / Finitura</Label>
+                <Select value={formData.finish || 'normale'} onValueChange={(v) => setFormData({...formData, finish: v})}>
+                  <SelectTrigger data-testid="finish-select"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {FINISH_PRESETS.map(p => (
+                      <SelectItem key={p.value} value={p.value}>
+                        <span className="inline-flex items-center gap-2">
+                          <FilamentColorDot color={formData.color_hex || '#888'} color2={formData.color_hex2} finish={p.value} size="w-4 h-4" />
+                          {p.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground italic">Scegli l'effetto per rendere riconoscibili filamenti speciali (sparkle, galaxy, ecc.)</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -341,7 +364,7 @@ export default function FilamentsPage() {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <FilamentColorDot color={filament.color_hex} color2={filament.color_hex2} size="w-8 h-8" />
+                      <FilamentColorDot color={filament.color_hex} color2={filament.color_hex2} finish={filament.finish} size="w-8 h-8" />
                       <div>
                         <h3 className="font-heading font-semibold flex items-center gap-2">
                           {filament.material_type}

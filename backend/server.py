@@ -252,6 +252,7 @@ class FilamentCreate(BaseModel):
     spool_price: float
     color_hex: str = "#FFFFFF"
     color_hex2: str = ""
+    finish: str = "normale"  # normale|silk|metallic|marble|sparkle|galaxy|rainbow
     notes: str = ""
     remaining_grams: Optional[float] = None  # If not provided, defaults to spool_weight_g
 
@@ -263,6 +264,7 @@ class FilamentUpdate(BaseModel):
     spool_price: Optional[float] = None
     color_hex: Optional[str] = None
     color_hex2: Optional[str] = None
+    finish: Optional[str] = None
     notes: Optional[str] = None
     remaining_grams: Optional[float] = None
 
@@ -467,6 +469,7 @@ async def get_filaments(current_user: dict = Depends(get_current_user)):
             "cost_per_gram": doc.get("cost_per_gram", 0),
             "color_hex": doc.get("color_hex", "#FFFFFF"),
             "color_hex2": doc.get("color_hex2", ""),
+            "finish": doc.get("finish", "normale"),
             "notes": doc.get("notes", ""),
             "remaining_grams": remaining,
             "low_stock": remaining < 200
@@ -487,6 +490,7 @@ async def create_filament(filament: FilamentCreate, current_user: dict = Depends
         "cost_per_gram": cost_per_gram,
         "color_hex": filament.color_hex,
         "color_hex2": filament.color_hex2,
+        "finish": filament.finish,
         "notes": filament.notes,
         "remaining_grams": remaining,
         "created_at": datetime.now(timezone.utc).isoformat()
@@ -845,8 +849,10 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
                 "filament_id": f_usage.filament_id,
                 "material_type": filament.get("material_type", ""),
                 "color": filament.get("color", ""),
+                "brand": filament.get("brand", ""),
                 "color_hex": filament.get("color_hex", "#FFFFFF"),
                 "color_hex2": filament.get("color_hex2", ""),
+                "finish": filament.get("finish", "normale"),
                 "grams_used": f_usage.grams_used,
                 "cost_per_gram": filament.get("cost_per_gram", 0),
                 "total": round(cost, 2)
