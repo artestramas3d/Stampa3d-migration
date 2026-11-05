@@ -1,0 +1,39 @@
+{
+  "summary": "Tested 'Acquisto Multiplo' bulk filament purchase + per-user Brand Presets (backend pytest 10 tests, frontend Playwright e2e as testuser). All core flows work: preset create/upsert-by-name/delete/isolation, bulk create + case-insensitive merge with weighted avg cost_per_gram, one purchase per row, skipped colorless rows, 400 validation; UI Tab/Enter/duplicate/delete/totals/preset save+apply+delete/existing badge/Salva tutto+toast+refresh. Only failure: DELETE preset with malformed id returns 500.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "DELETE /api/filament-presets/{id}", "issue": "Malformed (non-ObjectId) id -> 500 Internal Server Error (bson InvalidId uncaught). Should return 400/404. Same pattern exists in other DELETE endpoints. Also returns 200 'Preset eliminato' even when nothing was deleted (another user's id)."},
+      {"endpoint": "POST /api/filaments/bulk", "issue": "Merge match uses regex on 'brand'; legacy filament docs missing the brand field (or brand=null) will not match an empty-brand row -> duplicate created. Response does not return created filament/purchase ids."},
+      {"endpoint": "POST /api/filament-presets", "issue": "Upsert by name is case-sensitive ('Bambu PLA' vs 'bambu pla' creates 2 presets) - inconsistent with case-insensitive filament matching."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "BulkPurchaseDialog removePreset", "issue": "No try/catch around deleteFilamentPreset - API error gives unhandled promise rejection and no toast", "selector": "[data-testid^='delete-preset-']", "priority": "LOW"},
+      {"component": "BulkPurchaseDialog saveAll", "issue": "quantity_spools 0/blank is silently coerced to 1 on save while row total/bulk-totals show 0 -> saved total differs from displayed total", "selector": "[data-testid='bulk-row-N-quantity_spools']", "priority": "LOW"},
+      {"component": "BulkPurchaseDialog today()", "issue": "Default date uses toISOString (UTC); for Italian users between 00:00-01:00/02:00 local time it defaults to yesterday", "selector": "[data-testid='bulk-date-input']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Acquisto Multiplo dialog", "issues": ["Uses native browser date input instead of shadcn Calendar/Popover", "Cookie consent banner renders above the dialog overlay and covers part of the screen (pre-existing global z-index)"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_bulk_purchase_presets.py", "/app/test_reports/pytest/pytest_bulk.xml"],
+  "action_items": [
+    "Wrap ObjectId(preset_id) in try/except -> 400/404 in DELETE /api/filament-presets/{id} (and ideally other DELETE endpoints)",
+    "Optional: make preset name upsert case-insensitive; handle missing brand field in bulk merge query",
+    "Optional: add try/catch+toast in removePreset; align qty coercion with displayed totals; use local date for default; consider shadcn date picker"
+  ],
+  "critical_code_review_comments": [
+    "Bulk endpoint validates all rows before writing (good, no partial writes on validation errors) but writes are not transactional - a mid-loop DB failure leaves partial data",
+    "Merged existing filament keeps old color_hex/finish (fine) but spool_price is overwritten with avg_cpg*spool_weight - intended per spec",
+    "server.py is 4860 lines - should be split into routers"
+  ],
+  "updated_files": ["/app/backend/tests/test_bulk_purchase_presets.py"],
+  "success_rate": {"backend": "90% (9/10)", "frontend": "100%"},
+  "seed_data_creation": "None persisted. All TEST_ filaments/purchases/presets created by this run were deleted by id/unique tag. Pre-existing 'TEST_Brand/TEST_Black' filament on testuser is from an earlier run (not touched).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: REACT_APP_BACKEND_URL=... pytest /app/backend/tests/test_bulk_purchase_presets.py -p no:xdist -o addopts=''. UI: window.prompt/confirm used for preset save/delete - handle with async page.on('dialog') handler. Only testuser account was written to; shop owner only read (preset isolation)."
+}

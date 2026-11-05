@@ -10,13 +10,14 @@ import { FilamentColorDot, FINISH_PRESETS } from './FilamentColorDot';
 
 const MATERIALS = ['PLA', 'PETG', 'ABS', 'TPU', 'ASA', 'Nylon', 'PLA+', 'PETG-CF'];
 const COLS = ['material_type', 'brand', 'color', 'color_hex', 'finish', 'quantity_spools', 'spool_weight_g', 'spool_price'];
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 let rid = 0;
 const newRow = (base = {}) => ({
   _id: ++rid, material_type: 'PLA', brand: '', color: '', color_hex: '#FFFFFF', color_hex2: '',
   finish: 'normale', quantity_spools: 1, spool_weight_g: 1000, spool_price: 0, ...base,
 });
 const num = (v) => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? 0 : n; };
+const qty = (v) => Math.max(1, Math.round(num(v)));
 const norm = (s) => (s || '').trim().toLowerCase();
 const cell = 'h-8 w-full rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary';
 
@@ -67,8 +68,10 @@ export function BulkPurchaseDialog({ open, onOpenChange, filaments, onSaved }) {
 
   const removePreset = async (p) => {
     if (!window.confirm(`Eliminare il preset "${p.name}"?`)) return;
-    await deleteFilamentPreset(p.id);
-    setPresets(ps => ps.filter(x => x.id !== p.id));
+    try {
+      await deleteFilamentPreset(p.id);
+      setPresets(ps => ps.filter(x => x.id !== p.id));
+    } catch { toast.error('Errore nell\'eliminazione del preset'); }
   };
 
   const onKeyDown = (e, idx) => {
@@ -82,14 +85,14 @@ export function BulkPurchaseDialog({ open, onOpenChange, filaments, onSaved }) {
     norm(f.material_type) === norm(r.material_type) && norm(f.brand) === norm(r.brand) && norm(f.color) === norm(r.color));
 
   const valid = rows.filter(r => r.color.trim() && r.material_type.trim());
-  const totSpools = valid.reduce((s, r) => s + num(r.quantity_spools), 0);
-  const totPrice = valid.reduce((s, r) => s + num(r.quantity_spools) * num(r.spool_price), 0);
+  const totSpools = valid.reduce((s, r) => s + qty(r.quantity_spools), 0);
+  const totPrice = valid.reduce((s, r) => s + qty(r.quantity_spools) * num(r.spool_price), 0);
 
   const saveAll = async () => {
     if (!valid.length) return toast.error('Compila almeno una riga con materiale e colore');
     setSaving(true);
     try {
-      const payload = valid.map(({ _id, ...r }) => ({ ...r, quantity_spools: Math.max(1, Math.round(num(r.quantity_spools))), spool_weight_g: num(r.spool_weight_g), spool_price: num(r.spool_price) }));
+      const payload = valid.map(({ _id, ...r }) => ({ ...r, quantity_spools: qty(r.quantity_spools), spool_weight_g: num(r.spool_weight_g), spool_price: num(r.spool_price) }));
       const res = await bulkPurchaseFilaments({ date, notes, rows: payload });
       toast.success(`Salvato: ${res.created} nuovi filamenti, ${res.updated} aggiornati (€${res.total_spent.toFixed(2)})`);
       onOpenChange(false); onSaved();
@@ -182,7 +185,7 @@ function BulkRow({ r, idx, presets, existing, onChange, onPreset, onKeyDown, onD
     <input value={r[key]} onChange={e => onChange({ [key]: e.target.value })} onKeyDown={onKeyDown}
       data-cell={`${r._id}-${key}`} data-testid={`bulk-row-${idx}-${key}`} className={cell} {...props} />
   );
-  const total = num(r.quantity_spools) * num(r.spool_price);
+  const total = qty(r.quantity_spools) * num(r.spool_price);
   return (
     <tr className="border-t hover:bg-muted/20 transition-colors" data-testid={`bulk-row-${idx}`}>
       <td className="px-1.5 py-1 min-w-[130px]">

@@ -184,3 +184,15 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
 - P2: Notifiche smart (scorte basse, vendite non pagate, riepilogo settimanale)
 - P0 Tech Debt: Refactoring server.py (~2800 righe) in moduli /routes, /models, /services
 - P2 Tech Debt: Split AdminPanelPage.js (~1511 righe) in componenti separati
+
+
+## 2026-06 — Acquisto Multiplo + Preset Marca (DONE, tested iteration_12)
+- Filamenti > "Acquisto Multiplo": tabella stile foglio di calcolo (Tab, Invio = nuova riga che eredita materiale/brand/peso/prezzo, Duplica riga, Elimina, totali live, data unica, note, "Salva tutto")
+- Righe con stessa marca+materiale+colore (case-insensitive) si sommano al filamento esistente con prezzo medio ponderato; ogni riga crea anche un record in Acquisti
+- Preset marca per utente (salva da riga, applica da tendina, elimina da chip)
+- API: GET/POST/DELETE /api/filament-presets, POST /api/filaments/bulk
+- Component: frontend/src/components/BulkPurchaseDialog.js
+
+## Backlog
+- P2: Stripe marketplace digitale; Telegram bot admin
+- P3: refactor server.py e AdminPanelPage.js; cookie banner sopra i dialog (z-index globale)

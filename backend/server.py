@@ -564,7 +564,7 @@ async def create_filament_preset(preset: FilamentPresetCreate, current_user: dic
     if not name:
         raise HTTPException(status_code=400, detail="Nome preset obbligatorio")
     data = {**preset.model_dump(), "name": name}
-    existing = await db.filament_presets.find_one({"user_id": current_user["id"], "name": name})
+    existing = await db.filament_presets.find_one({"user_id": current_user["id"], "name": _ci(name)})
     if existing:
         await db.filament_presets.update_one({"_id": existing["_id"]}, {"$set": data})
         return _preset_out({**existing, **data})
@@ -575,7 +575,11 @@ async def create_filament_preset(preset: FilamentPresetCreate, current_user: dic
 
 @api_router.delete("/filament-presets/{preset_id}")
 async def delete_filament_preset(preset_id: str, current_user: dict = Depends(get_current_user)):
-    await db.filament_presets.delete_one({"_id": ObjectId(preset_id), "user_id": current_user["id"]})
+    if not ObjectId.is_valid(preset_id):
+        raise HTTPException(status_code=400, detail="ID preset non valido")
+    res = await db.filament_presets.delete_one({"_id": ObjectId(preset_id), "user_id": current_user["id"]})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Preset non trovato")
     return {"message": "Preset eliminato"}
 
 def _ci(value: str):
@@ -596,11 +600,12 @@ async def bulk_purchase_filaments(payload: BulkFilamentPurchase, current_user: d
         grams = r.spool_weight_g * r.quantity_spools
         price_total = r.spool_price * r.quantity_spools
         new_cpg = r.spool_price / r.spool_weight_g
+        brand_q = {"$or": [{"brand": {"$in": ["", None]}}, {"brand": {"$exists": False}}]} if not r.brand.strip() else {"brand": _ci(r.brand)}
         existing = await db.filaments.find_one({
             "user_id": uid,
             "material_type": _ci(r.material_type),
-            "brand": _ci(r.brand),
             "color": _ci(r.color),
+            **brand_q,
         })
         if existing:
             old_rem = existing.get("remaining_grams")
