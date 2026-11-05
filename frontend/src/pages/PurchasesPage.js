@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Textarea } from '../components/ui/textarea';
 import { Switch } from '../components/ui/switch';
-import { Plus, Download, Trash2, ShoppingCart, Cylinder, ArrowUpDown } from 'lucide-react';
+import { Plus, Download, Trash2, ShoppingCart, Cylinder, ArrowUpDown, TableProperties } from 'lucide-react';
+import { BulkPurchaseDialog } from '../components/BulkPurchaseDialog';
 import { toast } from 'sonner';
 import { FilamentColorDot } from '../components/FilamentColorDot';
 import { DecimalInput } from '../components/DecimalInput';
@@ -42,6 +43,7 @@ export default function PurchasesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formData, setFormData] = useState(defaultPurchase);
   const [linkToExisting, setLinkToExisting] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [sortBy, setSortBy] = useState('date_desc');
 
   useEffect(() => {
@@ -132,7 +134,7 @@ export default function PurchasesPage() {
           <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight">Acquisti Filamenti</h1>
           <p className="text-muted-foreground mt-1">Registra acquisti e aggiorna automaticamente l'inventario</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-40" data-testid="sort-purchases">
               <ArrowUpDown className="w-3.5 h-3.5 mr-1.5" /><SelectValue />
@@ -152,6 +154,10 @@ export default function PurchasesPage() {
             <Download className="w-4 h-4 mr-2" />
             CSV
           </Button>
+          <Button variant="outline" onClick={() => setBulkOpen(true)} data-testid="bulk-purchase-btn">
+            <TableProperties className="w-4 h-4 mr-2" /> Acquisto Multiplo
+          </Button>
+          <BulkPurchaseDialog open={bulkOpen} onOpenChange={setBulkOpen} filaments={filaments} onSaved={loadData} />
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button data-testid="add-purchase-btn">

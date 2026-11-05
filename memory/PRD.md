@@ -187,7 +187,7 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
 
 
 ## 2026-06 — Acquisto Multiplo + Preset Marca (DONE, tested iteration_12)
-- Filamenti > "Acquisto Multiplo": tabella stile foglio di calcolo (Tab, Invio = nuova riga che eredita materiale/brand/peso/prezzo, Duplica riga, Elimina, totali live, data unica, note, "Salva tutto")
+- Acquisti > "Acquisto Multiplo" (spostato da Filamenti, che resta solo magazzino): tabella stile foglio di calcolo (Tab, Invio = nuova riga che eredita materiale/brand/peso/prezzo, Duplica riga, Elimina, totali live, data unica, note, "Salva tutto")
 - Righe con stessa marca+materiale+colore (case-insensitive) si sommano al filamento esistente con prezzo medio ponderato; ogni riga crea anche un record in Acquisti
 - Preset marca per utente (salva da riga, applica da tendina, elimina da chip)
 - API: GET/POST/DELETE /api/filament-presets, POST /api/filaments/bulk
