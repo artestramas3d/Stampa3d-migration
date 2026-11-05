@@ -7,13 +7,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Copy, Trash2, Plus, Save, BookmarkPlus, X, Keyboard } from 'lucide-react';
 import { toast } from 'sonner';
 import { FilamentColorDot, FINISH_PRESETS } from './FilamentColorDot';
+import { VariantInput } from './VariantInput';
+import { variantOptions, finishForVariant } from '../lib/filamentVariants';
 
 const MATERIALS = ['PLA', 'PETG', 'ABS', 'TPU', 'ASA', 'Nylon', 'PLA+', 'PETG-CF'];
-const COLS = ['material_type', 'brand', 'color', 'color_hex', 'finish', 'quantity_spools', 'spool_weight_g', 'spool_price'];
 const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 let rid = 0;
 const newRow = (base = {}) => ({
-  _id: ++rid, material_type: 'PLA', brand: '', color: '', color_hex: '#FFFFFF', color_hex2: '',
+  _id: ++rid, material_type: 'PLA', variant: '', brand: '', color: '', color_hex: '#FFFFFF', color_hex2: '',
   finish: 'normale', quantity_spools: 1, spool_weight_g: 1000, spool_price: 0, ...base,
 });
 const num = (v) => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? 0 : n; };
@@ -53,14 +54,14 @@ export function BulkPurchaseDialog({ open, onOpenChange, filaments, onSaved }) {
 
   const applyPreset = (id, presetId) => {
     const p = presets.find(x => x.id === presetId);
-    if (p) update(id, { material_type: p.material_type, brand: p.brand, spool_weight_g: p.spool_weight_g, spool_price: p.spool_price, finish: p.finish });
+    if (p) update(id, { material_type: p.material_type, variant: p.variant || '', brand: p.brand, spool_weight_g: p.spool_weight_g, spool_price: p.spool_price, finish: p.finish });
   };
 
   const saveAsPreset = async (row) => {
-    const name = window.prompt('Nome del preset', `${row.brand} ${row.material_type}`.trim());
+    const name = window.prompt('Nome del preset', `${row.brand} ${row.material_type} ${row.variant}`.replace(/\s+/g, ' ').trim());
     if (!name) return;
     try {
-      const p = await createFilamentPreset({ name, material_type: row.material_type, brand: row.brand, spool_weight_g: num(row.spool_weight_g), spool_price: num(row.spool_price), finish: row.finish });
+      const p = await createFilamentPreset({ name, material_type: row.material_type, variant: row.variant, brand: row.brand, spool_weight_g: num(row.spool_weight_g), spool_price: num(row.spool_price), finish: row.finish });
       setPresets(ps => [...ps.filter(x => x.id !== p.id), p].sort((a, b) => a.name.localeCompare(b.name)));
       toast.success(`Preset "${p.name}" salvato`);
     } catch { toast.error('Errore nel salvataggio del preset'); }
@@ -77,12 +78,12 @@ export function BulkPurchaseDialog({ open, onOpenChange, filaments, onSaved }) {
   const onKeyDown = (e, idx) => {
     if (e.key !== 'Enter' || e.target.tagName === 'BUTTON') return;
     e.preventDefault();
-    const { material_type, brand, finish, spool_weight_g, spool_price } = rows[idx];
-    insertAfter(idx, newRow({ material_type, brand, finish, spool_weight_g, spool_price }));
+    const { material_type, variant, brand, finish, spool_weight_g, spool_price } = rows[idx];
+    insertAfter(idx, newRow({ material_type, variant, brand, finish, spool_weight_g, spool_price }));
   };
 
   const isExisting = (r) => r.color.trim() && filaments.some(f =>
-    norm(f.material_type) === norm(r.material_type) && norm(f.brand) === norm(r.brand) && norm(f.color) === norm(r.color));
+    norm(f.material_type) === norm(r.material_type) && norm(f.variant) === norm(r.variant) && norm(f.brand) === norm(r.brand) && norm(f.color) === norm(r.color));
 
   const valid = rows.filter(r => r.color.trim() && r.material_type.trim());
   const totSpools = valid.reduce((s, r) => s + qty(r.quantity_spools), 0);
@@ -107,7 +108,7 @@ export function BulkPurchaseDialog({ open, onOpenChange, filaments, onSaved }) {
         <DialogHeader>
           <DialogTitle className="font-heading">Acquisto Multiplo</DialogTitle>
           <DialogDescription className="flex items-center gap-1.5 text-xs">
-            <Keyboard className="w-3.5 h-3.5" /> <b>Tab</b> campo successivo · <b>Invio</b> nuova riga (copia materiale, brand, peso e prezzo) · se il filamento esiste già, le bobine vengono aggiunte e il prezzo medio aggiornato
+            <Keyboard className="w-3.5 h-3.5" /> <b>Tab</b> campo successivo · <b>Invio</b> nuova riga (copia materiale, variante, brand, peso e prezzo) · se il filamento esiste già, le bobine vengono aggiunte e il prezzo medio aggiornato
           </DialogDescription>
         </DialogHeader>
 
@@ -129,14 +130,14 @@ export function BulkPurchaseDialog({ open, onOpenChange, filaments, onSaved }) {
           <table className="w-full text-sm" data-testid="bulk-table">
             <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
-                {['Preset', 'Materiale', 'Brand', 'Colore', 'Hex', 'Effetto', 'Qtà', 'Peso (g)', '€/bobina', 'Totale', ''].map(h => (
+                {['Preset', 'Materiale', 'Variante', 'Brand', 'Colore', 'Hex', 'Effetto', 'Qtà', 'Peso (g)', '€/bobina', 'Totale', ''].map(h => (
                   <th key={h} className="px-2 py-2 text-left font-semibold whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {rows.map((r, idx) => (
-                <BulkRow key={r._id} r={r} idx={idx} presets={presets} existing={isExisting(r)}
+                <BulkRow key={r._id} r={r} idx={idx} presets={presets} existing={isExisting(r)} variants={variantOptions(r.material_type, filaments, presets)}
                   onChange={p => update(r._id, p)} onPreset={pid => applyPreset(r._id, pid)}
                   onKeyDown={e => onKeyDown(e, idx)} onDuplicate={() => duplicate(idx)}
                   onRemove={() => remove(r._id)} onSavePreset={() => saveAsPreset(r)} />
@@ -180,7 +181,7 @@ function PresetChips({ presets, onRemove }) {
   );
 }
 
-function BulkRow({ r, idx, presets, existing, onChange, onPreset, onKeyDown, onDuplicate, onRemove, onSavePreset }) {
+function BulkRow({ r, idx, presets, existing, variants, onChange, onPreset, onKeyDown, onDuplicate, onRemove, onSavePreset }) {
   const field = (key, props = {}) => (
     <input value={r[key]} onChange={e => onChange({ [key]: e.target.value })} onKeyDown={onKeyDown}
       data-cell={`${r._id}-${key}`} data-testid={`bulk-row-${idx}-${key}`} className={cell} {...props} />
@@ -195,6 +196,10 @@ function BulkRow({ r, idx, presets, existing, onChange, onPreset, onKeyDown, onD
         </select>
       </td>
       <td className="px-1.5 py-1 min-w-[90px]">{field('material_type', { list: 'bulk-materials' })}</td>
+      <td className="px-1.5 py-1 min-w-[110px]">
+        <VariantInput options={variants} value={r.variant} onKeyDown={onKeyDown} className={cell} data-testid={`bulk-row-${idx}-variant`}
+          onChange={e => { const v = e.target.value; const fin = finishForVariant(v); onChange(fin ? { variant: v, finish: fin } : { variant: v }); }} />
+      </td>
       <td className="px-1.5 py-1 min-w-[110px]">{field('brand', { placeholder: 'Bambu Lab' })}</td>
       <td className="px-1.5 py-1 min-w-[130px]">
         <div className="flex items-center gap-1.5">

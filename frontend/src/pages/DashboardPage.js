@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { filamentName } from '../lib/filamentVariants';
 import { getDashboardStats } from '../lib/api';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -106,7 +107,7 @@ export default function DashboardPage() {
                     <ul className="mt-1 space-y-0.5">
                       {stats.low_stock_filaments.map(f => (
                         <li key={f.id} className="font-mono text-sm">
-                          • {f.material_type} {f.color} ({f.brand}): <strong>{Math.round(f.remaining_grams)}g</strong>
+                          • {filamentName(f)} {f.color} ({f.brand}): <strong>{Math.round(f.remaining_grams)}g</strong>
                         </li>
                       ))}
                     </ul>

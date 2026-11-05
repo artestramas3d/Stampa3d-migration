@@ -13,6 +13,7 @@ import { Plus, Download, Trash2, ShoppingCart, Cylinder, ArrowUpDown } from 'luc
 import { toast } from 'sonner';
 import { FilamentColorDot } from '../components/FilamentColorDot';
 import { DecimalInput } from '../components/DecimalInput';
+import { filamentName } from '../lib/filamentVariants';
 
 const MATERIAL_TYPES = ['PLA', 'PETG', 'ABS', 'TPU', 'ASA', 'Nylon', 'PLA+', 'PETG-CF', 'Altro'];
 
@@ -302,7 +303,7 @@ export default function PurchasesPage() {
                                   <SelectItem key={f.id} value={f.id}>
                                     <div className="flex items-center gap-2">
                                       <FilamentColorDot color={f.color_hex} color2={f.color_hex2} size="w-3 h-3" />
-                                      {f.material_type} {f.color} ({f.brand}) - {Math.round(f.remaining_grams)}g
+                                      {filamentName(f)} {f.color} ({f.brand}) - {Math.round(f.remaining_grams)}g
                                     </div>
                                   </SelectItem>
                                 ))}
@@ -392,7 +393,7 @@ export default function PurchasesPage() {
                   {sortedPurchases.map(purchase => (
                     <TableRow key={purchase.id}>
                       <TableCell className="font-mono text-muted-foreground">{purchase.date}</TableCell>
-                      <TableCell className="font-semibold">{purchase.material_type}</TableCell>
+                      <TableCell className="font-semibold">{filamentName(purchase)}</TableCell>
                       <TableCell>{purchase.brand}</TableCell>
                       <TableCell>{purchase.color}</TableCell>
                       <TableCell className="text-right">{purchase.quantity_spools}</TableCell>

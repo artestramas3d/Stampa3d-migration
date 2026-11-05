@@ -11,6 +11,9 @@ import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { Progress } from '../components/ui/progress';
 import { Plus, Pencil, Trash2, Cylinder, AlertTriangle, Download, TableProperties } from 'lucide-react';
 import { BulkPurchaseDialog } from '../components/BulkPurchaseDialog';
+import { VariantInput } from '../components/VariantInput';
+import { FilamentFilters } from '../components/FilamentFilters';
+import { variantOptions, finishForVariant, filamentName } from '../lib/filamentVariants';
 import { toast } from 'sonner';
 import { FilamentColorDot, FINISH_PRESETS } from '../components/FilamentColorDot';
 import { DecimalInput } from '../components/DecimalInput';
@@ -21,6 +24,7 @@ const LOW_STOCK_THRESHOLD = 200; // grams
 
 const defaultFilament = {
   material_type: 'PLA',
+  variant: '',
   color: '',
   brand: '',
   spool_weight_g: 1000,
@@ -38,6 +42,7 @@ export default function FilamentsPage() {
   const [editingFilament, setEditingFilament] = useState(null);
   const [formData, setFormData] = useState(defaultFilament);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [filters, setFilters] = useState({ material: 'all', variant: 'all' });
 
   useEffect(() => {
     loadFilaments();
@@ -77,6 +82,7 @@ export default function FilamentsPage() {
     setEditingFilament(filament);
     setFormData({
       material_type: filament.material_type,
+      variant: filament.variant || '',
       color: filament.color,
       brand: filament.brand,
       spool_weight_g: filament.spool_weight_g,
@@ -109,6 +115,10 @@ export default function FilamentsPage() {
 
   // Filter low stock filaments
   const lowStockFilaments = filaments.filter(f => f.remaining_grams < LOW_STOCK_THRESHOLD);
+  const visibleFilaments = filaments.filter(f =>
+    (filters.material === 'all' || f.material_type === filters.material) &&
+    (filters.variant === 'all' || (f.variant || '') === filters.variant));
+  const setVariant = (v) => setFormData(fd => ({ ...fd, variant: v, finish: finishForVariant(v) || fd.finish }));
 
   return (
     <div className="space-y-6 animate-fadeIn" data-testid="filaments-page">
@@ -165,6 +175,18 @@ export default function FilamentsPage() {
                     data-testid="brand-input"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Variante / Linea</Label>
+                <VariantInput
+                  options={variantOptions(formData.material_type, filaments)}
+                  value={formData.variant}
+                  onChange={(e) => setVariant(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  data-testid="variant-input"
+                />
+                <p className="text-[11px] text-muted-foreground italic">Scegli dall'elenco o scrivine una nuova. Silk, Metal, Galaxy… impostano da soli l'effetto colore.</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -314,14 +336,14 @@ export default function FilamentsPage() {
           <AlertTitle className="font-heading">Attenzione: Scorte Basse!</AlertTitle>
           <AlertDescription>
             {lowStockFilaments.length === 1 
-              ? `Il filamento "${lowStockFilaments[0].material_type} ${lowStockFilaments[0].color}" ha meno di ${LOW_STOCK_THRESHOLD}g rimanenti.`
+              ? `Il filamento "${filamentName(lowStockFilaments[0])} ${lowStockFilaments[0].color}" ha meno di ${LOW_STOCK_THRESHOLD}g rimanenti.`
               : `${lowStockFilaments.length} filamenti hanno meno di ${LOW_STOCK_THRESHOLD}g rimanenti:`
             }
             {lowStockFilaments.length > 1 && (
               <ul className="mt-2 space-y-1">
                 {lowStockFilaments.map(f => (
                   <li key={f.id} className="font-mono text-sm">
-                    • {f.material_type} {f.color} ({f.brand}): <strong>{Math.round(f.remaining_grams)}g</strong>
+                    • {filamentName(f)} {f.color} ({f.brand}): <strong>{Math.round(f.remaining_grams)}g</strong>
                   </li>
                 ))}
               </ul>
@@ -356,8 +378,10 @@ export default function FilamentsPage() {
           </CardContent>
         </Card>
       ) : (
+        <>
+        <FilamentFilters filaments={filaments} filters={filters} onChange={setFilters} count={visibleFilaments.length} />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filaments.map(filament => {
+          {visibleFilaments.map(filament => {
             const usedPercent = ((filament.spool_weight_g - filament.remaining_grams) / filament.spool_weight_g) * 100;
             const isLowStock = filament.remaining_grams < LOW_STOCK_THRESHOLD;
             
@@ -373,7 +397,7 @@ export default function FilamentsPage() {
                       <FilamentColorDot color={filament.color_hex} color2={filament.color_hex2} finish={filament.finish} size="w-8 h-8" />
                       <div>
                         <h3 className="font-heading font-semibold flex items-center gap-2">
-                          {filament.material_type}
+                          {filamentName(filament)}
                           {isLowStock && <AlertTriangle className="w-4 h-4 text-red-500" />}
                         </h3>
                         <p className="text-sm text-muted-foreground">{filament.brand} - {filament.color}</p>
@@ -436,6 +460,7 @@ export default function FilamentsPage() {
             );
           })}
         </div>
+        </>
       )}
     </div>
   );

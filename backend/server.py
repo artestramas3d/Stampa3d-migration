@@ -253,6 +253,7 @@ class FilamentCreate(BaseModel):
     color_hex: str = "#FFFFFF"
     color_hex2: str = ""
     finish: str = "normale"  # normale|silk|metallic|marble|sparkle|galaxy|rainbow
+    variant: str = ""
     notes: str = ""
     remaining_grams: Optional[float] = None  # If not provided, defaults to spool_weight_g
 
@@ -265,6 +266,7 @@ class FilamentUpdate(BaseModel):
     color_hex: Optional[str] = None
     color_hex2: Optional[str] = None
     finish: Optional[str] = None
+    variant: Optional[str] = None
     notes: Optional[str] = None
     remaining_grams: Optional[float] = None
 
@@ -470,6 +472,7 @@ async def get_filaments(current_user: dict = Depends(get_current_user)):
             "color_hex": doc.get("color_hex", "#FFFFFF"),
             "color_hex2": doc.get("color_hex2", ""),
             "finish": doc.get("finish", "normale"),
+            "variant": doc.get("variant", ""),
             "notes": doc.get("notes", ""),
             "remaining_grams": remaining,
             "low_stock": remaining < 200
@@ -491,6 +494,7 @@ async def create_filament(filament: FilamentCreate, current_user: dict = Depends
         "color_hex": filament.color_hex,
         "color_hex2": filament.color_hex2,
         "finish": filament.finish,
+        "variant": filament.variant.strip(),
         "notes": filament.notes,
         "remaining_grams": remaining,
         "created_at": datetime.now(timezone.utc).isoformat()
@@ -526,6 +530,7 @@ class FilamentPresetCreate(BaseModel):
     spool_weight_g: float = 1000
     spool_price: float = 0
     finish: str = "normale"
+    variant: str = ""
 
 class BulkFilamentRow(BaseModel):
     material_type: str
@@ -534,6 +539,7 @@ class BulkFilamentRow(BaseModel):
     color_hex: str = "#FFFFFF"
     color_hex2: str = ""
     finish: str = "normale"
+    variant: str = ""
     quantity_spools: int = 1
     spool_weight_g: float = 1000
     spool_price: float = 0
@@ -552,6 +558,7 @@ def _preset_out(doc):
         "spool_weight_g": doc.get("spool_weight_g", 1000),
         "spool_price": doc.get("spool_price", 0),
         "finish": doc.get("finish", "normale"),
+        "variant": doc.get("variant", ""),
     }
 
 @api_router.get("/filament-presets")
@@ -585,6 +592,9 @@ async def delete_filament_preset(preset_id: str, current_user: dict = Depends(ge
 def _ci(value: str):
     return {"$regex": f"^{re.escape(value.strip())}$", "$options": "i"}
 
+def _ci_or_empty(field: str, value: str):
+    return {field: _ci(value)} if value.strip() else {field: {"$in": ["", None]}}
+
 @api_router.post("/filaments/bulk")
 async def bulk_purchase_filaments(payload: BulkFilamentPurchase, current_user: dict = Depends(get_current_user)):
     rows = [r for r in payload.rows if r.color.strip() and r.material_type.strip()]
@@ -600,12 +610,11 @@ async def bulk_purchase_filaments(payload: BulkFilamentPurchase, current_user: d
         grams = r.spool_weight_g * r.quantity_spools
         price_total = r.spool_price * r.quantity_spools
         new_cpg = r.spool_price / r.spool_weight_g
-        brand_q = {"$or": [{"brand": {"$in": ["", None]}}, {"brand": {"$exists": False}}]} if not r.brand.strip() else {"brand": _ci(r.brand)}
         existing = await db.filaments.find_one({
             "user_id": uid,
             "material_type": _ci(r.material_type),
             "color": _ci(r.color),
-            **brand_q,
+            "$and": [_ci_or_empty("brand", r.brand), _ci_or_empty("variant", r.variant)],
         })
         if existing:
             old_rem = existing.get("remaining_grams")
@@ -633,6 +642,7 @@ async def bulk_purchase_filaments(payload: BulkFilamentPurchase, current_user: d
                 "color_hex": r.color_hex,
                 "color_hex2": r.color_hex2,
                 "finish": r.finish,
+                "variant": r.variant.strip(),
                 "notes": f"Creato da acquisto multiplo del {payload.date}",
                 "remaining_grams": grams,
                 "created_at": now,
@@ -643,6 +653,7 @@ async def bulk_purchase_filaments(payload: BulkFilamentPurchase, current_user: d
             "user_id": uid,
             "date": payload.date,
             "material_type": r.material_type.strip(),
+            "variant": r.variant.strip(),
             "brand": r.brand.strip(),
             "color": r.color.strip(),
             "quantity_spools": r.quantity_spools,
@@ -726,6 +737,7 @@ async def get_purchases(current_user: dict = Depends(get_current_user)):
             "id": str(doc["_id"]),
             "date": doc.get("date", ""),
             "material_type": doc.get("material_type", ""),
+            "variant": doc.get("variant", ""),
             "brand": doc.get("brand", ""),
             "color": doc.get("color", ""),
             "quantity_spools": doc.get("quantity_spools", 0),
@@ -992,6 +1004,7 @@ async def calculate_print(calc: PrintCalculationCreate, current_user: dict = Dep
                 "color_hex": filament.get("color_hex", "#FFFFFF"),
                 "color_hex2": filament.get("color_hex2", ""),
                 "finish": filament.get("finish", "normale"),
+                "variant": filament.get("variant", ""),
                 "grams_used": f_usage.grams_used,
                 "cost_per_gram": filament.get("cost_per_gram", 0),
                 "total": round(cost, 2)
@@ -4603,9 +4616,9 @@ async def send_quote_email(req: QuoteEmailRequest, current_user: dict = Depends(
 async def export_filaments_csv(current_user: dict = Depends(get_current_user)):
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Materiale", "Colore", "Brand", "Peso Bobina (g)", "Prezzo Bobina", "Costo/g", "Rimanenti (g)", "Note"])
+    writer.writerow(["Materiale", "Variante", "Colore", "Brand", "Peso Bobina (g)", "Prezzo Bobina", "Costo/g", "Rimanenti (g)", "Note"])
     async for f in db.filaments.find({"user_id": current_user["id"]}):
-        writer.writerow([f.get("material_type",""), f.get("color",""), f.get("brand",""), f.get("spool_weight_g",0), f.get("spool_price",0), round(f.get("cost_per_gram",0),4), f.get("remaining_grams",0), f.get("notes","")])
+        writer.writerow([f.get("material_type",""), f.get("variant",""), f.get("color",""), f.get("brand",""), f.get("spool_weight_g",0), f.get("spool_price",0), round(f.get("cost_per_gram",0),4), f.get("remaining_grams",0), f.get("notes","")])
     output.seek(0)
     return StreamingResponse(io.BytesIO(output.getvalue().encode('utf-8-sig')), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=filamenti.csv"})
 

@@ -19,6 +19,7 @@ import {
 import { AffiliateLinks } from '../components/AffiliateLinks';
 import { toast } from 'sonner';
 import { FilamentColorDot } from '../components/FilamentColorDot';
+import { filamentName } from '../lib/filamentVariants';
 import { DecimalInput } from '../components/DecimalInput';
 import { NumberSpinner } from '../components/NumberSpinner';
 import { downloadHtmlAsPdf } from '../lib/pdfExport';
@@ -614,7 +615,7 @@ export default function CalculatorPage() {
                             <SelectItem key={fil.id} value={fil.id}>
                               <div className="flex items-center gap-1.5">
                                 <FilamentColorDot color={fil.color_hex} color2={fil.color_hex2} finish={fil.finish} size="w-3 h-3" />
-                                <span>{fil.material_type} {fil.color}{fil.brand ? ` - ${fil.brand}` : ''}</span>
+                                <span>{filamentName(fil)} {fil.color}{fil.brand ? ` - ${fil.brand}` : ''}</span>
                               </div>
                             </SelectItem>
                           ))}
@@ -954,7 +955,7 @@ export default function CalculatorPage() {
                   {result.filaments_details?.map((f, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs">
                       <FilamentColorDot color={f.color_hex} color2={f.color_hex2} finish={f.finish} size="w-3 h-3" />
-                      <span className="flex-1">{f.material_type} {f.color}{f.brand ? ` - ${f.brand}` : ''}</span>
+                      <span className="flex-1">{filamentName(f)} {f.color}{f.brand ? ` - ${f.brand}` : ''}</span>
                       <span className="font-mono text-muted-foreground">{f.grams_used}g</span>
                       <span className="font-mono">€{f.total.toFixed(2)}</span>
                     </div>
