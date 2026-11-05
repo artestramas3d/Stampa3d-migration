@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { Progress } from '../components/ui/progress';
-import { Plus, Pencil, Trash2, Cylinder, AlertTriangle, Download } from 'lucide-react';
+import { Plus, Pencil, Trash2, Cylinder, AlertTriangle, Download, TableProperties } from 'lucide-react';
+import { BulkPurchaseDialog } from '../components/BulkPurchaseDialog';
 import { toast } from 'sonner';
 import { FilamentColorDot, FINISH_PRESETS } from '../components/FilamentColorDot';
 import { DecimalInput } from '../components/DecimalInput';
@@ -36,6 +37,7 @@ export default function FilamentsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingFilament, setEditingFilament] = useState(null);
   const [formData, setFormData] = useState(defaultFilament);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   useEffect(() => {
     loadFilaments();
@@ -115,10 +117,14 @@ export default function FilamentsPage() {
           <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight">Gestione Filamenti</h1>
           <p className="text-muted-foreground mt-1">Gestisci il tuo inventario di filamenti</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => window.open(exportFilamentsCSV(), '_blank')} data-testid="export-filaments-btn">
             <Download className="w-4 h-4 mr-1.5" /> CSV
           </Button>
+          <Button variant="outline" onClick={() => setBulkOpen(true)} data-testid="bulk-purchase-btn">
+            <TableProperties className="w-4 h-4 mr-2" /> Acquisto Multiplo
+          </Button>
+          <BulkPurchaseDialog open={bulkOpen} onOpenChange={setBulkOpen} filaments={filaments} onSaved={loadFilaments} />
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openNewDialog} data-testid="add-filament-btn">

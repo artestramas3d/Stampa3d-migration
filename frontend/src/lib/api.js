@@ -29,6 +29,10 @@ export const getFilaments = () => api.get('/filaments').then(r => r.data);
 export const createFilament = (data) => api.post('/filaments', data).then(r => r.data);
 export const updateFilament = (id, data) => api.put(`/filaments/${id}`, data).then(r => r.data);
 export const deleteFilament = (id) => api.delete(`/filaments/${id}`).then(r => r.data);
+export const bulkPurchaseFilaments = (data) => api.post('/filaments/bulk', data).then(r => r.data);
+export const getFilamentPresets = () => api.get('/filament-presets').then(r => r.data);
+export const createFilamentPreset = (data) => api.post('/filament-presets', data).then(r => r.data);
+export const deleteFilamentPreset = (id) => api.delete(`/filament-presets/${id}`).then(r => r.data);
 
 // Printers
 export const getPrinters = () => api.get('/printers').then(r => r.data);

@@ -518,6 +518,140 @@ async def delete_filament(filament_id: str, current_user: dict = Depends(get_cur
     await db.filaments.delete_one({"_id": ObjectId(filament_id), "user_id": current_user["id"]})
     return {"message": "Filamento eliminato"}
 
+# Filament Presets (per user) + Bulk purchase
+class FilamentPresetCreate(BaseModel):
+    name: str
+    material_type: str
+    brand: str = ""
+    spool_weight_g: float = 1000
+    spool_price: float = 0
+    finish: str = "normale"
+
+class BulkFilamentRow(BaseModel):
+    material_type: str
+    brand: str = ""
+    color: str
+    color_hex: str = "#FFFFFF"
+    color_hex2: str = ""
+    finish: str = "normale"
+    quantity_spools: int = 1
+    spool_weight_g: float = 1000
+    spool_price: float = 0
+
+class BulkFilamentPurchase(BaseModel):
+    date: str
+    notes: str = ""
+    rows: List[BulkFilamentRow]
+
+def _preset_out(doc):
+    return {
+        "id": str(doc["_id"]),
+        "name": doc.get("name", ""),
+        "material_type": doc.get("material_type", ""),
+        "brand": doc.get("brand", ""),
+        "spool_weight_g": doc.get("spool_weight_g", 1000),
+        "spool_price": doc.get("spool_price", 0),
+        "finish": doc.get("finish", "normale"),
+    }
+
+@api_router.get("/filament-presets")
+async def get_filament_presets(current_user: dict = Depends(get_current_user)):
+    return [_preset_out(d) async for d in db.filament_presets.find({"user_id": current_user["id"]}).sort("name", 1)]
+
+@api_router.post("/filament-presets")
+async def create_filament_preset(preset: FilamentPresetCreate, current_user: dict = Depends(get_current_user)):
+    name = preset.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Nome preset obbligatorio")
+    data = {**preset.model_dump(), "name": name}
+    existing = await db.filament_presets.find_one({"user_id": current_user["id"], "name": name})
+    if existing:
+        await db.filament_presets.update_one({"_id": existing["_id"]}, {"$set": data})
+        return _preset_out({**existing, **data})
+    doc = {**data, "user_id": current_user["id"], "created_at": datetime.now(timezone.utc).isoformat()}
+    result = await db.filament_presets.insert_one(doc)
+    doc["_id"] = result.inserted_id
+    return _preset_out(doc)
+
+@api_router.delete("/filament-presets/{preset_id}")
+async def delete_filament_preset(preset_id: str, current_user: dict = Depends(get_current_user)):
+    await db.filament_presets.delete_one({"_id": ObjectId(preset_id), "user_id": current_user["id"]})
+    return {"message": "Preset eliminato"}
+
+def _ci(value: str):
+    return {"$regex": f"^{re.escape(value.strip())}$", "$options": "i"}
+
+@api_router.post("/filaments/bulk")
+async def bulk_purchase_filaments(payload: BulkFilamentPurchase, current_user: dict = Depends(get_current_user)):
+    rows = [r for r in payload.rows if r.color.strip() and r.material_type.strip()]
+    if not rows:
+        raise HTTPException(status_code=400, detail="Nessuna riga valida (servono almeno materiale e colore)")
+    for r in rows:
+        if r.quantity_spools < 1 or r.spool_weight_g <= 0 or r.spool_price < 0:
+            raise HTTPException(status_code=400, detail=f"Valori non validi per {r.material_type} {r.color}")
+    uid = current_user["id"]
+    created, updated, total_spent = 0, 0, 0.0
+    now = datetime.now(timezone.utc).isoformat()
+    for r in rows:
+        grams = r.spool_weight_g * r.quantity_spools
+        price_total = r.spool_price * r.quantity_spools
+        new_cpg = r.spool_price / r.spool_weight_g
+        existing = await db.filaments.find_one({
+            "user_id": uid,
+            "material_type": _ci(r.material_type),
+            "brand": _ci(r.brand),
+            "color": _ci(r.color),
+        })
+        if existing:
+            old_rem = existing.get("remaining_grams")
+            if old_rem is None:
+                old_rem = existing.get("spool_weight_g", 0)
+            old_rem = max(old_rem, 0)
+            avg_cpg = (old_rem * existing.get("cost_per_gram", 0) + grams * new_cpg) / (old_rem + grams)
+            spool_w = existing.get("spool_weight_g") or r.spool_weight_g
+            await db.filaments.update_one({"_id": existing["_id"]}, {"$set": {
+                "remaining_grams": old_rem + grams,
+                "cost_per_gram": avg_cpg,
+                "spool_price": round(avg_cpg * spool_w, 2),
+            }})
+            filament_id = str(existing["_id"])
+            updated += 1
+        else:
+            res = await db.filaments.insert_one({
+                "user_id": uid,
+                "material_type": r.material_type.strip(),
+                "color": r.color.strip(),
+                "brand": r.brand.strip(),
+                "spool_weight_g": r.spool_weight_g,
+                "spool_price": r.spool_price,
+                "cost_per_gram": new_cpg,
+                "color_hex": r.color_hex,
+                "color_hex2": r.color_hex2,
+                "finish": r.finish,
+                "notes": f"Creato da acquisto multiplo del {payload.date}",
+                "remaining_grams": grams,
+                "created_at": now,
+            })
+            filament_id = str(res.inserted_id)
+            created += 1
+        await db.purchases.insert_one({
+            "user_id": uid,
+            "date": payload.date,
+            "material_type": r.material_type.strip(),
+            "brand": r.brand.strip(),
+            "color": r.color.strip(),
+            "quantity_spools": r.quantity_spools,
+            "price_total": price_total,
+            "grams_total": grams,
+            "cost_per_gram": new_cpg,
+            "notes": payload.notes,
+            "filament_id": filament_id,
+            "created_at": now,
+        })
+        total_spent += price_total
+    return {"created": created, "updated": updated, "purchases": len(rows), "total_spent": round(total_spent, 2)}
+
+
 # Fixed Costs (Printers) CRUD
 @api_router.get("/printers")
 async def get_printers(current_user: dict = Depends(get_current_user)):
