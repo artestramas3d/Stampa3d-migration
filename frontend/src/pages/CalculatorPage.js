@@ -607,7 +607,7 @@ export default function CalculatorPage() {
                     <div key={index} className="flex items-center gap-1.5 p-1.5 rounded-sm bg-muted/30 border border-border/40">
                       <FilamentColorDot color={filamentData?.color_hex || '#FFF'} color2={filamentData?.color_hex2} finish={filamentData?.finish} size="w-5 h-5" />
                       <Select value={f.filament_id} onValueChange={(v) => updateFilament(index, 'filament_id', v)}>
-                        <SelectTrigger className="flex-1 h-7 text-xs">
+                        <SelectTrigger className="flex-1 h-7 text-xs" data-testid={`filament-select-${index}`} title={filamentData ? `${filamentName(filamentData)} ${filamentData.color}${filamentData.brand ? ` - ${filamentData.brand}` : ''}` : ''}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

@@ -297,6 +297,8 @@ class PurchaseCreate(BaseModel):
     price_total: float
     grams_total: float
     notes: str = ""
+    variant: str = ""
+    finish: str = "normale"
     # Filament integration
     filament_id: Optional[str] = None  # Link to existing filament
     create_filament: bool = True  # Auto-create or update filament
@@ -507,7 +509,7 @@ async def create_filament(filament: FilamentCreate, current_user: dict = Depends
 
 @api_router.put("/filaments/{filament_id}")
 async def update_filament(filament_id: str, filament: FilamentUpdate, current_user: dict = Depends(get_current_user)):
-    update_data = {k: v for k, v in filament.model_dump().items() if v is not None}
+    update_data = {k: (v.strip() if k == "variant" else v) for k, v in filament.model_dump().items() if v is not None}
     if "spool_price" in update_data or "spool_weight_g" in update_data:
         existing = await db.filaments.find_one({"_id": ObjectId(filament_id), "user_id": current_user["id"]})
         if existing:
@@ -629,6 +631,7 @@ async def bulk_purchase_filaments(payload: BulkFilamentPurchase, current_user: d
                 "spool_price": round(avg_cpg * spool_w, 2),
             }})
             filament_id = str(existing["_id"])
+            canon = {k: existing.get(k) or "" for k in ("material_type", "variant", "brand", "color")}
             updated += 1
         else:
             res = await db.filaments.insert_one({
@@ -648,14 +651,12 @@ async def bulk_purchase_filaments(payload: BulkFilamentPurchase, current_user: d
                 "created_at": now,
             })
             filament_id = str(res.inserted_id)
+            canon = {k: getattr(r, k).strip() for k in ("material_type", "variant", "brand", "color")}
             created += 1
         await db.purchases.insert_one({
             "user_id": uid,
             "date": payload.date,
-            "material_type": r.material_type.strip(),
-            "variant": r.variant.strip(),
-            "brand": r.brand.strip(),
-            "color": r.color.strip(),
+            **canon,
             "quantity_spools": r.quantity_spools,
             "price_total": price_total,
             "grams_total": grams,
@@ -769,7 +770,8 @@ async def create_purchase(purchase: PurchaseCreate, current_user: dict = Depends
                 "user_id": current_user["id"],
                 "material_type": purchase.material_type,
                 "brand": purchase.brand,
-                "color": purchase.color
+                "color": purchase.color,
+                **_ci_or_empty("variant", purchase.variant),
             })
             
             if existing:
@@ -794,6 +796,8 @@ async def create_purchase(purchase: PurchaseCreate, current_user: dict = Depends
                     "cost_per_gram": cost_per_gram,
                     "color_hex": purchase.color_hex,
                     "color_hex2": purchase.color_hex2,
+                    "variant": purchase.variant.strip(),
+                    "finish": purchase.finish,
                     "notes": f"Creato da acquisto del {purchase.date}",
                     "remaining_grams": purchase.grams_total,
                     "created_at": datetime.now(timezone.utc).isoformat()
@@ -805,6 +809,7 @@ async def create_purchase(purchase: PurchaseCreate, current_user: dict = Depends
         "user_id": current_user["id"],
         "date": purchase.date,
         "material_type": purchase.material_type,
+        "variant": purchase.variant.strip(),
         "brand": purchase.brand,
         "color": purchase.color,
         "quantity_spools": purchase.quantity_spools,

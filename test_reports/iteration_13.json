@@ -1,0 +1,42 @@
+{
+  "summary": "Tested the filament 'Variante' feature from end to end on the backend and frontend as testuser@example.com, with regression checks on the Acquisto Multiplo flow. Backend: 17/17 passed (7 new variant tests and 10 regression tests from iteration_12). Variant works in filament POST/PUT/GET, bulk merge (case-insensitive and variant-aware: PLA Silk, PLA Matte and plain PLA with the same brand and colour stay 3 separate filaments, and 'silk' merges into 'Silk'), purchases, presets (save and upsert) and calculate filaments_details. Frontend: every requested flow works. The variant-input datalist changes with the material and includes the user's own custom variants. Typing Silk sets the finish to Silk, and the user can still change it by hand. The card title shows 'PLA Silk' and the edit dialog prefills the variant. Filters work for material, variant and 'Senza variante', and changing the material resets the variant filter. In the bulk dialog: there is a Variante column, Metal sets Metallic, Enter copies the variant to the new row, presets save and apply the variant, and the '+ esist.' badge takes the variant into account. The Calculator dropdown and Riepilogo show 'PLA Metal Bronzo - TEST_UIVar', and the Acquisti table shows material and variant. One real bug was found in the older single-purchase path (POST /api/purchases), plus a few minor issues.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/purchases (Acquisti 'Nuovo acquisto' form)", "issue": "Ignores variant. PurchaseCreate has no variant field. With create_filament=true and no filament_id, it looks for a filament with the same material, brand and colour and does not check the variant. A plain 'PLA Oro' purchase adds its grams to an existing 'PLA Silk Oro' (confirmed by test_variant_single_purchase.py: remaining 1000 -> 2000). Filaments created by this path also have no variant, and the purchase record has no variant. The Acquisti form has no Variante input."},
+      {"endpoint": "POST /api/filaments/bulk", "issue": "When a row merges into an existing filament, the purchase record stores the row's raw text ('silk', 'oro') instead of the existing filament's values ('Silk', 'Oro'). The Acquisti table then shows 'PLA silk' while the filament card shows 'PLA Silk'."},
+      {"endpoint": "PUT /api/filaments/{id}", "issue": "variant is not stripped of spaces (POST strips it). ' Silk ' saved through edit would make a separate filter entry and break merge matching."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "CalculatorPage filament Select", "issue": "The filament SelectTrigger (~line 609) has no data-testid.", "selector": "grams-input-N sibling button[role=combobox]", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Acquisti -> Nuovo acquisto", "issue": "No Variante field, and the backend merge ignores variant (see backend minor issue).", "affected_selectors": ["add-purchase-btn"]}
+    ],
+    "design_issues": [
+      {"screen": "Calculator > Parametri Stampa > Filamenti", "issues": ["In the narrow column, long names like 'PLA Metal Bronzo - TEST_UIVar' are cut off in the select trigger. A title tooltip would help."]},
+      {"screen": "Filament dialog", "issues": ["Changing Materiale (e.g. PLA -> PETG) keeps the old variant even when it isn't in the new material's list. Consider clearing it or warning."]},
+      {"screen": "FilamentFilters", "issues": ["Variant options are grouped case-sensitively, so 'Silk' and 'silk' would show as two entries. Consider normalising."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_filament_variants.py", "/app/backend/tests/test_variant_single_purchase.py", "/app/backend/tests/test_bulk_purchase_presets.py", "/app/test_reports/pytest/pytest_variants.xml"],
+  "action_items": [
+    "Add variant to PurchaseCreate and the Acquisti form. Make the create_filament merge in POST /api/purchases variant-aware and case-insensitive, reusing the _ci/_ci_or_empty matching from bulk, and store the variant on the new filament and on the purchase.",
+    "Bulk merge: store the matched filament's canonical material, variant and colour on the purchase record.",
+    "PUT /api/filaments: strip variant.",
+    "Optional: add data-testid to the calculator filament SelectTrigger, normalise variant case in the filters, and clear the variant when the material changes."
+  ],
+  "critical_code_review_comments": [
+    "The single-purchase endpoint uses exact-match find_one on material, brand and colour, while bulk is case-insensitive and variant-aware. The two matching rules disagree, which risks inventory corruption.",
+    "Variant auto-finish stays set: if the user types Metal and then deletes it, the finish stays Metallic. This is acceptable because the finish can be edited."
+  ],
+  "updated_files": ["/app/backend/tests/test_filament_variants.py", "/app/backend/tests/test_variant_single_purchase.py"],
+  "success_rate": {"backend": "94% (17/18; the 1 failure is the single-purchase variant merge bug)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "None kept. All test data (brands TEST_Var_*, TEST_SP_*, TEST_UIVar; preset TEST_UIPreset Metal; the related purchases and printer) was deleted by id or by unique tag. testuser already had a leftover filament 'PLA TEST_Black / TEST_Brand' from an earlier run; I did not create it and did not touch it.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: REACT_APP_BACKEND_URL=... pytest tests/test_filament_variants.py tests/test_bulk_purchase_presets.py tests/test_variant_single_purchase.py -p no:xdist -o addopts=''. test_variant_single_purchase is expected to fail until POST /api/purchases becomes variant-aware. UI: dismiss the cookie banner (cookie-accept-all) before using dialogs. The calculator filament select has no testid; locate it through grams-input-0's ancestor div.rounded-sm and button[role=combobox].",
+  "rca of the issue": "server.py create_purchase (~line 767) does find_one({material_type, brand, color}) and has no variant condition, so it matches whichever variant of that material, brand and colour it finds first. Reproduce: create PLA Silk Oro (brand X), then POST /api/purchases with PLA, X, Oro and create_filament=true. The Silk filament's remaining_grams increases. Fix: add a variant field and query with _ci(material), _ci(color), _ci_or_empty(brand) and _ci_or_empty(variant)."
+}

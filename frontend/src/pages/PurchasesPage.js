@@ -13,13 +13,16 @@ import { Plus, Download, Trash2, ShoppingCart, Cylinder, ArrowUpDown } from 'luc
 import { toast } from 'sonner';
 import { FilamentColorDot } from '../components/FilamentColorDot';
 import { DecimalInput } from '../components/DecimalInput';
-import { filamentName } from '../lib/filamentVariants';
+import { filamentName, variantOptions, finishForVariant } from '../lib/filamentVariants';
+import { VariantInput } from '../components/VariantInput';
 
 const MATERIAL_TYPES = ['PLA', 'PETG', 'ABS', 'TPU', 'ASA', 'Nylon', 'PLA+', 'PETG-CF', 'Altro'];
 
 const defaultPurchase = {
   date: new Date().toISOString().split('T')[0],
   material_type: 'PLA',
+  variant: '',
+  finish: 'normale',
   brand: '',
   color: '',
   color_hex: '#000000',
@@ -97,6 +100,7 @@ export default function PurchasesPage() {
   // Find existing filament with same material/brand/color
   const matchingFilament = filaments.find(f => 
     f.material_type === formData.material_type &&
+    (f.variant || '').toLowerCase() === formData.variant.trim().toLowerCase() &&
     f.brand === formData.brand &&
     f.color === formData.color
   );
@@ -170,7 +174,7 @@ export default function PurchasesPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="space-y-2">
                     <Label>Materiale</Label>
                     <Select value={formData.material_type} onValueChange={(v) => setFormData({...formData, material_type: v})}>
@@ -179,6 +183,16 @@ export default function PurchasesPage() {
                         {MATERIAL_TYPES.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Variante</Label>
+                    <VariantInput
+                      options={variantOptions(formData.material_type, filaments)}
+                      value={formData.variant}
+                      onChange={(e) => { const v = e.target.value; setFormData(fd => ({ ...fd, variant: v, finish: finishForVariant(v) || 'normale' })); }}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      data-testid="purchase-variant-input"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Brand</Label>

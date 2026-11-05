@@ -193,6 +193,12 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
 - API: GET/POST/DELETE /api/filament-presets, POST /api/filaments/bulk
 - Component: frontend/src/components/BulkPurchaseDialog.js
 
+## 2026-06 — Varianti filamento (DONE, tested iteration_13 + fix verified via curl)
+- Campo `variant` separato (es. PLA + Silk -> "PLA Silk"); elenco pronto per materiale (lib/filamentVariants.js) + varianti personali usate in precedenza
+- Silk/Metal/Galaxy/Sparkle/Marble/Rainbow impostano in automatico l'effetto (modificabile)
+- Visibile in: scheda/modifica filamento, filtri Filamenti (materiale+variante), Acquisto Multiplo + preset, Calcolatore, Acquisti (form + tabella), Dashboard, CSV
+- Merge acquisti (bulk e singolo) tiene conto della variante
+
 ## Backlog
 - P2: Stripe marketplace digitale; Telegram bot admin
 - P3: refactor server.py e AdminPanelPage.js; cookie banner sopra i dialog (z-index globale)
