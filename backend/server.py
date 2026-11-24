@@ -368,6 +368,7 @@ class SaleCreate(BaseModel):
     shipping_cost: float = 0
     source_module: str = "3d"  # "3d" | "cricut" | "manuale"
     cricut_project_id: Optional[str] = None  # link a preventivo Cricut se applicabile
+    total_cost_override: Optional[float] = None  # costo totale lotto dal calcolatore (include attrezzature, extra, scarti)
 
 # Template for saving print configurations
 class PrintTemplateCreate(BaseModel):
@@ -1739,7 +1740,9 @@ async def get_sales(current_user: dict = Depends(get_current_user)):
             "batch_total": doc.get("batch_total"),
             "client_id": cid,
             "client_name": clients_map.get(cid, ""),
-            "shipping_cost": doc.get("shipping_cost", 0)
+            "shipping_cost": doc.get("shipping_cost", 0),
+            "source_module": doc.get("source_module", "3d"),
+            "cricut_project_id": doc.get("cricut_project_id", "")
         })
     return result
 
@@ -1933,6 +1936,8 @@ async def create_sale(sale: SaleCreate, current_user: dict = Depends(get_current
         if project:
             cricut_cost = float((await _compute_cricut_project(project, current_user["id"])).get("total_cost", 0) or 0) * max(1, sale.quantity)
     total_cost = material_cost + electricity_cost + depreciation_cost + labor_cost + design_cost + accessories_cost + cricut_cost
+    if sale.total_cost_override is not None and sale.total_cost_override >= 0:
+        total_cost = float(sale.total_cost_override)
     # Spese di spedizione: applicate al batch intero, non per unita'
     shipping_cost = max(0.0, float(getattr(sale, "shipping_cost", 0) or 0))
     total_cost += shipping_cost

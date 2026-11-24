@@ -1,0 +1,34 @@
+{
+  "summary": "Retest of the iteration_14 fixes: all pass. Backend: 34/34 pytest cases pass (12 new in test_sales_source_module.py plus the 22 existing stats tests, including by_type, which failed last time). POST /api/sales now stores source_module and cricut_project_id. A 3D sale with no printer returns 400 'Seleziona una stampante'. An invalid printer id returns 400. A 3D sale with no filaments returns 400. Cricut and manuale sales save with printer_id='' and no filaments. For a Cricut sale with a project, the project's total_cost x quantity is added to the cost, so net_profit is correct; checked with quantity 2. An invalid cricut_project_id is ignored, with no 500. The 3D regression passes: costs match the formula and filament stock goes down. Analytics by_type returns all 3 groups. The timeline fills empty days (one point per day) and empty months (12 for a full year). A sale stored as '2011-05-06T10:00' on the end date is included. Dashboard total_hours now divides by batch_total (a quantity-3 sale with 6h added 6h). UI: the /print3d/calculator 3D sale shows the toast 'Vendita registrata!' and stock drops by 100g. The Cricut calculator 'calc-save-sale' shows 'Vendita Cricut registrata!' and the project is auto-saved. Both sales appear on /sales. The /statistics 'Vendite per tipo' donut shows Plotter / Cricut 82.1% and Stampa 3D 17.9%. No page errors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/sales", "issue": "The serializer (server.py ~1718-1742) leaves out source_module and cricut_project_id. They are stored, but the Vendite list and the copy-sale flow cannot see the type."},
+      {"endpoint": "POST /api/sales (from the 3D Calculator with Cricut projects or equipment selected)", "issue": "CalculatorPage adds the selected Cricut projects (extra_costs) and equipment to the quote, but createSale sends source_module='3d' plus only cricut_project_id. The backend adds the Cricut cost only when source_module=='cricut', and never adds equipment cost. The saved sale's total_cost therefore leaves these costs out, so net_profit is too high. This bug existed before these fixes."},
+      {"endpoint": "POST /api/sales, DELETE /api/sales/{id}", "issue": "ObjectId(f_usage.filament_id), ObjectId(acc_usage.accessory_id) and ObjectId(sale_id) are not checked first. A malformed id returns 500 instead of 400. Found by reading the code."},
+      {"endpoint": "POST /api/sales cricut", "issue": "The project's total_cost includes marketplace, payment and VAT fees worked out on the project's recommended_price. If the sale_price differs, those fees are not recalculated. Low impact."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_sales_source_module.py", "/app/backend/tests/test_stats_analytics.py", "/app/test_reports/pytest/pytest_iter15.xml"],
+  "action_items": [
+    "Add source_module and cricut_project_id to the GET /api/sales response",
+    "Pass the Cricut and equipment extra costs from the 3D Calculator into the sale's total_cost: either send extra_costs or cricut_project_ids and add them in create_sale",
+    "Check filament, accessory and sale ids with ObjectId.is_valid so a malformed id returns 400 instead of 500"
+  ],
+  "critical_code_review_comments": [
+    "create_sale's printer and filament checks are now correct and covered by tests",
+    "An unknown source_module value is treated as 3d (printer required) and stored as '3d'. This is consistent."
+  ],
+  "updated_files": ["/app/backend/tests/test_sales_source_module.py"],
+  "success_rate": {"backend": "100% (34/34)", "frontend": "100% (3D sale, Cricut sale, Vendite list, by_type donut)"},
+  "test_credentials": "testuser@example.com / password123",
+  "seed_data_creation": "pytest: TEST_P printer, TEST_R filament, TEST_Vinile cricut material, TEST_CricutProj and sales dated 2011-05. UI: TEST_UIPrinter, TEST_UIRed filament, TEST_UICricut project and 2 sales dated 2026-11-24. I deleted all of them by id and verified that 2011 analytics is empty and no TEST_ sales or projects remain.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && REACT_APP_BACKEND_URL=... pytest tests/test_sales_source_module.py tests/test_stats_analytics.py -p no:xdist -o addopts=''. The container clock is Nov 24 2026. The Cricut calculator UI sale uses today's date and the manual price field calc-manual-price. The printer select in CalculatorPage has no data-testid; pick it by option text."
+}

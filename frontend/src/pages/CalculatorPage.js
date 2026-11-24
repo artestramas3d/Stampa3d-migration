@@ -427,6 +427,7 @@ export default function CalculatorPage() {
         client_id: selectedClientId && selectedClientId !== 'none' ? selectedClientId : null,
         source_module: '3d',
         cricut_project_id: selectedCricutIds[0] || null, // se piu' preventivi, tiene il primo per link
+        total_cost_override: result.total_cost,
       });
       const count = res.count || 1;
       toast.success(count > 1 ? `${count} vendite registrate!` : 'Vendita registrata!');
