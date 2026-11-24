@@ -77,6 +77,7 @@ export const calculatePrint = (data) => api.post('/calculate', data).then(r => r
 
 // Dashboard
 export const getDashboardStats = () => api.get('/dashboard/stats').then(r => r.data);
+export const getAnalytics = (start, end) => api.get('/stats/analytics', { params: { ...(start && { start }), ...(end && { end }) } }).then(r => r.data);
 
 // Exports
 export const exportSalesCSV = () => `${API}/export/sales`;

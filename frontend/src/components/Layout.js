@@ -8,7 +8,7 @@ import { getActiveBanners, resendVerification, getSiteSettings } from '../lib/ap
 import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { 
-  LayoutDashboard, Cylinder, Calculator, ShoppingCart, Receipt, Settings,
+  LayoutDashboard, BarChart3, Cylinder, Calculator, ShoppingCart, Receipt, Settings,
   Menu, Sun, Moon, LogOut, Package, Megaphone, ShieldCheck, User, AlertTriangle, Mail, Bug, ShoppingBag, BookOpen, Users, FileText, Scissors, Printer, Newspaper
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -34,6 +34,7 @@ function Sidebar({ onNavigate, banners, siteSettings }) {
 
   const navItems = [
     { path: '/', label: t('dashboard'), icon: LayoutDashboard },
+    { path: '/statistics', label: 'Statistiche', icon: BarChart3 },
     { path: '/print3d', label: 'Calcolatore costi Stampa 3D', icon: Printer, match: '/print3d' },
     { path: '/cricut', label: 'Calcolatore costi Plotter da taglio', icon: Scissors, match: '/cricut' },
     { path: '/sales', label: t('sales'), icon: Receipt },

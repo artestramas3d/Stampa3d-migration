@@ -2077,6 +2077,14 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
         "shipping_sales_count_month": sales_with_shipping_month
     }
 
+@api_router.get("/stats/analytics")
+async def get_analytics(start: Optional[str] = None, end: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    from analytics import build_analytics
+    try:
+        return await build_analytics(db, current_user["id"], start, end)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Date non valide (formato AAAA-MM-GG)")
+
 # Export CSV
 @api_router.get("/export/sales")
 async def export_sales_csv(current_user: dict = Depends(get_current_user)):

@@ -9,6 +9,7 @@ import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
+import StatisticsPage from "./pages/StatisticsPage";
 import FilamentsPage from "./pages/FilamentsPage";
 import AccessoriesPage from "./pages/AccessoriesPage";
 import CalculatorPage from "./pages/CalculatorPage";
@@ -149,6 +150,7 @@ function AppRoutes() {
       <Route path="/cricut/calculator" element={<ProtectedRoute><CricutCalculatorPage /></ProtectedRoute>} />
       <Route path="/cricut/calculator/:pid" element={<ProtectedRoute><CricutCalculatorPage /></ProtectedRoute>} />
       <Route path="/purchases" element={<ProtectedRoute><PurchasesPage /></ProtectedRoute>} />
+      <Route path="/statistics" element={<ProtectedRoute><StatisticsPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       <Route path="/banners" element={<ProtectedRoute><BannersPage /></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute><AdminPanelPage /></ProtectedRoute>} />
