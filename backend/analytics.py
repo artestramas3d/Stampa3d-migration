@@ -31,7 +31,7 @@ def _bucket(d: str, monthly: bool):
 
 
 async def _load(db, uid, start, end):
-    q = {"user_id": uid, "date": {"$gte": start, "$lte": end}}
+    q = {"user_id": uid, "date": {"$gte": start, "$lte": end + "T23:59:59"}}
     sales = await db.sales.find(q).to_list(100000)
     purchases = await db.purchases.find(q).to_list(100000)
     return sales, purchases
@@ -122,8 +122,12 @@ def _types(sales):
     return sorted(({**r, "revenue": _r(r["revenue"]), "profit": _r(r["profit"])} for r in rows), key=lambda r: -r["revenue"])
 
 
-def _timeline(sales, purchases, monthly):
+def _timeline(sales, purchases, monthly, start_d, end_d):
     out = {}
+    d = start_d
+    while d <= end_d:
+        out.setdefault(_bucket(d.isoformat(), monthly), {"revenue": 0, "cost": 0, "profit": 0, "purchases": 0})
+        d = _shift_months(d.replace(day=1), 1) if monthly else d + timedelta(days=1)
     for s in sales:
         row = out.setdefault(_bucket(s.get("date", ""), monthly), {"revenue": 0, "cost": 0, "profit": 0, "purchases": 0})
         row["revenue"] += s.get("sale_price", 0)
@@ -167,7 +171,7 @@ async def build_analytics(db, uid: str, start: Optional[str], end: Optional[str]
         "start": start, "end": end, "granularity": "month" if monthly else "day",
         "summary": _summary(sales, purchases),
         "previous": previous,
-        "timeline": _timeline(sales, purchases, monthly),
+        "timeline": _timeline(sales, purchases, monthly, start_d, end_d),
         "products": _products(sales),
         "purchases": _purchase_groups(purchases),
         "consumption": await _consumption(db, uid, sales),

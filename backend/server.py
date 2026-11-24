@@ -1874,16 +1874,23 @@ async def get_recent_sales(current_user: dict = Depends(get_current_user), limit
 
 @api_router.post("/sales")
 async def create_sale(sale: SaleCreate, current_user: dict = Depends(get_current_user)):
-    printer = await db.printers.find_one({"_id": ObjectId(sale.printer_id), "user_id": current_user["id"]})
-    if not printer:
-        raise HTTPException(status_code=404, detail="Stampante non trovata")
+    is_3d = sale.source_module not in ("cricut", "manuale")
+    printer = {}
+    if sale.printer_id:
+        if not ObjectId.is_valid(sale.printer_id):
+            raise HTTPException(status_code=400, detail="Stampante non valida")
+        printer = await db.printers.find_one({"_id": ObjectId(sale.printer_id), "user_id": current_user["id"]})
+        if not printer:
+            raise HTTPException(status_code=404, detail="Stampante non trovata")
+    elif is_3d:
+        raise HTTPException(status_code=400, detail="Seleziona una stampante")
     
     # Handle multicolor filaments or legacy single filament
     filament_list = sale.filaments if sale.filaments else []
     if not filament_list and sale.filament_id and sale.grams_used:
         filament_list = [FilamentUsage(filament_id=sale.filament_id, grams_used=sale.grams_used)]
     
-    if not filament_list:
+    if not filament_list and is_3d:
         raise HTTPException(status_code=400, detail="Nessun filamento selezionato")
     
     # Calculate material cost and decrement stock for all filaments
@@ -1920,7 +1927,12 @@ async def create_sale(sale: SaleCreate, current_user: dict = Depends(get_current
                 {"$inc": {"stock_quantity": -acc_usage.quantity}}
             )
     
-    total_cost = material_cost + electricity_cost + depreciation_cost + labor_cost + design_cost + accessories_cost
+    cricut_cost = 0.0
+    if sale.source_module == "cricut" and sale.cricut_project_id and ObjectId.is_valid(sale.cricut_project_id):
+        project = await db.cricut_projects.find_one({"_id": ObjectId(sale.cricut_project_id), "user_id": current_user["id"]})
+        if project:
+            cricut_cost = float((await _compute_cricut_project(project, current_user["id"])).get("total_cost", 0) or 0) * max(1, sale.quantity)
+    total_cost = material_cost + electricity_cost + depreciation_cost + labor_cost + design_cost + accessories_cost + cricut_cost
     # Spese di spedizione: applicate al batch intero, non per unita'
     shipping_cost = max(0.0, float(getattr(sale, "shipping_cost", 0) or 0))
     total_cost += shipping_cost
@@ -1969,6 +1981,8 @@ async def create_sale(sale: SaleCreate, current_user: dict = Depends(get_current
             "paid": False,
             "client_id": sale.client_id or "",
             "shipping_cost": round(shipping_cost / quantity, 2),
+            "source_module": sale.source_module if sale.source_module in ("3d", "cricut", "manuale") else "3d",
+            "cricut_project_id": sale.cricut_project_id or "",
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         result = await db.sales.insert_one(doc)
@@ -1992,7 +2006,7 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     total_sales = sum(s.get("sale_price", 0) for s in sales)
     total_profit = sum(s.get("net_profit", 0) for s in sales)
     total_grams = sum(s.get("grams_used", 0) for s in sales)
-    total_hours = sum(s.get("print_time_hours", 0) for s in sales)
+    total_hours = sum(s.get("print_time_hours", 0) / max(1, s.get("batch_total", 1) or 1) for s in sales)
     total_purchases = sum(p.get("price_total", 0) for p in purchases)
     
     avg_margin = 0

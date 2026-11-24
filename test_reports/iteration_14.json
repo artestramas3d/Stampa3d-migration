@@ -1,0 +1,40 @@
+{
+  "summary": "Tested the new Statistiche feature end to end. Backend: 22 pytest cases for GET /api/stats/analytics, 21 passed. They cover the response shape, the 401 and 400 errors, the all-time view (previous=null), the day/month granularity cutoff (62 days), 9 previous-period rules, summary totals, product ranking, consumption split per unit, case-insensitive purchase grouping, the client grouping including 'Senza cliente', the timeline and per-user scoping. Test data was created in 2011-03 so it would not mix with real records. The one failure is by_type: every sale created through POST /api/sales is labelled 'Stampa 3D', because source_module is never saved. Separately, Cricut sale registration (printer_id='') returns 500, which predates this feature. Frontend: the sidebar shows Statistiche right under Dashboard. All 6 period presets change the data and the label, and their previous periods are correct. The custom dates switch the picker to custom. All 8 KPI cards show value and delta ('nuovo' when previous is 0), and the delta is hidden for 'Tutto'. All 8 charts render, plus the empty state 'Nessun dato nel periodo'. Product table sorting and products-show-all (12 rows) work, as do the purchase tabs. The mobile layout does not overflow, the Dashboard still works, and there were no console page errors.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/sales -> GET /api/stats/analytics by_type", "issue": "create_sale (server.py ~1946) never stores sale.source_module or sale.cricut_project_id in the sale doc. analytics._sale_type therefore falls back to printer_id, so every sale is labelled 'Stampa 3D' and the 'Vendite per tipo' chart can never show Plotter/Cricut or Manuale. Reproduce: POST a sale with source_module='cricut' and a printer, and by_type shows it under 'Stampa 3D'.", "priority": "HIGH"},
+      {"endpoint": "POST /api/sales (Cricut flow, pre-existing)", "issue": "CricutCalculatorPage sends printer_id=''. create_sale then calls ObjectId('') unconditionally, which raises bson InvalidId and returns 500 'Internal Server Error'. Cricut and manual sales cannot be saved at all. It also raises 400 'Nessun filamento selezionato' when no filaments are sent, which non-3D sales would hit as well.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "GET /api/stats/analytics", "issue": "The date filter compares strings with $lte end. A sale stored with a time part (e.g. '2026-11-24T10:00') on the end day would be left out. Current sales use YYYY-MM-DD, so this does not affect them."},
+      {"endpoint": "GET /api/dashboard/stats vs analytics", "issue": "The Dashboard's total_hours adds up print_time_hours on every unit row, so a batch is counted N times. Analytics print_hours divides by batch_total. The two pages disagree."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Vendite per tipo chart", "issue": "Always shows 100% 'Stampa 3D' because of the backend source_module persistence bug", "affected_selectors": ["[data-testid='chart-by-type']"]}
+    ],
+    "design_issues": [
+      {"screen": "Statistiche period picker", "issues": ["Custom range uses the browser's native <input type=date>, which shows mm/dd/yyyy in an en-US browser while the label uses dd/mm/yyyy. Consider the shadcn Calendar/Popover date picker for consistency.", "With day granularity the timeline only draws days that have data, so a single sale day shows as one lone bar or dot. Consider filling empty days with zeros."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_stats_analytics.py", "/app/backend/tests/ui_seed_stats.py", "/app/test_reports/pytest/pytest_stats.xml"],
+  "action_items": [
+    "Persist source_module (and cricut_project_id) in create_sale docs so by_type works",
+    "Make printer_id optional in create_sale: skip the printer lookup and its costs when printer_id is empty or source_module != '3d', and allow empty filaments for non-3D sales. This fixes the 500 on Cricut sale registration."
+  ],
+  "critical_code_review_comments": [
+    "server.py create_sale: ObjectId(sale.printer_id) is not guarded, so a bad or empty id gives 500 instead of 400/404",
+    "analytics.py is clean and async-correct, and every query is scoped by user_id. Very large ranges load up to 100k docs in memory; acceptable for now.",
+    "ProductsTable uses r.name as the React key, which is fine because names are merged case-insensitively"
+  ],
+  "updated_files": ["/app/backend/tests/test_stats_analytics.py", "/app/backend/tests/ui_seed_stats.py"],
+  "success_rate": {"backend": "95% (21/22)", "frontend": "100% of tested UI flows (by_type data wrong due to backend)"},
+  "test_credentials": "testuser@example.com / password123 (writes), artestramas3d@gmail.com (read-only; has no sales or purchases, so its stats are empty)",
+  "seed_data_creation": "Created TEST_ printer/filaments/client/sales/purchases for testuser (2011-02/03 for pytest; Nov/Oct 2026 for the UI) and deleted them all by id afterwards. I verified that none remain. TEST_Black/TEST_Brand filaments and purchases from earlier iterations are still in the account; I did not create them.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && REACT_APP_BACKEND_URL=... pytest tests/test_stats_analytics.py -p no:xdist -o addopts=''. It uses an isolated 2011-03 window and cleans up after itself. test_by_type fails until create_sale stores source_module. For UI data run 'python tests/ui_seed_stats.py seed' (current and previous month), then 'clean'. The container clock is Nov 24 2026. Dismiss cookie-accept-all before and after login.",
+  "rca of the issue": "by_type: SaleCreate.source_module is accepted but left out of the doc dict in create_sale (server.py lines ~1946-1973), so analytics._sale_type sees no source_module and printer_id is set, giving '3d'. Cricut 500: create_sale line 1877 runs ObjectId(sale.printer_id) with '' and raises InvalidId. Fix: add 'source_module': sale.source_module, 'cricut_project_id': sale.cricut_project_id to the doc, and make the printer and filament logic conditional."
+}
