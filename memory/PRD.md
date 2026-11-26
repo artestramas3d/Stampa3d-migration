@@ -204,6 +204,7 @@ App web calcolatore costi stampa 3D per maker. Traccia costi, materiali, vendite
 - Periodi rapidi (mese, mese scorso, 3 mesi, anno, anno scorso, tutto) + date personalizzate; confronto con periodo precedente (frecce, "nuovo")
 - KPI, andamento vendite/costi/utile/acquisti, classifica oggetti (ordinabile, margine, % incasso), filamenti acquistati (materiale/variante/marca), consumo per materiale e colore, vendite per tipo, top clienti
 - API GET /api/stats/analytics?start&end (backend/analytics.py)
+- Card "Pagate e da incassare" (importi, pezzi, % incassato, chi deve ancora pagare)
 - Fix: vendite Cricut/manuali non andavano piu' in errore 500 (printer opzionale), source_module salvato, costo Cricut incluso; vendite dal Calcolatore 3D salvano il costo totale reale (attrezzature, extra, scarti) via total_cost_override; ore Dashboard non piu' moltiplicate per lotto
 
 ## Backlog

@@ -7,6 +7,7 @@ import { KpiGrid } from '../components/stats/KpiGrid';
 import { TimelineChart } from '../components/stats/TimelineChart';
 import { ProductsTable } from '../components/stats/ProductsTable';
 import { Donut, HBar } from '../components/stats/Breakdowns';
+import { PaymentsCard } from '../components/stats/PaymentsCard';
 import { eur, grams } from '../components/stats/ChartCard';
 
 const fmtDate = (d) => (d ? d.split('-').reverse().join('/') : '');
@@ -50,6 +51,7 @@ export default function StatisticsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <TimelineChart data={data.timeline} granularity={data.granularity} />
             <ProductsTable data={data.products} />
+            <PaymentsCard summary={data.summary} payments={data.payments} />
             <Donut title="Filamenti acquistati" subtitle="Spesa nel periodo" testId="chart-purchases" valueKey="spent" fmt={eur} data={data.purchases}
               tabs={[{ key: 'by_material', label: 'Materiale' }, { key: 'by_variant', label: 'Variante' }, { key: 'by_brand', label: 'Marca' }]} />
             <HBar title="Grammi acquistati" subtitle="Per materiale e variante" testId="chart-purchases-grams" data={data.purchases.by_variant.slice(0, 10)}

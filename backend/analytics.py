@@ -51,6 +51,10 @@ def _summary(sales, purchases):
         "purchases_spent": _r(sum(p.get("price_total", 0) for p in purchases)),
         "purchases_grams": _r(sum(p.get("grams_total", 0) for p in purchases), 0),
         "purchases_spools": sum(p.get("quantity_spools", 0) for p in purchases),
+        "paid_revenue": _r(sum(s.get("sale_price", 0) for s in sales if s.get("paid"))),
+        "unpaid_revenue": _r(sum(s.get("sale_price", 0) for s in sales if not s.get("paid"))),
+        "paid_units": sum(1 for s in sales if s.get("paid")),
+        "unpaid_units": sum(1 for s in sales if not s.get("paid")),
     }
 
 
@@ -107,10 +111,23 @@ def _products(sales):
     return sorted(rows, key=lambda r: -r["revenue"])
 
 
-async def _clients(db, uid, sales):
+def _payments(sales, client_names):
+    fields = {"revenue": lambda s: s.get("sale_price", 0), "units": lambda s: 1}
+    status = _group(sales, lambda s: "Pagate" if s.get("paid") else "Da incassare", fields)
+    unpaid = [s for s in sales if not s.get("paid")]
+    by_client = _group(unpaid, lambda s: client_names.get(s.get("client_id") or "", "Senza cliente"), fields)
+    fmt = lambda rows: sorted(({**r, "revenue": _r(r["revenue"])} for r in rows), key=lambda r: -r["revenue"])
+    return {"by_status": fmt(status), "unpaid_by_client": fmt(by_client)[:10]}
+
+
+async def _client_names(db, uid, sales):
     ids = list({s.get("client_id") for s in sales if s.get("client_id") and ObjectId.is_valid(s.get("client_id"))})
-    names = {str(c["_id"]): f"{c.get('name', '')} {c.get('surname', '')}".strip() or "Cliente"
-             async for c in db.clients.find({"_id": {"$in": [ObjectId(i) for i in ids]}, "user_id": uid})}
+    return {str(c["_id"]): f"{c.get('name', '')} {c.get('surname', '')}".strip() or "Cliente"
+            async for c in db.clients.find({"_id": {"$in": [ObjectId(i) for i in ids]}, "user_id": uid})}
+
+
+async def _clients(db, uid, sales):
+    names = await _client_names(db, uid, sales)
     fields = {"revenue": lambda s: s.get("sale_price", 0), "profit": lambda s: s.get("net_profit", 0), "units": lambda s: 1}
     rows = _group(sales, lambda s: names.get(s.get("client_id") or "", "Senza cliente"), fields)
     return sorted(({**r, "revenue": _r(r["revenue"]), "profit": _r(r["profit"])} for r in rows), key=lambda r: -r["revenue"])[:10]
@@ -177,4 +194,5 @@ async def build_analytics(db, uid: str, start: Optional[str], end: Optional[str]
         "consumption": await _consumption(db, uid, sales),
         "by_type": _types(sales),
         "by_client": await _clients(db, uid, sales),
+        "payments": _payments(sales, await _client_names(db, uid, sales)),
     }
